@@ -14,7 +14,6 @@ import '../../../provider/userProvider.dart';
 import '../../../widgets/custom_textfield.dart';
 import '../../../widgets/show_toast.dart';
 
-
 class SelectLanguagePage extends StatefulWidget {
   const SelectLanguagePage({super.key});
 
@@ -24,13 +23,12 @@ class SelectLanguagePage extends StatefulWidget {
 }
 
 class _SelectLanguagePageState extends State<SelectLanguagePage> {
-
   List<String> countries = [];
   List<String> states = [];
   List<String> districts = [];
   List<String> talukas = [];
 
-  String? selectedCountry ="India";
+  String? selectedCountry = "India";
   String? selectedState;
   String? selectedDistrict;
   String? selectedTaluka;
@@ -39,15 +37,15 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
   void initState() {
     super.initState();
     fetchLanguage();
-   selectedCountry ="India";
-    selectedState="Maharashtra";
-     selectedDistrict = "Pune";
+    selectedCountry = "India";
+    selectedState = "Maharashtra";
+    selectedDistrict = "Pune";
     selectedTaluka = "Haveli";
   }
 
-
   Future<void> fetchLanguage() async {
-    LanguageProvider languageProvider = Provider.of<LanguageProvider>(context, listen: true);
+    LanguageProvider languageProvider =
+        Provider.of<LanguageProvider>(context, listen: true);
     await languageProvider.fetchLanguages();
   }
 
@@ -61,10 +59,9 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
     if (pickedDate != null) {
       /*setState(() => userProvider.dobController.text =
           pickedDate.toLocal().toString().split(' ')[0]);*/
-      userProvider.setDate(pickedDate,true);
+      userProvider.setDate(pickedDate, true);
     }
   }
-
 
   Future<void> _selectJoinDate(UserProvider userProvider) async {
     DateTime? pickedDate = await showDatePicker(
@@ -76,10 +73,11 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
     if (pickedDate != null) {
       /*setState(() => userProvider.dobController.text =
           pickedDate.toLocal().toString().split(' ')[0]);*/
-      userProvider.setDate(pickedDate,false);
+      userProvider.setDate(pickedDate, false);
     }
   }
-  void _toggleSelection(String language,UserProvider userProvider) {
+
+  void _toggleSelection(String language, UserProvider userProvider) {
     setState(() {
       userProvider.selectedLanguages.contains(language)
           ? userProvider.selectedLanguages.remove(language)
@@ -108,7 +106,7 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
     var result = await userProvider.createUser();
     if (result['success'] == true) {
       print(result['message']);
-      CustomToast.show(result['message'],isSuccess: true);
+      CustomToast.show(result['message'], isSuccess: true);
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
@@ -116,19 +114,18 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
       Navigator.pop(context, true);
     } else {
       print('Failure: ${result['message']}');
-      CustomToast.show('Failure: ${result['message']}',isSuccess: false);
-
+      CustomToast.show('Failure: ${result['message']}', isSuccess: false);
     }
-
-
   }
 
   @override
   Widget build(BuildContext context) {
-    LanguageProvider languageProvider = Provider.of<LanguageProvider>(context, listen: true);
+    LanguageProvider languageProvider =
+        Provider.of<LanguageProvider>(context, listen: true);
 
     var themeProvider = Provider.of<ThemeProvider>(context);
-    UserProvider userProvider = Provider.of<UserProvider>(context, listen: true);
+    UserProvider userProvider =
+        Provider.of<UserProvider>(context, listen: true);
     var selectedThemeData = themeProvider.getTheme;
     bool isDark = selectedThemeData.brightness == Brightness.dark;
 
@@ -162,7 +159,7 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
                     ResponsiveWidget.isDesktop(context) ? 400 : double.infinity,
                 child: Column(
                   children: [
-                /*    Row(
+                    /*    Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         IconButton(
@@ -177,16 +174,18 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
                     ),*/
                     GestureDetector(
                       onTap: () async {
-                       await userProvider.pickImage();
+                        await userProvider.pickImage();
                       },
-                      child:CircleAvatar(
+                      child: CircleAvatar(
                         radius: 50,
-                        backgroundImage: userProvider.profileController.text.isNotEmpty
+                        backgroundImage: userProvider
+                                .profileController.text.isNotEmpty
                             ? NetworkImage(userProvider.profileController.text)
                             : null,
                         backgroundColor: Colors.grey[300],
                         child: userProvider.profileController.text.isEmpty
-                            ? Icon(Icons.add_a_photo, color: Colors.grey[600], size: 50)
+                            ? Icon(Icons.add_a_photo,
+                                color: Colors.grey[600], size: 50)
                             : null,
                       ),
                     ),
@@ -203,7 +202,7 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
                       cursorColor: const Color(0xFFE50914),
                       controller: userProvider.dobController,
                       readOnly: true,
-                      onTap: (){
+                      onTap: () {
                         _selectDate(userProvider);
                       },
                       decoration: InputDecoration(
@@ -291,7 +290,7 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
                       cursorColor: const Color(0xFFE50914),
                       controller: userProvider.joinDateController,
                       readOnly: true,
-                      onTap: (){
+                      onTap: () {
                         _selectJoinDate(userProvider);
                       },
                       decoration: InputDecoration(
@@ -304,12 +303,12 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
                         ),
                         border: OutlineInputBorder(
                           borderSide:
-                          const BorderSide(color: Colors.transparent),
+                              const BorderSide(color: Colors.transparent),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderSide:
-                          const BorderSide(color: Colors.transparent),
+                              const BorderSide(color: Colors.transparent),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -337,10 +336,9 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
                       height: 250,
                       child: GridView.builder(
                         itemCount: languageProvider.allLanguages.length,
-                        gridDelegate:
-                        SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount:
-                          ResponsiveWidget.isMobile(context) ? 2 : 3,
+                              ResponsiveWidget.isMobile(context) ? 2 : 3,
                           crossAxisSpacing: 6,
                           mainAxisSpacing: 6,
                           childAspectRatio: 5 / 1.5,
@@ -348,21 +346,22 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
                         itemBuilder: (context, index) {
                           final language = languageProvider.allLanguages[index];
                           return ElevatedButton(
-                            onPressed: () => _toggleSelection(language,userProvider),
+                            onPressed: () =>
+                                _toggleSelection(language, userProvider),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                              userProvider.selectedLanguages.contains(language)
+                              backgroundColor: userProvider.selectedLanguages
+                                      .contains(language)
                                   ? selectedThemeData.primaryColor
                                   : selectedThemeData.cardColor,
-                              foregroundColor:
-                              userProvider.selectedLanguages.contains(language)
+                              foregroundColor: userProvider.selectedLanguages
+                                      .contains(language)
                                   ? Colors.white
                                   : selectedThemeData.canvasColor,
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20)),
                             ),
-                            child: Text(language,
-                                overflow: TextOverflow.ellipsis),
+                            child:
+                                Text(language, overflow: TextOverflow.ellipsis),
                           );
                         },
                       ),
@@ -377,7 +376,7 @@ class _SelectLanguagePageState extends State<SelectLanguagePage> {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6)),
                       ),
-                      onPressed: (){
+                      onPressed: () {
                         _saveLanguages(userProvider);
                       },
                       child: Center(

@@ -1,13 +1,10 @@
-import 'dart:developer';
-
 import 'package:admin_ott/app/provider/themeProvider.dart';
-
-import 'package:admin_ott/data/models/movie_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../domain/entities/content.dart';
-import 'movie_details_dialog.dart.dart';
+import 'movie_details_page.dart';
+import 'series_details_page.dart';
 
 class MovieCard extends StatelessWidget {
   final Content movie;
@@ -18,61 +15,119 @@ class MovieCard extends StatelessWidget {
   Widget build(BuildContext context) {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
+    final posterUrl =
+        (movie.posterUrlList != null && movie.posterUrlList!.isNotEmpty)
+            ? movie.posterUrlList!.first
+            : '';
+    final isSeries = (movie.type ?? '').toUpperCase() == 'SERIES';
+
     return GestureDetector(
-      onTap: () => showMovieDetailsDialog(context, movie),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => isSeries
+                ? SeriesDetailsPage(content: movie)
+                : MovieDetailsPage(content: movie),
+          ),
+        );
+      },
       child: Card(
-        margin: const EdgeInsets.all(10),
+        color: selectedThemeData.cardColor,
+        margin: const EdgeInsets.all(8),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
         ),
         clipBehavior: Clip.antiAlias,
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Image.network(
-              (movie.posterUrlList != null && movie.posterUrlList!.isNotEmpty)
-                  ? movie.posterUrlList!.first // Use the first poster URL if available
-                  : 'https://via.placeholder.com/300x400?text=No+Image', // Fallback URL
-              height: double.infinity,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.error, size: 100),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.black.withOpacity(0.6), Colors.transparent],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 10,
-              left: 10,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Text(
-                    movie.title ?? "Unknown Title",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  posterUrl.isNotEmpty
+                      ? Image.network(
+                          posterUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _placeholderPoster(),
+                        )
+                      : _placeholderPoster(),
+                  Positioned(
+                    bottom: 2,
+                    left: 2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selectedThemeData.cardColor,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        movie.type ?? 'CONTENT',
+                        style: TextStyle(
+                          color: selectedThemeData.canvasColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
-                  Text(
-                    "Director: ${(movie.directorList != null && movie.directorList!.isNotEmpty)
-                        ? movie.directorList!.first // Use the first director if available
-                        : "-"}",
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  Positioned(
+                    top: 2,
+                    right: 2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selectedThemeData.cardColor,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        movie.approvalStatus ?? 'N/A',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: selectedThemeData.primaryColor,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
+              ),
+            ),
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+              child: Text(
+                movie.title ?? "Unknown Title",
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: selectedThemeData.canvasColor,
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _placeholderPoster() {
+    return Container(
+      color: Colors.black12,
+      child: const Center(child: Icon(Icons.movie_creation_outlined, size: 36)),
     );
   }
 }

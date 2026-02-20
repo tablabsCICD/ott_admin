@@ -26,14 +26,12 @@ class _OtpScreenState extends State<OtpScreen> {
   bool _isLoading = false;
   @override
   Widget build(BuildContext context) {
-
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
 
-    return  Scaffold(
+    return Scaffold(
       backgroundColor: selectedThemeData.scaffoldBackgroundColor,
-      body:
-      Column(
+      body: Column(
         children: [
           SizedBox(
             height: 60,
@@ -49,7 +47,9 @@ class _OtpScreenState extends State<OtpScreen> {
               ),
             ],
           ),
-          SizedBox(height: 20,),
+          SizedBox(
+            height: 20,
+          ),
           Center(
             child: SizedBox(
               width: ResponsiveWidget.isMobile(context) ? double.infinity : 450,
@@ -58,13 +58,15 @@ class _OtpScreenState extends State<OtpScreen> {
           ),
         ],
       ),
-
-
     );
   }
 
-  _handleVerifyCode(BuildContext context, String mobile, String otp,) async {
-    String apiUrl = ApiConstant.verifyOtp(mobile,otp);
+  _handleVerifyCode(
+    BuildContext context,
+    String mobile,
+    String otp,
+  ) async {
+    String apiUrl = ApiConstant.verifyOtp(mobile, otp);
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.getApi(apiUrl);
@@ -73,14 +75,17 @@ class _OtpScreenState extends State<OtpScreen> {
         AddUserResponse searchResponse = AddUserResponse.fromJson(responseBody);
         if (searchResponse.success == true) {
           CustomToast.show('${searchResponse.message}');
-          Navigator.of(context).push(MaterialPageRoute(builder: (builder)=>NewPasswordScreen(widget.mobile)));
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (builder) => NewPasswordScreen(widget.mobile)));
         } else {
           CustomToast.show('Error: ${searchResponse.message}');
           debugPrint("Error: ${searchResponse.message}");
         }
       } else {
-        CustomToast.show('Failed to send otp. Status code: ${response.statusCode}');
-        throw Exception('Failed to send otp. Status code: ${response.statusCode}');
+        CustomToast.show(
+            'Failed to send otp. Status code: ${response.statusCode}');
+        throw Exception(
+            'Failed to send otp. Status code: ${response.statusCode}');
       }
     } catch (error) {
       debugPrint("Error: $error");
@@ -89,8 +94,10 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   VerifyOtpCard(ThemeData selectedThemeData) {
-    return  Padding(
-      padding: ResponsiveWidget.isMobile(context) ? EdgeInsets.all(0.0):EdgeInsets.all(16.0),
+    return Padding(
+      padding: ResponsiveWidget.isMobile(context)
+          ? EdgeInsets.all(0.0)
+          : EdgeInsets.all(16.0),
       child: Card(
         elevation: 4,
         color: selectedThemeData.cardColor,
@@ -148,11 +155,14 @@ class _OtpScreenState extends State<OtpScreen> {
                       decoration: InputDecoration(
                         counterText: "",
                         enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: selectedThemeData.primaryColor),
+                          borderSide:
+                              BorderSide(color: selectedThemeData.primaryColor),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: selectedThemeData.colorScheme.secondary, width: 2),
+                          borderSide: BorderSide(
+                              color: selectedThemeData.colorScheme.secondary,
+                              width: 2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
@@ -172,26 +182,25 @@ class _OtpScreenState extends State<OtpScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onPressed: (){
-                  if(otpController.text.isNotEmpty) {
-                    _isLoading ? null : _handleVerifyCode(context,widget.mobile,otpController.text);
-                  }else{
-
-                  }
+                onPressed: () {
+                  if (otpController.text.isNotEmpty) {
+                    _isLoading
+                        ? null
+                        : _handleVerifyCode(
+                            context, widget.mobile, otpController.text);
+                  } else {}
                 },
                 child: _isLoading
                     ? CircularProgressIndicator(
-                  valueColor:
-                  AlwaysStoppedAnimation<Color>(Colors.white),
-                )
-                    :
-                Text(
-                  'Verify Otp',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: selectedThemeData.canvasColor),
-                ),
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      )
+                    : Text(
+                        'Verify Otp',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: selectedThemeData.canvasColor),
+                      ),
               ),
 
               const SizedBox(height: 20),
@@ -200,12 +209,14 @@ class _OtpScreenState extends State<OtpScreen> {
                 onPressed: () {
                   sendOptApiCall(widget.mobile);
                 },
-                child: Text("Resend OTP", style: selectedThemeData.textTheme.bodyLarge?.copyWith(color: selectedThemeData.primaryColor)),
+                child: Text("Resend OTP",
+                    style: selectedThemeData.textTheme.bodyLarge
+                        ?.copyWith(color: selectedThemeData.primaryColor)),
               ),
               const SizedBox(height: 30),
               TextButton(
                 onPressed: () {
-                 Navigator.of(context).pop();
+                  Navigator.of(context).pop();
                 },
                 child: Text(
                   'Go Back To Login',
@@ -217,7 +228,6 @@ class _OtpScreenState extends State<OtpScreen> {
         ),
       ),
     );
-
   }
 
   Future<void> sendOptApiCall(String mobile) async {
@@ -230,14 +240,17 @@ class _OtpScreenState extends State<OtpScreen> {
         AddUserResponse searchResponse = AddUserResponse.fromJson(responseBody);
         if (searchResponse.success == true) {
           CustomToast.show('${searchResponse.message}');
-          Navigator.of(context).push(MaterialPageRoute(builder: (builder)=>OtpScreen(mobile)));
+          Navigator.of(context)
+              .push(MaterialPageRoute(builder: (builder) => OtpScreen(mobile)));
         } else {
           CustomToast.show('Error: ${searchResponse.message}');
           debugPrint("Error: ${searchResponse.message}");
         }
       } else {
-        CustomToast.show('Failed to send otp. Status code: ${response.statusCode}');
-        throw Exception('Failed to send otp. Status code: ${response.statusCode}');
+        CustomToast.show(
+            'Failed to send otp. Status code: ${response.statusCode}');
+        throw Exception(
+            'Failed to send otp. Status code: ${response.statusCode}');
       }
     } catch (error) {
       debugPrint("Error: $error");

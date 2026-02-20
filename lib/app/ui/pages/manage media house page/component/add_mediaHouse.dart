@@ -57,13 +57,14 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
 
   getUserData() async {
     MediaHouseProvider userProvider =
-    Provider.of<MediaHouseProvider>(context, listen: false);
-   await  userProvider.fetchUsers();
+        Provider.of<MediaHouseProvider>(context, listen: false);
+    await userProvider.fetchUsers();
     if (userProvider.users.isNotEmpty) {
       _selectedUser =
           userProvider.users.first; // Optional: Set default to the first user
     }
   }
+
   @override
   Widget build(BuildContext context) {
     ThemeProvider themeProvider =
@@ -82,7 +83,9 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
         child: Consumer<MediaHouseProvider>(
             builder: (context, mediaHouseProvider, child) {
           return SizedBox(
-            width: ResponsiveWidget.isMobile(context)?MediaQuery.of(context).size.width:MediaQuery.of(context).size.width-700,
+            width: ResponsiveWidget.isMobile(context)
+                ? MediaQuery.of(context).size.width
+                : MediaQuery.of(context).size.width - 700,
             child: Column(
               children: [
                 // Header with navigation buttons
@@ -144,8 +147,8 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: selectedThemeData.primaryColor,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 12, horizontal: 30),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 30),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(5),
                     ),
@@ -167,8 +170,7 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
   }
 
   Future<void> _handleAdd(MediaHouseProvider provider) async {
-
-    var result = await provider.createMediaHouse(_selectedUser!.id!,context);
+    var result = await provider.createMediaHouse(_selectedUser!.id!, context);
     if (result['success'] == true) {
       print(result['message']);
       CustomToast.show(result['message'].toString());
@@ -182,7 +184,6 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
 
   Widget _buildBasicInfoSlide(ThemeData themeData) {
     return Consumer<MediaHouseProvider>(builder: (context, provider, child) {
-
       return ListView(
         children: [
           CustomTextField(
@@ -205,7 +206,8 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
             hintText: "Mobile Number",
             textInputType: TextInputType.number,
           ),
-          _buildUserDropdownField('Contact Person', context, provider.users,themeData),
+          _buildUserDropdownField(
+              'Contact Person', context, provider.users, themeData),
         ],
       );
     });
@@ -264,11 +266,11 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
   User? _selectedUser;
 
   Widget _buildUserDropdownField(
-      String label,
-      BuildContext context,
-      List<User> users,
-      ThemeData themeData,
-      ) {
+    String label,
+    BuildContext context,
+    List<User> users,
+    ThemeData themeData,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -280,7 +282,8 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
               value: user,
               child: Text(
                 "${user.firstName} ${user.lastName}",
-                style: themeData.textTheme.bodyMedium, // Apply theme's text style
+                style:
+                    themeData.textTheme.bodyMedium, // Apply theme's text style
               ),
             );
           }).toList(),
@@ -291,10 +294,12 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
           },
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: themeData.textTheme.bodyMedium, // Theme's label text style
+            labelStyle:
+                themeData.textTheme.bodyMedium, // Theme's label text style
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8), // Rounded corners
-              borderSide: BorderSide(color: themeData.dividerColor), // Theme divider color
+              borderSide: BorderSide(
+                  color: themeData.dividerColor), // Theme divider color
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -302,7 +307,8 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: themeData.primaryColor, width: 2), // Highlight color
+              borderSide: BorderSide(
+                  color: themeData.primaryColor, width: 2), // Highlight color
             ),
           ),
           dropdownColor: themeData.cardColor, // Apply theme's card color
@@ -319,47 +325,53 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
   Widget _buildUploadSection(String label, ThemeData selectedThemeData) {
     return Consumer<MediaHouseProvider>(builder: (context, provider, child) {
       // Determine the container color based on the file upload status
-      Color containerColor =  selectedThemeData.primaryColor.withOpacity(0.5); // Default color
-      if("Media House Logo"== label){
-        if(provider.profileController.text.isEmpty || provider.profileController.text=='')
+      Color containerColor =
+          selectedThemeData.primaryColor.withOpacity(0.5); // Default color
+      if ("Media House Logo" == label) {
+        if (provider.profileController.text.isEmpty ||
+            provider.profileController.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else
-      if("Aadhaar Card"== label){
-        if(provider.adharCardController.text.isEmpty || provider.adharCardController.text=='')
-            containerColor = containerColor;
-        else
-          containerColor = Colors.green.shade500;
-      }else if("Pan Card"==label){
-        if(provider.panCardController.text.isEmpty || provider.panCardController.text=='')
+      } else if ("Aadhaar Card" == label) {
+        if (provider.adharCardController.text.isEmpty ||
+            provider.adharCardController.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else if("Shop Act"==label){
-        if(provider.shopActController.text.isEmpty || provider.shopActController.text=='')
+      } else if ("Pan Card" == label) {
+        if (provider.panCardController.text.isEmpty ||
+            provider.panCardController.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else if("GST Certificate"==label){
-        if(provider.gstController.text.isEmpty || provider.gstController.text=='')
+      } else if ("Shop Act" == label) {
+        if (provider.shopActController.text.isEmpty ||
+            provider.shopActController.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else if("Registration Certificate"==label){
-        if(provider.registrationCertificateController.text.isEmpty || provider.registrationCertificateController.text=='')
+      } else if ("GST Certificate" == label) {
+        if (provider.gstController.text.isEmpty ||
+            provider.gstController.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else if("Registration Certificate"==label){
-        if(provider.registrationCertificateController.text.isEmpty || provider.registrationCertificateController.text=='')
+      } else if ("Registration Certificate" == label) {
+        if (provider.registrationCertificateController.text.isEmpty ||
+            provider.registrationCertificateController.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else{
+      } else if ("Registration Certificate" == label) {
+        if (provider.registrationCertificateController.text.isEmpty ||
+            provider.registrationCertificateController.text == '')
+          containerColor = containerColor;
+        else
           containerColor = Colors.green.shade500;
+      } else {
+        containerColor = Colors.green.shade500;
       }
-
 
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -381,16 +393,16 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
                   child: provider.isUploading
                       ? CircularProgressIndicator()
                       : Text(
-                    "Upload $label",
-                    style: TextStyle(
-                      color: selectedThemeData.canvasColor,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
+                          "Upload $label",
+                          style: TextStyle(
+                            color: selectedThemeData.canvasColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
                 ),
               ),
-             /* if (kIsWeb && provider.webFile != null)
+              /* if (kIsWeb && provider.webFile != null)
                 Text('$label: ${provider.webFile!.name}'),*/
             ],
           ),
@@ -398,5 +410,4 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
       );
     });
   }
-
 }

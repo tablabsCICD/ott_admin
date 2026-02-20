@@ -11,7 +11,7 @@ class Content {
   List<String>? genreList;
   List<String>? directorList;
   int? views;
-  int? totalRevenue;
+  double? totalRevenue;
   String? ageRating;
   List<String>? posterUrlList;
   String? trailerUrl;
@@ -24,8 +24,8 @@ class Content {
   List<String>? audioFormatList;
   List<String>? subtitleLanguageList;
   bool? isDownloadable;
-  int? uploadDateTime;
-  int? approvedDateTime;
+  String? uploadDateTime;
+  String? approvedDateTime;
   String? mediaHouseName;
   int? mediaHouseId;
   int? ratingCount;
@@ -72,41 +72,44 @@ class Content {
   });
 
   factory Content.fromJson(Map<String, dynamic> json) => Content(
-    id: json["id"],
-    title: json["title"],
-    description: json["description"],
-    runtime: json["runtime"],
-    releaseDate: json["releaseDate"],
-    ratings: json["ratings"]?.toDouble(),
-    price: json["price"]?.toDouble(),
-    languageList: json["languageList"] == null ? [] : List<String>.from(json["languageList"]!.map((x) => x)),
-    castList: json["castList"] == null ? [] : List<String>.from(json["castList"]!.map((x) => x)),
-    genreList: json["genreList"] == null ? [] : List<String>.from(json["genreList"]!.map((x) => x)),
-    directorList: json["directorList"] == null ? [] : List<String>.from(json["directorList"]!.map((x) => x)),
-    views: json["views"],
-    totalRevenue: json["totalRevenue"]?.toDouble(),
-    ageRating: json["ageRating"],
-    posterUrlList: json["posterUrlList"] == null ? [] : List<String>.from(json["posterUrlList"]!.map((x) => x)),
-    trailerUrl: json["trailerUrl"],
-    contentUrl: json["contentUrl"],
-    approvalStatus: json["approvalStatus"],
-    type: json["type"],
-    sensorCertificate: json["sensorCertificate"],
-    isFeatured: json["isFeatured"],
-    availability: json["availability"] == null ? null : Availability.fromJson(json["availability"]),
-    audioFormatList: json["audioFormatList"] == null ? [] : List<String>.from(json["audioFormatList"]!.map((x) => x)),
-    subtitleLanguageList: json["subtitleLanguageList"] == null ? [] : List<String>.from(json["subtitleLanguageList"]!.map((x) => x)),
-    isDownloadable: json["isDownloadable"],
-    uploadDateTime: json["uploadDateTime"],
-    approvedDateTime: json["approvedDateTime"],
-    mediaHouseName: json["mediaHouseName"],
-    mediaHouseId: json["mediaHouseId"],
-    ratingCount: json["ratingCount"],
-    rentlDuration: json["rentlDuration"],
-      adminIncentivePecentage: json["adminIncentivePecentage"],
-      mediaHouseIncentivePecentage: json["mediaHouseIncentivePecentage"],
-    reason: json["reason"]
-  );
+        id: _asInt(json["id"]),
+        title: _asString(json["title"]),
+        description: _asString(json["description"]),
+        runtime: _asInt(json["runtime"]),
+        releaseDate: json["releaseDate"],
+        ratings: _asDouble(json["ratings"]),
+        price: _asDouble(json["price"]),
+        languageList: _asStringList(json["languageList"]),
+        castList: _asStringList(json["castList"]),
+        genreList: _asStringList(json["genreList"]),
+        directorList: _asStringList(json["directorList"]),
+        views: _asInt(json["views"]),
+        totalRevenue: _asDouble(json["totalRevenue"]),
+        ageRating: _asString(json["ageRating"]),
+        posterUrlList: _asStringList(json["posterUrlList"]),
+        trailerUrl: _asString(json["trailerUrl"]),
+        contentUrl: _asString(json["contentUrl"]),
+        approvalStatus: _asString(json["approvalStatus"]),
+        type: _asString(json["type"]),
+        sensorCertificate: _asString(json["sensorCertificate"]),
+        isFeatured: _asBool(json["isFeatured"]),
+        availability: json["availability"] == null
+            ? null
+            : Availability.fromJson(json["availability"]),
+        audioFormatList: _asStringList(json["audioFormatList"]),
+        subtitleLanguageList: _asStringList(json["subtitleLanguageList"]),
+        isDownloadable: _asBool(json["isDownloadable"]),
+        uploadDateTime: _asString(json["uploadDateTime"]),
+        approvedDateTime: _asString(json["approvedDateTime"]),
+        mediaHouseName: _asString(json["mediaHouseName"]),
+        mediaHouseId: _asInt(json["mediaHouseId"]),
+        ratingCount: _asInt(json["ratingCount"]),
+        rentlDuration: _asString(json["rentlDuration"]),
+        adminIncentivePecentage: _asDouble(json["adminIncentivePecentage"]),
+        mediaHouseIncentivePecentage:
+            _asDouble(json["mediaHouseIncentivePecentage"]),
+        reason: _asString(json["reason"]),
+      );
 
   Map<String, dynamic> toJson() => {
     "id": id,
@@ -144,6 +147,41 @@ class Content {
     "mediaHouseIncentivePecentage": mediaHouseIncentivePecentage,
     "reason": reason
   };
+}
+
+int? _asInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  return int.tryParse(value.toString());
+}
+
+double? _asDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  return double.tryParse(value.toString());
+}
+
+bool? _asBool(dynamic value) {
+  if (value == null) return null;
+  if (value is bool) return value;
+  final normalized = value.toString().trim().toLowerCase();
+  if (normalized == "true" || normalized == "1") return true;
+  if (normalized == "false" || normalized == "0") return false;
+  return null;
+}
+
+String? _asString(dynamic value) {
+  if (value == null) return null;
+  return value.toString();
+}
+
+List<String> _asStringList(dynamic value) {
+  if (value is List) {
+    return value.map((item) => item.toString()).toList();
+  }
+  return [];
 }
 
 class Availability {

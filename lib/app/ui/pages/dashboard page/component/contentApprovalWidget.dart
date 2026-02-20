@@ -7,39 +7,45 @@ import '../../../../provider/videoProvider.dart';
 import 'approve_content_detail_page.dart';
 
 class ContentApprovalWidget extends StatefulWidget {
+  const ContentApprovalWidget({super.key});
+
   @override
   State<ContentApprovalWidget> createState() => _ContentApprovalWidgetState();
 }
 
 class _ContentApprovalWidgetState extends State<ContentApprovalWidget> {
-
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    Provider.of<VideoProvider>(context, listen: false).fetchMoviesByStatusAndMediaHouseId("PENDING",0);
+    Provider.of<VideoProvider>(context, listen: false)
+        .fetchMoviesByStatusAndMediaHouseId("PENDING", 0);
   }
+
   @override
   Widget build(BuildContext context) {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
 
-
     return Expanded(
       child: Consumer<VideoProvider>(
         builder: (context, provider, child) {
-         return provider.filteredContentListByMediaHouse.isEmpty? Center(
-              child: Text(
-              "No content available for approval.",
-              style: TextStyle(color: selectedThemeData.primaryColor),
-          )):SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: provider.filteredContentListByMediaHouse.map((content) {
-                return _buildContentCard(context, content, selectedThemeData);
-              }).toList(),
-            ),
-          );
+          return provider.filteredContentListByMediaHouse.isEmpty
+              ? Center(
+                  child: Text(
+                    "No content available for approval.",
+                    style: TextStyle(color: selectedThemeData.canvasColor),
+                  ),
+                )
+              : SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children:
+                        provider.filteredContentListByMediaHouse.map((content) {
+                      return _buildContentCard(
+                          context, content, selectedThemeData);
+                    }).toList(),
+                  ),
+                );
         },
       ),
     );
@@ -64,7 +70,8 @@ class _ContentApprovalWidgetState extends State<ContentApprovalWidget> {
               // Title
               Text(
                 content.title ?? "Untitled",
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               // Genre and Type
@@ -74,7 +81,8 @@ class _ContentApprovalWidgetState extends State<ContentApprovalWidget> {
               ),
               // Media House and Language
               Text('Uploaded by: ${content.mediaHouseName ?? "Unknown"}'),
-              Text('Language: ${content.languageList?.join(", ") ?? "Unknown"}'),
+              Text(
+                  'Language: ${content.languageList?.join(", ") ?? "Unknown"}'),
               // Upload Date and Status
               Text('Uploaded at: ${content.uploadDateTime ?? "Unknown"}'),
               Text('Status: ${content.approvalStatus ?? "Pending"}'),

@@ -38,36 +38,46 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       backgroundColor: selectedThemeData.scaffoldBackgroundColor,
-      body:
-          Column(
-            children: [
-              SizedBox(
-                height: 60,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    child: Image.asset(
-                      ImageConstant.logo,
-                      width: 200,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                SizedBox(height: ResponsiveWidget.isMobile(context) ? 35 : 60),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      height: ResponsiveWidget.isMobile(context) ? 120 : 150,
+                      child: Hero(
+                        tag: "logo",
+                        child: ClipRRect(
+                          borderRadius: BorderRadiusGeometry.circular(25),
+                          child: Image.asset(
+                            ImageConstant.logo,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20,),
-              Center(
-                child: SizedBox(
-                  width: ResponsiveWidget.isMobile(context) ? double.infinity : 400,
-                  child: isforgotPassword
-                      ? forgotPasswordCard()
-                      : loginCard(),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 50),
+                Center(
+                  child: SizedBox(
+                    width: ResponsiveWidget.isMobile(context)
+                        ? double.infinity
+                        : 400,
+                    child:
+                        isforgotPassword ? forgotPasswordCard() : loginCard(),
+                  ),
+                ),
+              ],
+            ),
           ),
-
-
+        ),
+      ),
     );
   }
 
@@ -92,7 +102,7 @@ class _LoginPageState extends State<LoginPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             CustomTextField(
               controller: mobileController,
               hintText: 'Enter your email',
@@ -107,10 +117,12 @@ class _LoginPageState extends State<LoginPage> {
               isPassword: true,
               label: 'Password',
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: selectedThemeData.primaryColor,
+                backgroundColor: _isLoading
+                    ? selectedThemeData.cardColor
+                    : selectedThemeData.primaryColor,
                 padding: const EdgeInsets.symmetric(
                   vertical: 12,
                   horizontal: 24,
@@ -119,28 +131,28 @@ class _LoginPageState extends State<LoginPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: (){
+              onPressed: () {
                 _isLoading ? null : _handleLogin(context);
-
               },
               child: _isLoading
-                  ? CircularProgressIndicator(
-                valueColor:
-                AlwaysStoppedAnimation<Color>(Colors.white),
-              )
-                  :
-              Text(
-                'Login',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: selectedThemeData.canvasColor),
-              ),
+                  ? SizedBox(
+                      height: 30,
+                      width: 30,
+                      child: CircularProgressIndicator(
+                        color: selectedThemeData.primaryColor,
+                      ),
+                    )
+                  : Text(
+                      'Login',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: selectedThemeData.canvasColor),
+                    ),
             ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: () {
-                // Handle "Forgot Password?" logic
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () {
                 setState(() {
                   isforgotPassword = true;
                 });
@@ -161,9 +173,7 @@ class _LoginPageState extends State<LoginPage> {
     final password = passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill out all fields')),
-      );
+      CustomToast.show('Please fill out all fields', isSuccess: false);
       return;
     }
 
@@ -171,29 +181,33 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    var result = await Provider.of<UserProvider>(context, listen: false).login(email,password);
-    if (result['success'] == true) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      CustomToast.show('Welcome back, $email!',isSuccess:true);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => NavigationPage(),
-        ),
-      );
-
-      setState(() {
-        _isLoading = false;
-      });
-    } else {
-      print('Failure: ${result['message']}');
-      CustomToast.show('Failure: ${result['message']}',isSuccess:false);
-      setState(() {
-        _isLoading = false;
-      });
+    try {
+      var result = await Provider.of<UserProvider>(context, listen: false)
+          .login(email, password);
+      if (result['success'] == true) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+        CustomToast.show('Welcome back, $email!', isSuccess: true);
+        if (!context.mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => NavigationPage(),
+          ),
+        );
+      } else {
+        print('Failure: ${result['message']}');
+        CustomToast.show('Failure: ${result['message']}', isSuccess: false);
+      }
+    } catch (e) {
+      CustomToast.show('Failure: $e', isSuccess: false);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-
   }
 
   Widget forgotPasswordCard() {
@@ -265,8 +279,7 @@ class _LoginPageState extends State<LoginPage> {
                   );
                   return;
                 }
-              sendOptApiCall(mobile);
-
+                sendOptApiCall(mobile);
               },
               child: Text(
                 'Send Otp',
@@ -292,20 +305,21 @@ class _LoginPageState extends State<LoginPage> {
         AddUserResponse searchResponse = AddUserResponse.fromJson(responseBody);
         if (searchResponse.success == true) {
           CustomToast.show('${searchResponse.message}');
-          Navigator.of(context).push(MaterialPageRoute(builder: (builder)=>OtpScreen(mobile)));
+          Navigator.of(context)
+              .push(MaterialPageRoute(builder: (builder) => OtpScreen(mobile)));
         } else {
           CustomToast.show('Error: ${searchResponse.message}');
           debugPrint("Error: ${searchResponse.message}");
         }
       } else {
-        CustomToast.show('Failed to send otp. Status code: ${response.statusCode}');
-        throw Exception('Failed to send otp. Status code: ${response.statusCode}');
+        CustomToast.show(
+            'Failed to send otp. Status code: ${response.statusCode}');
+        throw Exception(
+            'Failed to send otp. Status code: ${response.statusCode}');
       }
     } catch (error) {
       debugPrint("Error: $error");
       throw Exception('An error occurred while fetching mediaHouse.');
     }
   }
-
-
 }

@@ -5,7 +5,7 @@ import 'package:admin_ott/data/models/response/getAllMediaHouseByStatus.dart';
 import 'package:admin_ott/data/models/response/getMediaHouseResponse.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 
 import 'package:image_picker/image_picker.dart'; // For web-specific file handling
 

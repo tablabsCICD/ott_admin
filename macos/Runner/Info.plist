@@ -28,5 +28,11 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photo library access to select a profile image.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app needs photo library access to update your profile image.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access if you choose to capture a profile image.</string>
 </dict>
 </plist>

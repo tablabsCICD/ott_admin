@@ -16,7 +16,7 @@ import '../core/utils/sharepreferences.dart';
 import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 
 class TicketProvider extends ChangeNotifier {
   List<TicketRaised> _ticketList = [];

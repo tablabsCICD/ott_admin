@@ -1,16 +1,17 @@
+import 'package:admin_ott/app/core/constant/image_constant.dart';
+import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/ui/pages/login%20page/LoginPage.dart';
+import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:admin_ott/domain/entities/user.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
-import 'package:admin_ott/app/provider/themeProvider.dart';
-import '../../../core/constant/prefrense_constant.dart';
+
 import '../../../core/utils/sharepreferences.dart';
 import '../../../provider/userProvider.dart';
 import 'EditProfilePage.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({Key? key}) : super(key: key);
+  const ProfilePage({super.key});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -25,224 +26,257 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _fetchUserData() async {
     final localSharePreferences = LocalSharePreferences();
-    final user = await localSharePreferences.getUser();
-    if (user != null) {
-      if (mounted) {
-        await Provider.of<UserProvider>(context, listen: false).getUserById(user.id!);
-      }
+    final localUser = await localSharePreferences.getUser();
+    if (localUser != null && mounted) {
+      await Provider.of<UserProvider>(context, listen: false)
+          .getUserById(localUser.id!);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final selectedThemeData = themeProvider.getTheme;
-    final isDarkTheme = selectedThemeData.brightness == Brightness.dark;
+    final selectedThemeData =
+        Provider.of<ThemeProvider>(context, listen: true).getTheme;
+    final isDark = selectedThemeData.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: selectedThemeData.scaffoldBackgroundColor,
-      body: ResponsiveWidget.isMobile(context)
-          ? _buildMobileLayout(selectedThemeData, isDarkTheme, themeProvider)
-          : _buildDesktopLayout(selectedThemeData, isDarkTheme, themeProvider),
+      body: Consumer<UserProvider>(
+        builder: (context, provider, child) {
+          final user = provider.userObj;
+          final isDesktop = ResponsiveWidget.isDesktop(context);
+          final content = _buildContent(
+            context: context,
+            user: user,
+            selectedThemeData: selectedThemeData,
+            isDark: isDark,
+            isDesktop: isDesktop,
+          );
+
+          return SafeArea(
+            child: isDesktop
+                ? Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1000),
+                      child: content,
+                    ),
+                  )
+                : content,
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildMobileLayout(
-      ThemeData selectedThemeData, bool isDarkTheme, ThemeProvider themeProvider) {
-    return Consumer<UserProvider>(
-      builder: (context, provider, child) {
-        final user = provider.user;
+  Widget _buildContent({
+    required BuildContext context,
+    required User user,
+    required ThemeData selectedThemeData,
+    required bool isDark,
+    required bool isDesktop,
+  }) {
+    if (isDesktop) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: _profileCard(user, selectedThemeData, isDesktop: true),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              flex: 3,
+              child: _settingsCard(selectedThemeData, isDark),
+            ),
+          ],
+        ),
+      );
+    }
 
-        if (user == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16),
-          child: Column(
-            children: [
-              _buildProfileHeader(selectedThemeData, user),
-              const Divider(height: 40),
-              _buildAccountSettings(selectedThemeData, isDarkTheme, themeProvider),
-            ],
-          ),
-        );
-      },
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _profileCard(user, selectedThemeData),
+          const SizedBox(height: 16),
+          _settingsCard(selectedThemeData, isDark),
+        ],
+      ),
     );
   }
 
-  Widget _buildDesktopLayout(
-      ThemeData selectedThemeData, bool isDarkTheme, ThemeProvider themeProvider) {
-    return Consumer<UserProvider>(
-      builder: (context, provider, child) {
-        final user = provider.user;
-
-        if (user == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 2,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 50),
-                    _buildProfileHeader(selectedThemeData, user, isDesktop: true),
-                  ],
+  Widget _profileCard(User user, ThemeData theme, {bool isDesktop = false}) {
+    return Card(
+      color: theme.cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Hero(
+              tag: 'profile',
+              child: _profileImage(
+                imageUrl: user.profilePhoto,
+                radius: isDesktop ? 72 : 60,
+                theme: theme,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              '${user.firstName ?? ''} ${user.lastName ?? ''}'.trim().isEmpty
+                  ? 'Admin'
+                  : '${user.firstName ?? ''} ${user.lastName ?? ''}'.trim(),
+              style: TextStyle(
+                color: theme.canvasColor,
+                fontSize: isDesktop ? 28 : 22,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              user.emailId ?? '-',
+              style: TextStyle(color: theme.hintColor, fontSize: 15),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              user.mobileNumber ?? '-',
+              style: TextStyle(color: theme.hintColor, fontSize: 15),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: theme.primaryColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                'Super Admin',
+                style: TextStyle(
+                  color: theme.primaryColor,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(width: 32),
-              Expanded(
-                flex: 3,
-                child: _buildAccountSettings(selectedThemeData, isDarkTheme, themeProvider),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildProfileHeader(ThemeData themeData, User user, {bool isDesktop = false}) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: isDesktop ? 80 : 60,
-          backgroundColor: themeData.cardColor,
-          child: Icon(
-            Icons.account_circle,
-            size: isDesktop ? 100 : 80,
-            color: themeData.scaffoldBackgroundColor,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          '${user.firstName} ${user.lastName}',
-          style: TextStyle(
-            fontSize: isDesktop ? 30 : 24,
-            fontWeight: FontWeight.bold,
-            color: themeData.textTheme.titleLarge?.color,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          user.emailId ?? '',
-          style: TextStyle(
-            fontSize: isDesktop ? 18 : 16,
-            color: themeData.textTheme.bodySmall?.color,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          user.mobileNumber ?? '',
-          style: TextStyle(
-            fontSize: isDesktop ? 18 : 16,
-            color: themeData.textTheme.bodySmall?.color,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Role: "Super Admin"',
-          style: TextStyle(
-            fontSize: isDesktop ? 18 : 16,
-            color: themeData.textTheme.bodySmall?.color,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAccountSettings(
-      ThemeData selectedThemeData, bool isDarkTheme, ThemeProvider themeProvider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (ResponsiveWidget.isDesktop(context))
-          const SizedBox(height: 100),
-        Text(
-          'Account Settings',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: selectedThemeData.textTheme.titleLarge?.color,
-          ),
-        ),
-        const SizedBox(height: 20),
-        _buildListTile(
-          icon: Icons.edit,
-          text: 'Edit Profile',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const EditProfilePage(),
-              ),
-            );
-          },
-          selectedThemeData: selectedThemeData,
-        ),
-        _buildListTile(
-          icon: Icons.lock,
-          text: 'Change Password',
-          onTap: () {
-            // Implement change password functionality
-          },
-          selectedThemeData: selectedThemeData,
-        ),
-        _buildListTile(
-          icon: isDarkTheme ? Icons.wb_sunny_outlined : Icons.nightlight_round,
-          text: 'Toggle Theme',
-          onTap: () {
-            themeProvider.toggleTheme();
-          },
-          selectedThemeData: selectedThemeData,
-        ),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () async {
-            final localSharePreferences = LocalSharePreferences();
-            await localSharePreferences.logOut();
-
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginPage()),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: selectedThemeData.primaryColor,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-          ),
-          child: const Text(
-            'Logout',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
             ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildListTile({
-    required IconData icon,
-    required String text,
-    required VoidCallback onTap,
-    required ThemeData selectedThemeData,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: selectedThemeData.primaryColor),
-      title: Text(
-        text,
-        style: TextStyle(
-          color: selectedThemeData.textTheme.bodyLarge?.color,
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _settingsCard(ThemeData theme, bool isDark) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+
+    return Card(
+      color: theme.cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Account Settings',
+              style: TextStyle(
+                color: theme.canvasColor,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _tile(
+              icon: Icons.edit_outlined,
+              title: 'Edit Profile',
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const EditProfilePage()),
+                );
+                _fetchUserData();
+              },
+              theme: theme,
+            ),
+            _tile(
+              icon: isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+              title: 'Toggle Theme',
+              onTap: themeProvider.toggleTheme,
+              theme: theme,
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () async {
+                await LocalSharePreferences().logOut();
+                if (!mounted) return;
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Logout',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    required ThemeData theme,
+  }) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: theme.primaryColor),
+      title: Text(
+        title,
+        style: TextStyle(color: theme.canvasColor, fontWeight: FontWeight.w500),
+      ),
       onTap: onTap,
+    );
+  }
+
+  Widget _profileImage({
+    required String? imageUrl,
+    required double radius,
+    required ThemeData theme,
+  }) {
+    final hasImage = imageUrl != null && imageUrl.trim().isNotEmpty;
+
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: theme.primaryColor, width: 2),
+      ),
+      child: ClipOval(
+        child: hasImage
+            ? Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Image.asset(
+                  ImageConstant.profile,
+                  fit: BoxFit.cover,
+                ),
+              )
+            : Image.asset(
+                ImageConstant.profile,
+                fit: BoxFit.cover,
+              ),
+      ),
     );
   }
 }

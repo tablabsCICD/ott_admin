@@ -56,13 +56,13 @@ class _AddDataWidgetState extends State<AddDataWidget> {
     getMediaHouse();
   }
 
-  void getMediaHouse() async{
+  void getMediaHouse() async {
     VideoProvider videoProvider =
-     Provider.of<VideoProvider>(context, listen: false);
+        Provider.of<VideoProvider>(context, listen: false);
     await videoProvider.fetchMediaHouse();
     if (videoProvider.mediaHouseList.isNotEmpty) {
-      _selectedMediaHouse =
-          videoProvider.mediaHouseList.first; // Optional: Set default to the first user
+      _selectedMediaHouse = videoProvider
+          .mediaHouseList.first; // Optional: Set default to the first user
     }
   }
 
@@ -79,8 +79,7 @@ class _AddDataWidgetState extends State<AddDataWidget> {
           color: selectedThemeData.cardColor,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Consumer<VideoProvider>(
-            builder: (context, provider, child) {
+        child: Consumer<VideoProvider>(builder: (context, provider, child) {
           return SizedBox(
             width: ResponsiveWidget.isMobile(context)
                 ? MediaQuery.of(context).size.width
@@ -135,17 +134,20 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                 ElevatedButton(
                   onPressed: () {
                     if (_currentPage == 2) {
-                      _handleAdd(provider, selectedThemeData,_selectedMediaHouse);
+                      _handleAdd(
+                          provider, selectedThemeData, _selectedMediaHouse);
                     } else {
                       // Validate title, price, and release date
-                      String releaseDate = provider.releaseDateController.text.trim();
+                      String releaseDate =
+                          provider.releaseDateController.text.trim();
                       String title = provider.titleController.text.trim();
                       String movieUrl = provider.movieUrlController.text.trim();
-                      String trailerUrl = provider.trailerUrlController.text.trim();
+                      String trailerUrl =
+                          provider.trailerUrlController.text.trim();
                       String priceText = provider.priceController.text.trim();
                       double? price = double.tryParse(priceText);
 
-                    /*  if (releaseDate.isEmpty || title.isEmpty || price == null || price <= 0) {
+                      /*  if (releaseDate.isEmpty || title.isEmpty || price == null || price <= 0) {
                         CustomToast.show(
                           "Please enter valid title, price, and release date.",
                           isSuccess: false,
@@ -153,14 +155,15 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                         return;
                       }
 */
-                      if(_currentPage==1){
+                      if (_currentPage == 1) {
                         if (movieUrl.isEmpty || trailerUrl.isEmpty) {
                           CustomToast.show(
                             "Please upload movie url and trailer url",
                             isSuccess: false,
                           );
                           return;
-                        }}
+                        }
+                      }
                       // Parse and compare the release date
                       try {
                         DateTime currentDate = DateTime.now();
@@ -234,24 +237,36 @@ class _AddDataWidgetState extends State<AddDataWidget> {
             textInputType: TextInputType.text,
           ),
           _buildDropdownField(
-              'Age Rating', ['U (Universal)', 'U/A (Parental Guidance for Children Below 12)', 'A (Adults Only)', 'S (Restricted to a Special Class of Persons)'], context,
-              provider, themeData),
+              'Age Rating',
+              [
+                'U (Universal)',
+                'U/A (Parental Guidance for Children Below 12)',
+                'A (Adults Only)',
+                'S (Restricted to a Special Class of Persons)'
+              ],
+              context,
+              provider,
+              themeData),
           _buildDropdownField(
-              'Type', ['MOVIE', 'SERIES'], context,provider,themeData),
+              'Type', ['MOVIE', 'SERIES'], context, provider, themeData),
           _buildDropdownField(
-              'Rental Duration',   [
-            "One Time",
-            "One Day",
-            "Two Day",
-            "Three Day",
-            "One Week",
-            "Two Week",
-            "One Month",
-            "Three Month",
-            "Six Month",
-            "One Year",
-            "Lifetime",
-          ], context,provider,themeData),
+              'Rental Duration',
+              [
+                "One Time",
+                "One Day",
+                "Two Day",
+                "Three Day",
+                "One Week",
+                "Two Week",
+                "One Month",
+                "Three Month",
+                "Six Month",
+                "One Year",
+                "Lifetime",
+              ],
+              context,
+              provider,
+              themeData),
         ],
       );
     });
@@ -260,8 +275,8 @@ class _AddDataWidgetState extends State<AddDataWidget> {
   Widget _buildUploadFilesSlide(ThemeData themeData) {
     return ListView(
       children: [
-        _builtMultiValueTextField("Cast",themeData),
-        _builtMultiValueTextField("Director",themeData),
+        _builtMultiValueTextField("Cast", themeData),
+        _builtMultiValueTextField("Director", themeData),
         _buildUploadSection("Trailer File", themeData),
         _buildUploadSection("Movie File", themeData),
         _buildUploadSection("Censor Certificate", themeData),
@@ -273,12 +288,10 @@ class _AddDataWidgetState extends State<AddDataWidget> {
   }
 
   Widget _buildPricingSlide(ThemeData themeData) {
-    return Consumer<VideoProvider>(
-        builder: (context, provider, child) {
-
+    return Consumer<VideoProvider>(builder: (context, provider, child) {
       return ListView(
         children: [
-           _buildMultiSelectDropdownField(
+          _buildMultiSelectDropdownField(
               'Genres',
               [
                 'Action',
@@ -297,7 +310,8 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                 'Historical',
                 'Crime'
               ],
-              context,themeData),
+              context,
+              themeData),
           _buildMultiSelectDropdownField(
               'Audio Formats',
               [
@@ -308,7 +322,8 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                 'Dolby Atmos',
                 'Dolby Digital (AC-3)'
               ],
-              context,themeData),
+              context,
+              themeData),
           _buildMultiSelectDropdownField(
               'Subtitle Languages',
               [
@@ -338,7 +353,8 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                 'Mizo',
                 'Bodo'
               ],
-              context,themeData),
+              context,
+              themeData),
           _buildMultiSelectDropdownField(
               'Languages',
               [
@@ -368,25 +384,25 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                 'Mizo',
                 'Bodo'
               ],
-              context,themeData),
-
+              context,
+              themeData),
           const SizedBox(height: 16),
-          _buildUserDropdownField('Contact Person', context, provider.mediaHouseList,themeData),
+          _buildUserDropdownField(
+              'Contact Person', context, provider.mediaHouseList, themeData),
           const SizedBox(height: 16),
           Row(
             children: [
               const Text('Is Downloadable'),
               const Spacer(),
-               Switch(
-                    value: provider.isDownloadable,
-                    onChanged: (value) {
-                      provider.toggleDownloadable(value);
-                    },
-                    activeColor: Theme.of(context).colorScheme.primary,
-                    inactiveThumbColor: Colors.grey,
-                    inactiveTrackColor: Colors.grey.shade300,
-                  )
-
+              Switch(
+                value: provider.isDownloadable,
+                onChanged: (value) {
+                  provider.toggleDownloadable(value);
+                },
+                activeColor: Theme.of(context).colorScheme.primary,
+                inactiveThumbColor: Colors.grey,
+                inactiveTrackColor: Colors.grey.shade300,
+              )
             ],
           ),
           Row(
@@ -410,12 +426,12 @@ class _AddDataWidgetState extends State<AddDataWidget> {
   }
 
   Widget _buildDropdownField(
-      String label,
-      List<String> items,
-      BuildContext context,
-      VideoProvider provider,
-      ThemeData themeData,
-      ) {
+    String label,
+    List<String> items,
+    BuildContext context,
+    VideoProvider provider,
+    ThemeData themeData,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -436,16 +452,16 @@ class _AddDataWidgetState extends State<AddDataWidget> {
           items: items
               .map(
                 (item) => DropdownMenuItem(
-              value: item,
-              child: Text(
-                item,
-                style: themeData.textTheme.bodySmall?.copyWith(
-                  fontSize: 14,
-                  color: themeData.textTheme.bodySmall?.color,
+                  value: item,
+                  child: Text(
+                    item,
+                    style: themeData.textTheme.bodySmall?.copyWith(
+                      fontSize: 14,
+                      color: themeData.textTheme.bodySmall?.color,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          )
+              )
               .toList(),
           onChanged: (value) {
             provider.dropDownSelection(value!, label);
@@ -482,14 +498,12 @@ class _AddDataWidgetState extends State<AddDataWidget> {
     );
   }
 
-
-
   Widget _buildMultiSelectDropdownField(
-      String label,
-      List<String> items,
-      BuildContext context,
-      ThemeData theme,
-      ) {
+    String label,
+    List<String> items,
+    BuildContext context,
+    ThemeData theme,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -520,8 +534,8 @@ class _AddDataWidgetState extends State<AddDataWidget> {
             builder: (context, provider, child) {
               return Container(
                 width: MediaQuery.of(context).size.width,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                 decoration: BoxDecoration(
                   border: Border.all(color: theme.dividerColor),
                   borderRadius: BorderRadius.circular(8.0),
@@ -563,7 +577,6 @@ class _AddDataWidgetState extends State<AddDataWidget> {
     }
   }
 
-
   Widget _builtMultiValueTextField(String label, ThemeData selectedThemeData) {
     return Consumer<VideoProvider>(
       builder: (context, provider, child) {
@@ -572,8 +585,9 @@ class _AddDataWidgetState extends State<AddDataWidget> {
           children: [
             const SizedBox(height: 8),
             TextField(
-              controller: label == "Cast" ? provider.castController : provider
-                  .directorController,
+              controller: label == "Cast"
+                  ? provider.castController
+                  : provider.directorController,
               decoration: InputDecoration(
                 labelText: "Enter $label names separated by commas",
                 border: OutlineInputBorder(),
@@ -599,21 +613,23 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                 children: provider.castList
                     .map(
                       (item) => Chip(
-                    label: Text(
-                      item,
-                      style: selectedThemeData.textTheme.bodyMedium?.copyWith(
-                        color: selectedThemeData.colorScheme.onPrimary,
+                        label: Text(
+                          item,
+                          style:
+                              selectedThemeData.textTheme.bodyMedium?.copyWith(
+                            color: selectedThemeData.colorScheme.onPrimary,
+                          ),
+                        ),
+                        backgroundColor: selectedThemeData.colorScheme.primary,
+                        deleteIconColor:
+                            selectedThemeData.colorScheme.onPrimary,
+                        deleteIcon: const Icon(Icons.close),
+                        onDeleted: () {
+                          provider.castList.remove(item);
+                          provider.notifyListeners();
+                        },
                       ),
-                    ),
-                    backgroundColor: selectedThemeData.colorScheme.primary,
-                    deleteIconColor: selectedThemeData.colorScheme.onPrimary,
-                    deleteIcon: const Icon(Icons.close),
-                    onDeleted: () {
-                      provider.castList.remove(item);
-                      provider.notifyListeners();
-                    },
-                  ),
-                )
+                    )
                     .toList(),
               ),
             if (label == "Director" && provider.directorList.isNotEmpty)
@@ -622,77 +638,83 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                 children: provider.directorList
                     .map(
                       (item) => Chip(
-                    label: Text(
-                      item,
-                      style: selectedThemeData.textTheme.bodyMedium?.copyWith(
-                        color: selectedThemeData.colorScheme.onPrimary,
+                        label: Text(
+                          item,
+                          style:
+                              selectedThemeData.textTheme.bodyMedium?.copyWith(
+                            color: selectedThemeData.colorScheme.onPrimary,
+                          ),
+                        ),
+                        backgroundColor: selectedThemeData.colorScheme.primary,
+                        deleteIconColor:
+                            selectedThemeData.colorScheme.onPrimary,
+                        deleteIcon: const Icon(Icons.close),
+                        onDeleted: () {
+                          provider.directorList.remove(item);
+                          provider.notifyListeners();
+                        },
                       ),
-                    ),
-                    backgroundColor: selectedThemeData.colorScheme.primary,
-                    deleteIconColor: selectedThemeData.colorScheme.onPrimary,
-                    deleteIcon: const Icon(Icons.close),
-                    onDeleted: () {
-                      provider.directorList.remove(item);
-                      provider.notifyListeners();
-                    },
-                  ),
-                )
+                    )
                     .toList(),
               ),
-
           ],
         );
       },
     );
   }
 
-
   Widget _buildUploadSection(String label, ThemeData selectedThemeData) {
     return Consumer<VideoProvider>(builder: (context, provider, child) {
-      Color containerColor =  selectedThemeData.primaryColor.withOpacity(0.5); // Default color
+      Color containerColor =
+          selectedThemeData.primaryColor.withOpacity(0.5); // Default color
 
-      if("Trailer File"== label){
-        if(provider.trailerUrlController.text.isEmpty || provider.trailerUrlController.text=='')
+      if ("Trailer File" == label) {
+        if (provider.trailerUrlController.text.isEmpty ||
+            provider.trailerUrlController.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else if("Movie File"==label){
-        if(provider.movieUrlController.text.isEmpty || provider.movieUrlController.text=='')
+      } else if ("Movie File" == label) {
+        if (provider.movieUrlController.text.isEmpty ||
+            provider.movieUrlController.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else if("Censor Certificate"==label){
-        if(provider.censorCertificateController.text.isEmpty || provider.censorCertificateController.text=='')
+      } else if ("Censor Certificate" == label) {
+        if (provider.censorCertificateController.text.isEmpty ||
+            provider.censorCertificateController.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else if("Poster 1"==label){
-        if(provider.poster1Controller.text.isEmpty || provider.poster1Controller.text=='')
+      } else if ("Poster 1" == label) {
+        if (provider.poster1Controller.text.isEmpty ||
+            provider.poster1Controller.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else if("Poster 2"==label){
-        if(provider.poster2Controller.text.isEmpty || provider.poster2Controller.text=='')
+      } else if ("Poster 2" == label) {
+        if (provider.poster2Controller.text.isEmpty ||
+            provider.poster2Controller.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else if("Poster 3"==label){
-        if(provider.poster3Controller.text.isEmpty || provider.poster3Controller.text=='')
+      } else if ("Poster 3" == label) {
+        if (provider.poster3Controller.text.isEmpty ||
+            provider.poster3Controller.text == '')
           containerColor = containerColor;
         else
           containerColor = Colors.green.shade500;
-      }else{
+      } else {
         containerColor = Colors.green.shade500;
       }
-
 
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: InkWell(
           onTap: () async {
-            if(label=="Movie File"||label=="Trailer File"){
-              provider.uploadVideo(label=="Trailer File"?true:false);
-            }else {
+            if (label == "Movie File" || label == "Trailer File") {
+              provider.uploadVideo(label == "Trailer File" ? true : false);
+            } else {
               await provider.pickImage(label);
             }
           },
@@ -710,13 +732,13 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                   child: provider.isUploading
                       ? CircularProgressIndicator()
                       : Text(
-                    "Upload $label",
-                    style: TextStyle(
-                      color: selectedThemeData.canvasColor,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
+                          "Upload $label",
+                          style: TextStyle(
+                            color: selectedThemeData.canvasColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
                 ),
               ),
               /* if (kIsWeb && provider.webFile != null)
@@ -731,11 +753,11 @@ class _AddDataWidgetState extends State<AddDataWidget> {
   MediaHouse? _selectedMediaHouse;
 
   Widget _buildUserDropdownField(
-      String label,
-      BuildContext context,
-      List<MediaHouse> mediaHouseList,
-      ThemeData themeData,
-      ) {
+    String label,
+    BuildContext context,
+    List<MediaHouse> mediaHouseList,
+    ThemeData themeData,
+  ) {
     print("${mediaHouseList.length} Length");
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,21 +770,26 @@ class _AddDataWidgetState extends State<AddDataWidget> {
               value: mediaHouse,
               child: Text(
                 mediaHouse.mediaHouseName!,
-                style: themeData.textTheme.bodyMedium, // Apply theme's text style
+                style:
+                    themeData.textTheme.bodyMedium, // Apply theme's text style
               ),
             );
           }).toList(),
           onChanged: (MediaHouse? selectedMediaHouse) {
             setState(() {
-              _selectedMediaHouse = selectedMediaHouse; // Update the selected media house
+              _selectedMediaHouse =
+                  selectedMediaHouse; // Update the selected media house
             });
           },
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: themeData.textTheme.bodyMedium, // Apply theme's label text style
+            labelStyle: themeData
+                .textTheme.bodyMedium, // Apply theme's label text style
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8), // Rounded corners for input field
-              borderSide: BorderSide(color: themeData.dividerColor), // Theme's divider color
+              borderRadius:
+                  BorderRadius.circular(8), // Rounded corners for input field
+              borderSide: BorderSide(
+                  color: themeData.dividerColor), // Theme's divider color
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -770,13 +797,15 @@ class _AddDataWidgetState extends State<AddDataWidget> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: themeData.primaryColor, width: 2), // Highlight color
+              borderSide: BorderSide(
+                  color: themeData.primaryColor, width: 2), // Highlight color
             ),
           ),
           dropdownColor: themeData.cardColor, // Apply theme's card color
           hint: Text(
             "Select MediaHouse",
-            style: themeData.textTheme.bodySmall, // Apply theme's hint text style
+            style:
+                themeData.textTheme.bodySmall, // Apply theme's hint text style
           ),
         ),
         const SizedBox(height: 16),
@@ -784,23 +813,23 @@ class _AddDataWidgetState extends State<AddDataWidget> {
     );
   }
 
-
-  Future<void> _handleAdd(VideoProvider provider, ThemeData selectedThemeData, MediaHouse? selectedMediaHouse) async {
-    Content? content = await provider.uploadContent(selectedMediaHouse!,context);
+  Future<void> _handleAdd(VideoProvider provider, ThemeData selectedThemeData,
+      MediaHouse? selectedMediaHouse) async {
+    Content? content =
+        await provider.uploadContent(selectedMediaHouse!, context);
     if (content != null) {
-      await showSetPercentageDialog(context, content,selectedMediaHouse!);
+      await showSetPercentageDialog(context, content, selectedMediaHouse!);
     } else {
       CustomToast.show("Failed to add content.");
     }
   }
 
-  showSetPercentageDialog(BuildContext context,
-      Content content, MediaHouse mediaHouse) async {
+  showSetPercentageDialog(
+      BuildContext context, Content content, MediaHouse mediaHouse) async {
     final double? result = await showDialog<double>(
       context: context,
       builder: (BuildContext context) {
-        return SetPercentageDialog(
-          content: content, mediaHouse:mediaHouse );
+        return SetPercentageDialog(content: content, mediaHouse: mediaHouse);
       },
     );
 

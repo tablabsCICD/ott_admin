@@ -301,7 +301,7 @@ import 'package:admin_ott/app/ui/pages/dashboard%20page/component/users_onboarde
 import 'package:admin_ott/data/models/response/chartResponse.dart';
 import 'package:admin_ott/data/models/response/loginUser.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 
 import 'package:image_picker/image_picker.dart'; // For web-specific file handling
 
