@@ -4,8 +4,10 @@ import 'package:admin_ott/app/ui/pages/manage%20media%20house%20page/component/m
 import 'package:admin_ott/app/ui/pages/manage%20video%20page/component/DisplayTrailer.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:admin_ott/domain/entities/content.dart';
+import 'package:admin_ott/domain/entities/mediaHouse.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../widgets/show_toast.dart';
 
 class MovieDetailsPage extends StatefulWidget {
   final Content content;
@@ -17,13 +19,18 @@ class MovieDetailsPage extends StatefulWidget {
 }
 
 class _MovieDetailsPageState extends State<MovieDetailsPage> {
+  double _adminPercentage = 50.0;
+  bool _isSettingPercentage = false;
+
   @override
   void initState() {
     super.initState();
+    _adminPercentage = _clampPercentage(widget.content.adminIncentivePecentage);
     if (widget.content.id != null) {
       Provider.of<VideoProvider>(context, listen: false)
           .contentRevenueGraph(0, widget.content.id!, '', '');
     }
+    Provider.of<VideoProvider>(context, listen: false).fetchMediaHouse();
   }
 
   @override
@@ -54,6 +61,8 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
             _SummaryChips(content: content),
             const SizedBox(height: 12),
             ActionPanel(content: content),
+            const SizedBox(height: 12),
+            _buildSetPercentagePanel(context, content),
             const SizedBox(height: 12),
             if (isDesktop && content.id != null)
               SizedBox(
@@ -105,6 +114,274 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildSetPercentagePanel(BuildContext context, Content content) {
+    final theme = Provider.of<ThemeProvider>(context, listen: false).getTheme;
+    final mediaHousePercentage = (100 - _adminPercentage).clamp(0.0, 100.0);
+
+    return Card(
+      color: theme.cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Set Movie Percentage',
+              style: TextStyle(
+                color: theme.canvasColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Admin: ${_adminPercentage.toStringAsFixed(2)}%',
+                    style: TextStyle(color: theme.canvasColor),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'MediaHouse: ${mediaHousePercentage.toStringAsFixed(2)}%',
+                    textAlign: TextAlign.end,
+                    style: TextStyle(color: theme.canvasColor),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: _isSettingPercentage
+                    ? null
+                    : () => _openSetPercentageDialog(content),
+                child: _isSettingPercentage
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Set Percentage'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSetPercentageDialog(Content content) async {
+    final provider = Provider.of<VideoProvider>(context, listen: false);
+    final mediaHouse = _resolveMediaHouse(provider, content);
+
+    if (content.id == null) {
+      CustomToast.show("Unable to set percentage: invalid content id.",
+          isSuccess: false);
+      return;
+    }
+    if (mediaHouse == null || mediaHouse.id == null || mediaHouse.id! <= 0) {
+      CustomToast.show("Unable to set percentage: media house not found.",
+          isSuccess: false);
+      return;
+    }
+
+    final selectedAdminPercentage =
+        await _showPercentagePickerDialog(context, _adminPercentage);
+    if (selectedAdminPercentage == null || !mounted) return;
+
+    final confirmed = await _showPercentageConfirmDialog(
+      context,
+      selectedAdminPercentage,
+      100 - selectedAdminPercentage,
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isSettingPercentage = true);
+    try {
+      final success = await provider.setMoviePercentage(
+        context,
+        content,
+        selectedAdminPercentage,
+        100 - selectedAdminPercentage,
+        mediaHouse,
+        shouldPop: false,
+      );
+      if (success && mounted) {
+        setState(() {
+          _adminPercentage = selectedAdminPercentage;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSettingPercentage = false);
+      }
+    }
+  }
+
+  Future<double?> _showPercentagePickerDialog(
+      BuildContext context, double initialValue) async {
+    double selectedPercentage = _clampPercentage(initialValue);
+    final controller = TextEditingController(
+      text: selectedPercentage.toStringAsFixed(2),
+    );
+
+    final result = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Provider.of<ThemeProvider>(dialogContext, listen: false)
+            .getTheme;
+        return StatefulBuilder(
+          builder: (_, setDialogState) {
+            return AlertDialog(
+              backgroundColor: theme.cardColor,
+              title: const Text("Set Percentage"),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Slider(
+                      activeColor: theme.primaryColor,
+                      value: selectedPercentage,
+                      min: 0,
+                      max: 100,
+                      divisions: 10000,
+                      label: "${selectedPercentage.toStringAsFixed(2)}%",
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedPercentage = _clampPercentage(value);
+                          controller.text =
+                              selectedPercentage.toStringAsFixed(2);
+                        });
+                      },
+                    ),
+                    TextField(
+                      controller: controller,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: "Admin %",
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      onChanged: (value) {
+                        final parsed = double.tryParse(value);
+                        if (parsed == null) return;
+                        setDialogState(() {
+                          selectedPercentage = _clampPercentage(parsed);
+                        });
+                      },
+                      onEditingComplete: () {
+                        final parsed = double.tryParse(controller.text.trim());
+                        setDialogState(() {
+                          selectedPercentage = _clampPercentage(parsed);
+                          controller.text =
+                              selectedPercentage.toStringAsFixed(2);
+                        });
+                        FocusScope.of(dialogContext).unfocus();
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "Admin: ${selectedPercentage.toStringAsFixed(2)}%",
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            "MediaHouse: ${(100 - selectedPercentage).toStringAsFixed(2)}%",
+                            textAlign: TextAlign.end,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final parsed = double.tryParse(controller.text.trim());
+                    Navigator.of(dialogContext).pop(_clampPercentage(parsed));
+                  },
+                  child: const Text("Next"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    controller.dispose();
+    return result;
+  }
+
+  Future<bool?> _showPercentageConfirmDialog(
+    BuildContext context,
+    double adminPercentage,
+    double mediaHousePercentage,
+  ) {
+    final theme = Provider.of<ThemeProvider>(context, listen: false).getTheme;
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: theme.cardColor,
+        title: const Text("Confirm Percentage"),
+        content: Text(
+          "Admin: ${adminPercentage.toStringAsFixed(2)}%\n"
+          "MediaHouse: ${mediaHousePercentage.toStringAsFixed(2)}%\n\n"
+          "Confirm this split?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text("Confirm"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  MediaHouse? _resolveMediaHouse(VideoProvider provider, Content content) {
+    if (content.mediaHouseId == null) return null;
+    for (final item in provider.mediaHouseList) {
+      if (item.id == content.mediaHouseId) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  double _clampPercentage(dynamic value) {
+    final parsed = value is num ? value.toDouble() : double.tryParse('$value');
+    if (parsed == null) return 50.0;
+    if (parsed < 0) return 0.0;
+    if (parsed > 100) return 100.0;
+    return parsed;
   }
 }
 

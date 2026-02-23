@@ -60,20 +60,19 @@ class _PromoterApprovalsWidgetState extends State<PromoterApprovalsWidget> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                promoter.promoterName as String,
+                                promoter.promoterName ?? 'Unknown Promoter',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              _buildPromoterLocation(
+                                  promoter, selectedThemeData),
                               Text('Email: ${promoter.userId!.emailId ?? ''}'),
-                              Text('Area: ${promoter.location!.area ?? ""}'),
                               Text(
-                                  'Invited by: ${promoter.userId!.refferedBy ?? ""}'),
+                                  'Mobile: ${promoter.userId!.mobileNumber ?? ''}'),
                               Text(
-                                  'Joined Date: ${promoter.userId!.joinDate ?? ""}'),
-                              Text('Status: ${promoter.status}'),
+                                  'Reffered By: ${promoter.userId!.refferedBy ?? 'NA'}'),
                               const SizedBox(height: 12),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
@@ -101,6 +100,25 @@ class _PromoterApprovalsWidgetState extends State<PromoterApprovalsWidget> {
                 ),
               );
       }),
+    );
+  }
+
+  Widget _buildPromoterLocation(
+      Promoters promoter, ThemeData selectedThemeData) {
+    return Text(
+      promoter.level!.toLowerCase() == 'national'
+          ? "${promoter.level ?? "Unknown"} Level (${promoter.location!.country})"
+          : promoter.level!.toLowerCase() == 'state'
+              ? "${promoter.level ?? "Unknown"} Level (${promoter.location!.state})"
+              : promoter.level!.toLowerCase() == 'district'
+                  ? "${promoter.level ?? "Unknown"} Level (${promoter.location!.district})"
+                  : promoter.level!.toLowerCase() == 'taluka'
+                      ? "${promoter.level ?? "Unknown"} Level (${promoter.location!.taluka})"
+                      : "Unknown Level",
+      style: TextStyle(
+        color: selectedThemeData.canvasColor,
+        fontSize: 14,
+      ),
     );
   }
 }

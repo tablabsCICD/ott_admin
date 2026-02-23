@@ -129,8 +129,18 @@ class _SetPercentageDialogState extends State<SetPercentageDialog> {
                     backgroundColor: selectedThemeData.primaryColor,
                   ),
                   onPressed: () async {
-                   await videoProvider.setMoviePercentage(context, widget.content,_percentage,(100 - _percentage),widget.mediaHouse);
-                    Navigator.pop(context, _percentage);
+                    final isSuccess = await videoProvider.setMoviePercentage(
+                      context,
+                      widget.content,
+                      _percentage,
+                      (100 - _percentage),
+                      widget.mediaHouse,
+                      shouldPop: false,
+                    );
+                    if (!mounted) return;
+                    if (isSuccess) {
+                      Navigator.of(this.context).pop(_percentage);
+                    }
                   },
                   child: const Text("Set"),
                 ),

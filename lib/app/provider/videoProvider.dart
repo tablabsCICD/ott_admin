@@ -813,24 +813,44 @@ class VideoProvider extends ChangeNotifier {
     }
   }
 
-  setMoviePercentage(
+  Future<bool> setMoviePercentage(
       BuildContext context,
       Content content,
       double adminPercentage,
       double mediaHousePercentage,
-      MediaHouse mediaHouse) async {
+      MediaHouse mediaHouse,
+      {bool shouldPop = true}) async {
+    if (content.id == null) {
+      CustomToast.show(
+        "Unable to set percentage: invalid content id.",
+        isSuccess: false,
+      );
+      return false;
+    }
+    if (mediaHouse.id == null || mediaHouse.id! <= 0) {
+      CustomToast.show(
+        "Unable to set percentage: media house not found.",
+        isSuccess: false,
+      );
+      return false;
+    }
+
+    final safeAdminPercentage = adminPercentage.clamp(0, 100).toDouble();
+    final safeMediaHousePercentage =
+        mediaHousePercentage.clamp(0, 100).toDouble();
+
     DateTime now = DateTime.now();
     String isoDate = now.toUtc().toIso8601String();
     String apiUrl = ApiConstant.setPercentage;
     print(apiUrl);
     PercentageRequest percentageRequest = PercentageRequest();
-    percentageRequest.contentList = content.id;
+    percentageRequest.contentList = content.id!;
     percentageRequest.date = isoDate;
     percentageRequest.isActive = true;
-    percentageRequest.mediaHouse = mediaHouse!.id!;
-    percentageRequest.percentageAdmin = adminPercentage;
-    percentageRequest.percentageMediaHouse = mediaHousePercentage;
-    percentageRequest.ticketRate = content.price;
+    percentageRequest.mediaHouse = mediaHouse.id!;
+    percentageRequest.percentageAdmin = safeAdminPercentage;
+    percentageRequest.percentageMediaHouse = safeMediaHousePercentage;
+    percentageRequest.ticketRate = content.price ?? 0;
 
     ApiHelper apiHelper = ApiHelper();
     try {
@@ -842,23 +862,58 @@ class VideoProvider extends ChangeNotifier {
         payload,
       );
 
-      if (response.statusCode == 200) {
-        final responseBody = json.decode(response.body);
-        final addVideoResponse = AddVideoResponse.fromJson(responseBody);
+      Map<String, dynamic> responseBody = {};
+      if (response.body.isNotEmpty) {
+        try {
+          final decoded = json.decode(response.body);
+          if (decoded is Map<String, dynamic>) {
+            responseBody = decoded;
+          }
+        } catch (_) {}
+      }
 
-        if (addVideoResponse.isSuccess == true) {
-          CustomToast.show("Video added successfully");
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final bool isSuccess = responseBody["success"] == true ||
+            responseBody["isSuccess"] == true;
+        if (isSuccess) {
+          CustomToast.show(
+            responseBody["message"]?.toString() ??
+                "Movie percentage set successfully",
+            isSuccess: true,
+          );
           fetchMoviesByStatusAndMediaHouseId("All", mediaHouse.id!);
           notifyListeners();
-          Navigator.of(context).pop();
+          if (shouldPop && Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          }
+          return true;
         } else {
+          final addVideoResponse = AddVideoResponse.fromJson(responseBody);
+          CustomToast.show(
+            responseBody["message"]?.toString() ??
+                addVideoResponse.message ??
+                "Failed to set movie percentage",
+            isSuccess: false,
+          );
           debugPrint("Empty data: Record not added");
+          return false;
         }
       } else {
+        CustomToast.show(
+          responseBody["message"]?.toString() ??
+              "Failed to set percentage (${response.statusCode})",
+          isSuccess: false,
+        );
         debugPrint("Failed: ${response.statusCode}, ${response.body}");
+        return false;
       }
     } catch (error) {
+      CustomToast.show(
+        "Unable to set percentage. Please try again.",
+        isSuccess: false,
+      );
       debugPrint("Error: $error");
+      return false;
     }
   }
 

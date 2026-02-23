@@ -54,14 +54,14 @@ class _ProfilePageState extends State<ProfilePage> {
           );
 
           return SafeArea(
-            child: isDesktop
-                ? Center(
-                    child: ConstrainedBox(
+            child: Center(
+              child: isDesktop
+                  ? ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1000),
                       child: content,
-                    ),
-                  )
-                : content,
+                    )
+                  : content,
+            ),
           );
         },
       ),
@@ -75,29 +75,10 @@ class _ProfilePageState extends State<ProfilePage> {
     required bool isDark,
     required bool isDesktop,
   }) {
-    if (isDesktop) {
-      return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 2,
-              child: _profileCard(user, selectedThemeData, isDesktop: true),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              flex: 3,
-              child: _settingsCard(selectedThemeData, isDark),
-            ),
-          ],
-        ),
-      );
-    }
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           _profileCard(user, selectedThemeData),
           const SizedBox(height: 16),
@@ -108,58 +89,68 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _profileCard(User user, ThemeData theme, {bool isDesktop = false}) {
-    return Card(
-      color: theme.cardColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Hero(
-              tag: 'profile',
-              child: _profileImage(
-                imageUrl: user.profilePhoto,
-                radius: isDesktop ? 72 : 60,
-                theme: theme,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              '${user.firstName ?? ''} ${user.lastName ?? ''}'.trim().isEmpty
-                  ? 'Admin'
-                  : '${user.firstName ?? ''} ${user.lastName ?? ''}'.trim(),
-              style: TextStyle(
-                color: theme.canvasColor,
-                fontSize: isDesktop ? 28 : 22,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              user.emailId ?? '-',
-              style: TextStyle(color: theme.hintColor, fontSize: 15),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              user.mobileNumber ?? '-',
-              style: TextStyle(color: theme.hintColor, fontSize: 15),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: theme.primaryColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                'Super Admin',
-                style: TextStyle(
-                  color: theme.primaryColor,
-                  fontWeight: FontWeight.w600,
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: SizedBox(
+        width: ResponsiveWidget.isDesktop(context) ? 400 : double.infinity,
+        child: Card(
+          color: theme.cardColor,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Hero(
+                  tag: 'profile',
+                  child: _profileImage(
+                    imageUrl: user.profilePhoto,
+                    radius: isDesktop ? 72 : 60,
+                    theme: theme,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 14),
+                Text(
+                  '${user.firstName ?? ''} ${user.lastName ?? ''}'
+                          .trim()
+                          .isEmpty
+                      ? 'Admin'
+                      : '${user.firstName ?? ''} ${user.lastName ?? ''}'.trim(),
+                  style: TextStyle(
+                    color: theme.canvasColor,
+                    fontSize: isDesktop ? 28 : 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  user.emailId ?? '-',
+                  style: TextStyle(color: theme.hintColor, fontSize: 15),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  user.mobileNumber ?? '-',
+                  style: TextStyle(color: theme.hintColor, fontSize: 15),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: theme.primaryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Super Admin',
+                    style: TextStyle(
+                      color: theme.primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -168,64 +159,68 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _settingsCard(ThemeData theme, bool isDark) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
 
-    return Card(
-      color: theme.cardColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Account Settings',
-              style: TextStyle(
-                color: theme.canvasColor,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 10),
-            _tile(
-              icon: Icons.edit_outlined,
-              title: 'Edit Profile',
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const EditProfilePage()),
-                );
-                _fetchUserData();
-              },
-              theme: theme,
-            ),
-            _tile(
-              icon: isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
-              title: 'Toggle Theme',
-              onTap: themeProvider.toggleTheme,
-              theme: theme,
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () async {
-                await LocalSharePreferences().logOut();
-                if (!mounted) return;
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.primaryColor,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+    return SizedBox(
+      width: ResponsiveWidget.isDesktop(context) ? 500 : double.infinity,
+      child: Card(
+        color: theme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Account Settings',
+                style: TextStyle(
+                  color: theme.canvasColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              child: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              const SizedBox(height: 10),
+              _tile(
+                icon: Icons.edit_outlined,
+                title: 'Edit Profile',
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const EditProfilePage()),
+                  );
+                  _fetchUserData();
+                },
+                theme: theme,
               ),
-            ),
-          ],
+              _tile(
+                icon: isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+                title: 'Toggle Theme',
+                onTap: themeProvider.toggleTheme,
+                theme: theme,
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () async {
+                  await LocalSharePreferences().logOut();
+                  if (!mounted) return;
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.primaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

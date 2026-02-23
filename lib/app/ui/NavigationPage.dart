@@ -45,7 +45,6 @@ class _NavigationPageState extends State<NavigationPage> {
     PageData(title: 'Analytics', page: AnalyticsPage()),
     PageData(title: 'Help & Support', page: HelpDeskPage()),
     PageData(title: 'Profile', page: const ProfilePage()),
-    //PageData(title: 'Demo Page', page: DemoClass()),
   ];
 
   final List<IconData> _icons = [
@@ -62,7 +61,6 @@ class _NavigationPageState extends State<NavigationPage> {
     Icons.bar_chart_sharp,
     Icons.help,
     Icons.account_circle_sharp,
-    //Icons.code,
   ];
 
   @override
