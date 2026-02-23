@@ -4,7 +4,15 @@ import 'package:admin_ott/domain/entities/mediaHouse.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class MediaHouseApprovalsWidget extends StatelessWidget {
+class MediaHouseApprovalsWidget extends StatefulWidget {
+  const MediaHouseApprovalsWidget({super.key});
+
+  @override
+  State<MediaHouseApprovalsWidget> createState() =>
+      _MediaHouseApprovalsWidgetState();
+}
+
+class _MediaHouseApprovalsWidgetState extends State<MediaHouseApprovalsWidget> {
   /*final List<Map<String, dynamic>> mediaHouseList = [
     {
       'id': 1,
@@ -42,10 +50,15 @@ class MediaHouseApprovalsWidget extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    var selectedThemeData = Theme.of(context); // Replace with your theme logic
+  void initState() {
+    super.initState();
     Provider.of<MediaHouseProvider>(context, listen: false)
         .fetchMediaHouseByStatus("PENDING");
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var selectedThemeData = Theme.of(context); // Replace with your theme logic
     return Expanded(child:
         Consumer<MediaHouseProvider>(builder: (context, provider, child) {
       return provider.filteredMediaHouseListByStatus.isEmpty

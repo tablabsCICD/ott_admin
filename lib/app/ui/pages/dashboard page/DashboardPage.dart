@@ -1,9 +1,11 @@
 import 'package:admin_ott/app/provider/dashboardProvider.dart';
 import 'package:admin_ott/app/provider/fullscreenProvider.dart';
+import 'package:admin_ott/app/provider/mediaHouseProvider.dart';
+import 'package:admin_ott/app/provider/promoterProvider.dart';
 import 'package:admin_ott/app/provider/userGraphProvider.dart';
+import 'package:admin_ott/app/provider/videoProvider.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/contentApprovalWidget.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/media_house_onboardGraph.dart';
-import 'package:admin_ott/app/ui/pages/dashboard%20page/component/pieChart.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/MediaHouseApprovalsWidget.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/MediaHouseSearch.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/PromoterApprovalsWidget.dart';
@@ -15,7 +17,9 @@ import 'package:admin_ott/app/ui/pages/dashboard%20page/component/revenue_graph.
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/toggleButton.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/users_onboarded_graph.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:provider/provider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 
@@ -28,6 +32,51 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedTimeRange = 0; // 0: Week, 1: Month, 2: Year
+  int? _revenueTouchedIndex;
+  int? _contentTouchedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<VideoProvider>(context, listen: false)
+          .fetchMoviesByStatusAndMediaHouseId("PENDING", 0);
+      Provider.of<MediaHouseProvider>(context, listen: false)
+          .fetchMediaHouseByStatus("PENDING");
+      Provider.of<PromoterProvider>(context, listen: false)
+          .fetchPromotersByStatus("PENDING");
+    });
+  }
+
+  void callApi(int index, int graphIndex) {
+    final userGraphProvider =
+        Provider.of<UserGraphProvider>(context, listen: false);
+
+    switch (graphIndex) {
+      case 0:
+        print("Fetching User Graph Data for time range $index");
+        userGraphProvider.fetchUserGraph(index);
+        break;
+      case 1:
+        print("Fetching Revenue Graph Data for time range $index");
+        userGraphProvider.fetchPurchaseGraph(index);
+        break;
+      case 2:
+        print("Fetching Manager Graph Data for time range $index");
+        userGraphProvider.fetchPromoterCountGraph(index);
+        break;
+      case 3:
+        print("Fetching Content Approved Graph Data for time range $index");
+        userGraphProvider.fetchApprovedContentGraph(index);
+        break;
+      case 4:
+        print("Fetching Media House Graph Data for time range $index");
+        userGraphProvider.fetchMediaHouseCountGraph(index);
+        break;
+      default:
+        print("Invalid graph index $graphIndex");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +87,16 @@ class _DashboardPageState extends State<DashboardPage> {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: true).getTheme;
     final fullScreenProvider = Provider.of<FullScreenProvider>(context);
+    final showContentApprovals = context
+        .watch<VideoProvider>()
+        .filteredContentListByMediaHouse
+        .isNotEmpty;
+    final showMediaHouseApprovals = context
+        .watch<MediaHouseProvider>()
+        .filteredMediaHouseListByStatus
+        .isNotEmpty;
+    final showPromoterApprovals =
+        context.watch<PromoterProvider>().filteredPromotersByStatus.isNotEmpty;
 
     return Scaffold(
         backgroundColor: selectedThemeData.scaffoldBackgroundColor,
@@ -60,61 +119,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
                           // Statistic Cards to display
                           ResponsiveWidget.isMobile(context)
-                              ? SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
-                                        children: [
-                                          _buildStatisticCard(
-                                            title: 'Total Users',
-                                            value: provider.dashboardData
-                                                    .totalUserCount
-                                                    ?.toString() ??
-                                                '0',
-                                            icon: Icons.people,
-                                            index: 0,
-                                          ),
-                                          _buildStatisticCard(
-                                            title: 'Total Purchases',
-                                            value: provider
-                                                    .dashboardData.userContent
-                                                    ?.toString() ??
-                                                '0',
-                                            icon: Icons.shopping_cart,
-                                            index: 1,
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
-                                        children: [
-                                          _buildStatisticCard(
-                                            title: 'Total Promoters',
-                                            value: provider
-                                                    .dashboardData.totalPromoter
-                                                    ?.toString() ??
-                                                '0',
-                                            icon: Icons.supervisor_account,
-                                            index: 2,
-                                          ),
-                                          _buildStatisticCard(
-                                            title: 'Content Approved',
-                                            value: provider
-                                                    .dashboardData.totalContent
-                                                    ?.toString() ??
-                                                '0',
-                                            icon: Icons.check_circle,
-                                            index: 3,
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                )
+                              ? _buildMobileStatsBento(provider)
                               : SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   child: Row(
@@ -227,24 +232,64 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
 
                     ResponsiveWidget.isMobile(context) //// for mobile screen
-                        ? SizedBox(
-                            height: 900,
-                            child: Column(
-                              children: [
+                        ? Column(
+                            children: [
+                              if (showContentApprovals)
+                                SizedBox(
+                                  height: 450,
+                                  child: _buildRequestCard(
+                                    context,
+                                    title: 'Content Approvals',
+                                    child: ContentApprovalWidget(),
+                                  ),
+                                ),
+                              if (showContentApprovals &&
+                                  (showMediaHouseApprovals ||
+                                      showPromoterApprovals))
+                                const SizedBox(height: 10),
+                              if (showMediaHouseApprovals)
+                                SizedBox(
+                                  height: 450,
+                                  child: _buildRequestCard(
+                                    context,
+                                    title: 'Media House Approvals',
+                                    child: MediaHouseApprovalsWidget(),
+                                  ),
+                                ),
+                              if (showMediaHouseApprovals &&
+                                  showPromoterApprovals)
+                                const SizedBox(height: 10),
+                              if (showPromoterApprovals)
+                                SizedBox(
+                                  height: 450,
+                                  child: _buildRequestCard(
+                                    context,
+                                    title: 'Promoter Approvals',
+                                    child: PromoterApprovalsWidget(),
+                                  ),
+                                ),
+                            ],
+                          )
+                        : Row(
+                            // for web n tablet screen
+                            children: [
+                              if (showContentApprovals)
                                 Expanded(
                                   flex: 1,
                                   child: SizedBox(
                                     height: 450,
-                                    child: _buildRequestCard(context,
-                                        title: 'Content Approvals',
-                                        child:
-                                            ContentApprovalWidget() /////////// add list of pending movies of that perticular media house
-                                        ),
+                                    child: _buildRequestCard(
+                                      context,
+                                      title: 'Content Approvals',
+                                      child: ContentApprovalWidget(),
+                                    ),
                                   ),
                                 ),
-                                SizedBox(
-                                  height: 10,
-                                ),
+                              if (showContentApprovals &&
+                                  (showMediaHouseApprovals ||
+                                      showPromoterApprovals))
+                                const SizedBox(width: 10),
+                              if (showMediaHouseApprovals)
                                 Expanded(
                                   flex: 1,
                                   child: SizedBox(
@@ -256,9 +301,10 @@ class _DashboardPageState extends State<DashboardPage> {
                                     ),
                                   ),
                                 ),
-                                SizedBox(
-                                  height: 10,
-                                ),
+                              if (showMediaHouseApprovals &&
+                                  showPromoterApprovals)
+                                const SizedBox(width: 10),
+                              if (showPromoterApprovals)
                                 Expanded(
                                   flex: 1,
                                   child: SizedBox(
@@ -270,104 +316,15 @@ class _DashboardPageState extends State<DashboardPage> {
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          )
-                        : Row(
-                            // for web n tablet screen
-                            children: [
-                              Expanded(
-                                flex: 1,
-                                child: SizedBox(
-                                  height: 450,
-                                  child: _buildRequestCard(context,
-                                      title: 'Content Approvals',
-                                      child: ContentApprovalWidget()),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 10,
-                              ),
-                              Expanded(
-                                flex: 1,
-                                child: SizedBox(
-                                  height: 450,
-                                  child: _buildRequestCard(
-                                    context,
-                                    title: 'Media House Approvals',
-                                    child: MediaHouseApprovalsWidget(),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 10,
-                              ),
-                              Expanded(
-                                flex: 1,
-                                child: SizedBox(
-                                  height: 450,
-                                  child: _buildRequestCard(
-                                    context,
-                                    title: 'Promoter Approvals',
-                                    child: PromoterApprovalsWidget(),
-                                  ),
-                                ),
-                              ),
                             ],
                           ),
                     SizedBox(
                       height: ResponsiveWidget.isMobile(context) ? 10 : 10,
                     ),
-                    ResponsiveWidget.isDesktop(context)
-                        ? Consumer<DashboardProvider>(
-                            builder: (context, provider, child) {
-                            return Row(
-                              // for web n tablet screen
-                              children: [
-                                Expanded(
-                                  flex: 1,
-                                  child: SizedBox(
-                                    height: 400,
-                                    child: Card(
-                                      color: selectedThemeData.cardColor,
-                                      child: PieChartClass(
-                                          title: 'Average Revenue',
-                                          chartDataList:
-                                              provider.revenueChartDataList ??
-                                                  []),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: 10,
-                                ),
-                                Expanded(
-                                  flex: 1,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: selectedThemeData.cardColor,
-                                      borderRadius: BorderRadius.circular(
-                                        10,
-                                      ),
-                                    ),
-                                    height: 400,
-                                    child: Card(
-                                      color: selectedThemeData.cardColor,
-                                      child: PieChartClass(
-                                          title: 'Content Types',
-                                          chartDataList:
-                                              provider.chartDataList ?? []),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: 10,
-                                ),
-                                Expanded(flex: 1, child: SizedBox()),
-                              ],
-                            );
-                          })
-                        : SizedBox(),
+                    Consumer<DashboardProvider>(
+                        builder: (context, provider, _) {
+                      return _buildInsightsSection(context, provider);
+                    }),
                   ],
                 ),
               ),
@@ -408,7 +365,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return SizedBox(
       // height: 90,
-      width: 250,
+      width: ResponsiveWidget.isMobile(context) ? double.infinity : 250,
       child: Card(
         color: selectedThemeData.cardColor,
         child: ListTile(
@@ -611,36 +568,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  void callApi(int index, int graphIndex) {
-    final userGraphProvider =
-        Provider.of<UserGraphProvider>(context, listen: false);
-
-    switch (graphIndex) {
-      case 0:
-        print("Fetching User Graph Data for time range $index");
-        userGraphProvider.fetchUserGraph(index);
-        break;
-      case 1:
-        print("Fetching Revenue Graph Data for time range $index");
-        userGraphProvider.fetchPurchaseGraph(index);
-        break;
-      case 2:
-        print("Fetching Manager Graph Data for time range $index");
-        userGraphProvider.fetchPromoterCountGraph(index);
-        break;
-      case 3:
-        print("Fetching Content Approved Graph Data for time range $index");
-        userGraphProvider.fetchApprovedContentGraph(index);
-        break;
-      case 4:
-        print("Fetching Media House Graph Data for time range $index");
-        userGraphProvider.fetchMediaHouseCountGraph(index);
-        break;
-      default:
-        print("Invalid graph index $graphIndex");
-    }
-  }
-
   Widget _buildRequestCard(
     BuildContext context, {
     required String title,
@@ -693,5 +620,596 @@ class _DashboardPageState extends State<DashboardPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildMobileStatsBento(DashboardProvider provider) {
+    return StaggeredGrid.count(
+      crossAxisCount: 2,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      children: [
+        StaggeredGridTile.fit(
+          crossAxisCellCount: 2,
+          child: _buildBentoCard(
+            title: 'Total Users',
+            value: provider.dashboardData.totalUserCount?.toString() ?? '0',
+            icon: Icons.people,
+            index: 0,
+            big: true,
+          ),
+        ),
+        StaggeredGridTile.fit(
+          crossAxisCellCount: 1,
+          child: _buildBentoCard(
+            title: 'Total Purchases',
+            value: provider.dashboardData.userContent?.toString() ?? '0',
+            icon: Icons.shopping_cart,
+            index: 1,
+          ),
+        ),
+        StaggeredGridTile.fit(
+          crossAxisCellCount: 1,
+          child: _buildBentoCard(
+            title: 'Total Promoters',
+            value: provider.dashboardData.totalPromoter?.toString() ?? '0',
+            icon: Icons.supervisor_account,
+            index: 2,
+          ),
+        ),
+        StaggeredGridTile.fit(
+          crossAxisCellCount: 1,
+          child: _buildBentoCard(
+            title: 'Content Approved',
+            value: provider.dashboardData.totalContent?.toString() ?? '0',
+            icon: Icons.check_circle,
+            index: 3,
+          ),
+        ),
+        StaggeredGridTile.fit(
+          crossAxisCellCount: 1,
+          child: _buildBentoCard(
+            title: 'Total Media Houses',
+            value: provider.dashboardData.totalMediaHouses?.toString() ?? '0',
+            icon: Icons.home_work,
+            index: 4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBentoCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required int index,
+    bool big = false,
+  }) {
+    final theme = Theme.of(context);
+
+    return Container(
+      height: 128,
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: theme.cardColor,
+          width: 2,
+        ),
+      ),
+      child: GestureDetector(
+          // borderRadius: BorderRadius.circular(18),
+          onTap: () => _showGraphPopup(index),
+          child: Ink(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: theme.canvasColor.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, color: theme.primaryColor, size: 24),
+                    const Spacer(),
+                    Icon(Icons.bar_chart_rounded,
+                        color: theme.primaryColor, size: 20),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: big ? 28 : 22,
+                    fontWeight: FontWeight.w700,
+                    color: theme.canvasColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: theme.canvasColor.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          )),
+    );
+  }
+
+  Widget _buildInsightsSection(
+      BuildContext context, DashboardProvider provider) {
+    final isMobile = ResponsiveWidget.isMobile(context);
+    final revenueData = _buildRevenueSplitData();
+    final contentData = _buildContentTypeData(provider);
+
+    if (isMobile) {
+      return Column(
+        children: [
+          _buildInsightCard(
+            title: 'Average Revenue',
+            subtitle: 'Revenue split by content category',
+            totalLabel: 'Total Revenue',
+            totalValue: '1000',
+            data: revenueData,
+            chartKey: 'revenue',
+            isCurrency: true,
+          ),
+          const SizedBox(height: 10),
+          _buildInsightCard(
+            title: 'Content Types',
+            subtitle: 'Distribution of approved content',
+            totalLabel: 'Total Units',
+            totalValue: contentData
+                .fold<num>(0, (sum, item) => sum + (item['value'] as num))
+                .toStringAsFixed(0),
+            data: contentData,
+            chartKey: 'content',
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: _buildInsightCard(
+            title: 'Average Revenue',
+            subtitle: 'Revenue split by content category',
+            totalLabel: 'Total Revenue',
+            totalValue: '1000',
+            data: revenueData,
+            chartKey: 'revenue',
+            isCurrency: true,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _buildInsightCard(
+            title: 'Content Types',
+            subtitle: 'Distribution of approved content',
+            totalLabel: 'Total Units',
+            totalValue: contentData
+                .fold<num>(0, (sum, item) => sum + (item['value'] as num))
+                .toStringAsFixed(0),
+            data: contentData,
+            chartKey: 'content',
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Map<String, dynamic>> _buildRevenueSplitData() {
+    final theme = Provider.of<ThemeProvider>(context, listen: false).getTheme;
+    final primary = theme.primaryColor;
+    return [
+      {
+        'title': 'Movie Revenue',
+        'revenue': 750.0,
+        'value': 75.0,
+        'percentText': '75%',
+        'color': primary,
+      },
+      {
+        'title': 'Series Revenue',
+        'revenue': 127.0,
+        'value': 12.7,
+        'percentText': '12.7%',
+        'color': Color.alphaBlend(primary.withValues(alpha: 0.55), Colors.blue),
+      },
+      {
+        'title': 'Short Revenue',
+        'revenue': 123.0,
+        'value': 12.3,
+        'percentText': '12.3%',
+        'color':
+            Color.alphaBlend(primary.withValues(alpha: 0.5), Colors.orange),
+      },
+    ];
+  }
+
+  List<Map<String, dynamic>> _buildContentTypeData(DashboardProvider provider) {
+    final theme = Provider.of<ThemeProvider>(context, listen: false).getTheme;
+    final primary = theme.primaryColor;
+
+    if ((provider.chartDataList ?? []).isNotEmpty) {
+      final mapped = provider.chartDataList!.take(4).map((item) {
+        final value = (item['value'] as num?)?.toDouble() ?? 0.0;
+        return {
+          'title': item['title'] ?? 'Unknown',
+          'value': value,
+          'percentText': '${value.toStringAsFixed(1)}%',
+          'color': item['color'] ?? primary,
+        };
+      }).toList();
+
+      final hasShort = mapped.any(
+          (item) => item['title'].toString().toLowerCase().contains('short'));
+
+      if (!hasShort) {
+        mapped.add({
+          'title': 'Shorts',
+          'value': 12.3,
+          'percentText': '12.3%',
+          'color': Color.alphaBlend(
+            primary.withValues(alpha: 0.5),
+            Colors.orange,
+          ),
+        });
+      }
+
+      return mapped;
+    }
+
+    return [
+      {
+        'title': 'Movies',
+        'value': 52.0,
+        'percentText': '52%',
+        'color': primary,
+      },
+      {
+        'title': 'Series',
+        'value': 28.0,
+        'percentText': '28%',
+        'color':
+            Color.alphaBlend(primary.withValues(alpha: 0.45), Colors.green),
+      },
+      {
+        'title': 'Shorts',
+        'value': 20.0,
+        'percentText': '20%',
+        'color':
+            Color.alphaBlend(primary.withValues(alpha: 0.5), Colors.orange),
+      },
+    ];
+  }
+
+  Widget _buildInsightCard({
+    required String title,
+    required String subtitle,
+    required String totalLabel,
+    required String totalValue,
+    required List<Map<String, dynamic>> data,
+    required String chartKey,
+    bool isCurrency = false,
+  }) {
+    final theme = Provider.of<ThemeProvider>(context, listen: false).getTheme;
+    final total =
+        data.fold<num>(0, (sum, item) => sum + (item['value'] as num));
+    final touchedIndex =
+        chartKey == 'revenue' ? _revenueTouchedIndex : _contentTouchedIndex;
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final compact = constraints.maxWidth < 430;
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: theme.canvasColor.withValues(alpha: 0.08)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: theme.primaryColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.canvasColor.withValues(alpha: 0.72),
+              ),
+            ),
+            const SizedBox(height: 14),
+            compact
+                ? Column(
+                    children: [
+                      _buildInteractiveChart(
+                        data: data,
+                        theme: theme,
+                        touchedIndex: touchedIndex,
+                        chartKey: chartKey,
+                        total: total,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildInsightSummary(
+                        theme: theme,
+                        totalLabel: totalLabel,
+                        totalValue: totalValue,
+                        total: total,
+                        isCurrency: isCurrency,
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: _buildInteractiveChart(
+                          data: data,
+                          theme: theme,
+                          touchedIndex: touchedIndex,
+                          chartKey: chartKey,
+                          total: total,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildInsightSummary(
+                          theme: theme,
+                          totalLabel: totalLabel,
+                          totalValue: totalValue,
+                          total: total,
+                          isCurrency: isCurrency,
+                        ),
+                      ),
+                    ],
+                  ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: List.generate(data.length, (index) {
+                final item = data[index];
+                final tileColor = _sliceColorForIndex(
+                  theme.primaryColor,
+                  index,
+                );
+                return _buildDataMetricTile(
+                  theme: theme,
+                  color: tileColor,
+                  title: item['title'].toString(),
+                  percentText: item['percentText']?.toString() ?? '',
+                  revenueText: isCurrency
+                      ? '₹${(item['revenue'] as num).toStringAsFixed(0)}'
+                      : null,
+                );
+              }),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildInteractiveChart({
+    required List<Map<String, dynamic>> data,
+    required ThemeData theme,
+    required int? touchedIndex,
+    required String chartKey,
+    required num total,
+  }) {
+    return SizedBox(
+      height: 170,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: 44,
+              pieTouchData: PieTouchData(
+                touchCallback: (event, response) {
+                  if (!event.isInterestedForInteractions ||
+                      response?.touchedSection == null) {
+                    setState(() {
+                      if (chartKey == 'revenue') {
+                        _revenueTouchedIndex = null;
+                      } else {
+                        _contentTouchedIndex = null;
+                      }
+                    });
+                    return;
+                  }
+                  final index = response!.touchedSection!.touchedSectionIndex;
+                  setState(() {
+                    if (chartKey == 'revenue') {
+                      _revenueTouchedIndex = index;
+                    } else {
+                      _contentTouchedIndex = index;
+                    }
+                  });
+                },
+              ),
+              sections: List.generate(data.length, (index) {
+                final value = (data[index]['value'] as num).toDouble();
+                final highlighted = touchedIndex == index;
+                return PieChartSectionData(
+                  value: value,
+                  color: _sliceColorForIndex(theme.primaryColor, index),
+                  title: '',
+                  radius: highlighted ? 40 : 34,
+                );
+              }),
+            ),
+          ),
+          Text(
+            touchedIndex != null
+                ? data[touchedIndex]['percentText'].toString()
+                : total.toStringAsFixed(0),
+            style: TextStyle(
+              fontSize: touchedIndex != null ? 16 : 14,
+              fontWeight: FontWeight.w700,
+              color: theme.canvasColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightSummary({
+    required ThemeData theme,
+    required String totalLabel,
+    required String totalValue,
+    required num total,
+    required bool isCurrency,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            totalLabel,
+            style: TextStyle(
+              color: theme.canvasColor.withValues(alpha: 0.65),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            isCurrency ? '₹$totalValue' : totalValue,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: theme.canvasColor,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Chart Total: ${total.toStringAsFixed(1)}',
+            style: TextStyle(
+              fontSize: 11,
+              color: theme.canvasColor.withValues(alpha: 0.58),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.insights_rounded,
+                    size: 16, color: theme.primaryColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Hover or tap on chart slices to inspect segments.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.canvasColor.withValues(alpha: 0.72),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDataMetricTile({
+    required ThemeData theme,
+    required Color color,
+    required String title,
+    required String percentText,
+    String? revenueText,
+  }) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 125, maxWidth: 200),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  height: 8,
+                  width: 8,
+                  decoration:
+                      BoxDecoration(shape: BoxShape.circle, color: color),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: theme.canvasColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              percentText,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+            if (revenueText != null)
+              Text(
+                revenueText,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: theme.canvasColor.withValues(alpha: 0.72),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _sliceColorForIndex(Color primary, int index) {
+    const alphas = [0.95, 0.75, 0.55, 0.38, 0.24];
+    return primary.withValues(alpha: alphas[index % alphas.length]);
   }
 }
