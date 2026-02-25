@@ -83,13 +83,9 @@ class _ShortsApprovalsWidgetState extends State<ShortsApprovalsWidget> {
                 style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 4),
               Text("Creator: ${short.creatorName ?? '-'}"),
-              Text("Category: ${short.category ?? '-'}"),
               Text("Parts: ${short.totalParts ?? 0}"),
-              Text("Views: ${short.viewCount ?? 0}"),
-              Text("Status: $status"),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [

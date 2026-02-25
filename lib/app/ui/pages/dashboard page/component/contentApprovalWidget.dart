@@ -73,20 +73,10 @@ class _ContentApprovalWidgetState extends State<ContentApprovalWidget> {
                 style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 4),
-              // Genre and Type
-              Text(
-                '${content.genreList?.firstOrNull ?? "Unknown Genre"} - ${content.type ?? "Unknown Type"}',
-                style: TextStyle(color: themeData.hintColor),
-              ),
               // Media House and Language
               Text('Uploaded by: ${content.mediaHouseName ?? "Unknown"}'),
-              Text(
-                  'Language: ${content.languageList?.join(", ") ?? "Unknown"}'),
-              // Upload Date and Status
-              Text('Uploaded at: ${content.uploadDateTime ?? "Unknown"}'),
-              Text('Status: ${content.approvalStatus ?? "Pending"}'),
-              const SizedBox(height: 12),
+
+              const SizedBox(height: 6),
               // Open Button
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,

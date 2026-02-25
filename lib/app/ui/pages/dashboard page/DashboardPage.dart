@@ -246,7 +246,7 @@ class _DashboardPageState extends State<DashboardPage> {
                               children: [
                                 if (showContentApprovals)
                                   SizedBox(
-                                    height: 350,
+                                    height: 250,
                                     child: _buildRequestCard(
                                       context,
                                       title: 'Content Approvals',
@@ -260,7 +260,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   const SizedBox(height: 10),
                                 if (showMediaHouseApprovals)
                                   SizedBox(
-                                    height: 350,
+                                    height: 250,
                                     child: _buildRequestCard(
                                       context,
                                       title: 'Media House Approvals',
@@ -273,7 +273,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   const SizedBox(height: 10),
                                 if (showPromoterApprovals)
                                   SizedBox(
-                                    height: 350,
+                                    height: 250,
                                     child: _buildRequestCard(
                                       context,
                                       title: 'Promoter Approvals',
@@ -285,7 +285,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   const SizedBox(height: 10),
                                 if (showShortsApprovals)
                                   SizedBox(
-                                    height: 350,
+                                    height: 250,
                                     child: _buildRequestCard(
                                       context,
                                       title: 'Shorts Approvals',
@@ -922,8 +922,6 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   List<Map<String, dynamic>> _buildRevenueSplitData() {
-    final theme = Provider.of<ThemeProvider>(context, listen: false).getTheme;
-    final primary = theme.primaryColor;
     return [
       {
         'title': 'Movie Revenue',
@@ -959,7 +957,6 @@ class _DashboardPageState extends State<DashboardPage> {
           'percentText':
               item['percentText']?.toString() ?? '${value.toStringAsFixed(1)}%',
           'count': (item['count'] as num?)?.toInt(),
-          'color': item['color'] ?? primary,
         };
       }).toList();
       return mapped;

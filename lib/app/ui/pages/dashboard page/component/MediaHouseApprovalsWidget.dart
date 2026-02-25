@@ -95,12 +95,8 @@ class _MediaHouseApprovalsWidgetState extends State<MediaHouseApprovalsWidget> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text('Email: ${mediaHouse.email ?? ''}'),
-                            Text('Location: ${mediaHouse.location!.city}'),
-                            Text('Joined Date: ${mediaHouse.joinDate ?? ''}'),
-                            Text('Status: ${mediaHouse.status ?? ""}'),
-                            const SizedBox(height: 12),
+                            Text('Mobile: ${mediaHouse.contactNumber ?? ""}'),
+                            const SizedBox(height: 6),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [

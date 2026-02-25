@@ -68,12 +68,8 @@ class _PromoterApprovalsWidgetState extends State<PromoterApprovalsWidget> {
                               ),
                               _buildPromoterLocation(
                                   promoter, selectedThemeData),
-                              Text('Email: ${promoter.userId!.emailId ?? ''}'),
                               Text(
                                   'Mobile: ${promoter.userId!.mobileNumber ?? ''}'),
-                              Text(
-                                  'Reffered By: ${promoter.userId!.refferedBy ?? 'NA'}'),
-                              const SizedBox(height: 12),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
