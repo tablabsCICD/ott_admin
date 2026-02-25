@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:io' as io;
-
 import 'package:admin_ott/app/core/constant/api_constant.dart';
 import 'package:admin_ott/app/core/network/api_helper.dart';
 import 'package:admin_ott/app/widgets/show_toast.dart';
@@ -17,6 +15,7 @@ class ShortsProvider extends ChangeNotifier {
   final ApiHelper _apiHelper = ApiHelper();
 
   List<ShortMaster> shorts = [];
+  List<ShortMaster> _shortsByStatus = [];
   ShortDetailData? shortDetail;
 
   bool isLoading = false;
@@ -24,11 +23,20 @@ class ShortsProvider extends ChangeNotifier {
   bool isSubmitting = false;
   bool isDetailLoading = false;
   bool isPartDeleting = false;
+  bool isStatusListLoading = false;
+  bool isUpdatingShortStatus = false;
   bool _isMovieUploading = false;
   double movieUploadProgress = 0.0;
   String? detailError;
+  String? statusListError;
+  int statusListTotalItems = 0;
+  int statusListTotalPages = 0;
+  int statusListCurrentPage = 0;
+  String _currentStatusFilter = "PENDING";
 
   bool get isMovieUploading => _isMovieUploading;
+  List<ShortMaster> get filteredShortsByStatus => _shortsByStatus;
+  String get currentStatusFilter => _currentStatusFilter;
 
   final TextEditingController movieUrlController = TextEditingController();
 
@@ -48,7 +56,7 @@ class ShortsProvider extends ChangeNotifier {
         );
       }
     } catch (e) {
-      log("Shorts fetch error -> $e");
+      //log("Shorts fetch error -> $e");
       CustomToast.show('Failed to fetch shorts', isSuccess: false);
     } finally {
       isLoading = false;
@@ -81,7 +89,7 @@ class ShortsProvider extends ChangeNotifier {
       );
       return false;
     } catch (e) {
-      log('Add short exception -> $e');
+      //log('Add short exception -> $e');
       CustomToast.show('Something went wrong while creating short',
           isSuccess: false);
       return false;
@@ -108,7 +116,7 @@ class ShortsProvider extends ChangeNotifier {
       CustomToast.show('Failed to delete short', isSuccess: false);
       return false;
     } catch (e) {
-      log('Delete short exception -> $e');
+      //log('Delete short exception -> $e');
       CustomToast.show('Something went wrong while deleting short',
           isSuccess: false);
       return false;
@@ -138,7 +146,7 @@ class ShortsProvider extends ChangeNotifier {
       CustomToast.show('Failed to update short', isSuccess: false);
       return false;
     } catch (e) {
-      log('Update short exception -> $e');
+      //log('Update short exception -> $e');
       CustomToast.show('Something went wrong while updating short',
           isSuccess: false);
       return false;
@@ -157,7 +165,7 @@ class ShortsProvider extends ChangeNotifier {
       detailError = null;
       notifyListeners();
       final response =
-          await _apiHelper.getApi(ApiConstant.shortDetail(shortId, userId));
+          await _apiHelper.getApi(ApiConstant.shortDetail(shortId));
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         final mapped = ShortDetailResponse.fromJson(decoded);
@@ -167,9 +175,105 @@ class ShortsProvider extends ChangeNotifier {
       }
     } catch (e) {
       detailError = e.toString();
-      log('Short detail exception -> $e');
+      //log('Short detail exception -> $e');
     } finally {
       isDetailLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchShortsByStatus({
+    String status = "PENDING",
+    int page = 0,
+    int size = 10,
+  }) async {
+    try {
+      isStatusListLoading = true;
+      statusListError = null;
+      _currentStatusFilter = status;
+      notifyListeners();
+
+      final response = await _apiHelper.getApi(
+          ApiConstant.shortsByStatusPage(status, page: page, size: size));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final mapped = ShortsByStatusPageResponse.fromJson(data);
+        if (mapped.success == true && mapped.data != null) {
+          _shortsByStatus = mapped.data!.shorts;
+          statusListTotalItems = mapped.data!.totalItems;
+          statusListTotalPages = mapped.data!.totalPages;
+          statusListCurrentPage = mapped.data!.currentPage;
+        } else {
+          _shortsByStatus = [];
+          statusListTotalItems = 0;
+          statusListTotalPages = 0;
+          statusListCurrentPage = page;
+          statusListError = mapped.message ?? "Failed to fetch shorts";
+        }
+      } else {
+        _shortsByStatus = [];
+        statusListError = "Failed to fetch shorts (${response.statusCode})";
+      }
+    } catch (e) {
+      _shortsByStatus = [];
+      statusListError = "Something went wrong while fetching shorts";
+    } finally {
+      isStatusListLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateShortApprovalStatus({
+    required int shortId,
+    required String status,
+    bool refreshPendingList = true,
+  }) async {
+    try {
+      isUpdatingShortStatus = true;
+      notifyListeners();
+
+      final response = await _apiHelper.putApi(
+        ApiConstant.approveShortStatus(shortId, status),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['success'] == true) {
+          final updatedContent = data['data'] is Map<String, dynamic>
+              ? (data['data'] as Map<String, dynamic>)['UpdatedContent']
+              : null;
+          final updatedMap = updatedContent is Map<String, dynamic>
+              ? updatedContent
+              : const <String, dynamic>{};
+          if (shortDetail?.id == shortId) {
+            shortDetail?.approvalStatus =
+                updatedMap['approvalStatus']?.toString() ?? status;
+            shortDetail?.approvedDateTime =
+                updatedMap['approvedDateTime'] ?? shortDetail?.approvedDateTime;
+          }
+          _shortsByStatus.removeWhere((item) => item.id == shortId);
+          if (refreshPendingList) {
+            await fetchShortsByStatus(status: _currentStatusFilter);
+          }
+          CustomToast.show(data['message']?.toString() ?? "Status updated");
+          return true;
+        }
+        CustomToast.show(
+          data['message']?.toString() ?? "Failed to update short status",
+          isSuccess: false,
+        );
+        return false;
+      }
+      CustomToast.show(
+        "Failed to update short status (${response.statusCode})",
+        isSuccess: false,
+      );
+      return false;
+    } catch (e) {
+      CustomToast.show("Something went wrong while updating status",
+          isSuccess: false);
+      return false;
+    } finally {
+      isUpdatingShortStatus = false;
       notifyListeners();
     }
   }
@@ -178,7 +282,8 @@ class ShortsProvider extends ChangeNotifier {
     try {
       isSubmitting = true;
       notifyListeners();
-      final response = await _apiHelper.postApiWithBody(ApiConstant.shortParts, body);
+      final response =
+          await _apiHelper.postApiWithBody(ApiConstant.shortParts, body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         final decoded = jsonDecode(response.body);
         final success = decoded['success'] == true;
@@ -190,7 +295,7 @@ class ShortsProvider extends ChangeNotifier {
       CustomToast.show('Failed to create short part', isSuccess: false);
       return false;
     } catch (e) {
-      log('Create part exception -> $e');
+      //log('Create part exception -> $e');
       CustomToast.show('Create short part failed', isSuccess: false);
       return false;
     } finally {
@@ -203,14 +308,15 @@ class ShortsProvider extends ChangeNotifier {
     try {
       isPartDeleting = true;
       notifyListeners();
-      final response = await _apiHelper.deleteApi(ApiConstant.deleteShortPart(partId));
+      final response =
+          await _apiHelper.deleteApi(ApiConstant.deleteShortPart(partId));
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded['success'] == true) return true;
       }
       return false;
     } catch (e) {
-      log('Delete part exception -> $e');
+      //log('Delete part exception -> $e');
       return false;
     } finally {
       isPartDeleting = false;
@@ -232,7 +338,7 @@ class ShortsProvider extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      log('Update part exception -> $e');
+      //log('Update part exception -> $e');
       return false;
     } finally {
       isSubmitting = false;
@@ -380,7 +486,7 @@ class ShortsProvider extends ChangeNotifier {
       }
     } catch (e) {
       movieUploadProgress = 0.0;
-      log('Video upload error -> $e');
+      //log('Video upload error -> $e');
       CustomToast.show('Error uploading video', isSuccess: false);
     } finally {
       if (!kIsWeb) {
@@ -391,7 +497,8 @@ class ShortsProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> uploadThumbnail(io.File? imageFile, html.File? webFile) async {
+  Future<String?> uploadThumbnail(
+      io.File? imageFile, html.File? webFile) async {
     try {
       final uri = Uri.parse(ApiConstant.uploadImg);
       final request = http.MultipartRequest('POST', uri);
@@ -437,7 +544,7 @@ class ShortsProvider extends ChangeNotifier {
       }
       return null;
     } catch (e) {
-      log('Upload thumbnail error -> $e');
+      //log('Upload thumbnail error -> $e');
       return null;
     }
   }

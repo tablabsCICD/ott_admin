@@ -1,5 +1,5 @@
 import 'package:admin_ott/app/provider/shortsProvider.dart';
-import 'package:admin_ott/app/ui/pages/manage%20video%20page/component/DisplayTrailer.dart';
+import 'package:admin_ott/app/ui/pages/shorts%20page/components/admin_shorts_player_page.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/components/create_short_parts_dialog.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/components/edit_short_master_dialog.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/components/edit_short_part_dialog.dart';
@@ -137,6 +137,8 @@ class _ShortMasterPageState extends State<ShortMasterPage> {
                       Text("Category: ${short.category ?? '-'}"),
                       Text("Coins/Part: ${short.coinsPerPart ?? 0}"),
                       Text("Rental: ${short.rentlDuration ?? '-'}"),
+                      Text(
+                          "Status: ${(short.approvalStatus ?? 'PENDING').toUpperCase()}"),
                       const SizedBox(height: 10),
                       if (short.isTrending == true)
                         Container(
@@ -175,6 +177,12 @@ class _ShortMasterPageState extends State<ShortMasterPage> {
                   _buildInfoTile("Views", "${short.viewCount ?? 0}"),
                 ],
               ),
+            ),
+            const SizedBox(height: 14),
+            _buildApprovalActions(
+              theme: theme,
+              provider: provider,
+              short: short,
             ),
             const SizedBox(height: 24),
             Row(
@@ -230,7 +238,12 @@ class _ShortMasterPageState extends State<ShortMasterPage> {
               ),
               itemBuilder: (_, index) {
                 final part = short.parts[index];
-                return _buildPartTile(theme, part);
+                return _buildPartTile(
+                  theme: theme,
+                  short: short,
+                  part: part,
+                  index: index,
+                );
               },
             ),
           ],
@@ -252,7 +265,121 @@ class _ShortMasterPageState extends State<ShortMasterPage> {
     );
   }
 
-  Widget _buildPartTile(ThemeData theme, ShortDetailPart part) {
+  Widget _buildApprovalActions({
+    required ThemeData theme,
+    required ShortsProvider provider,
+    required ShortDetailData short,
+  }) {
+    final selectedStatus = (short.approvalStatus ?? 'PENDING').toUpperCase();
+    final isUpdating = provider.isUpdatingShortStatus;
+    final shortId = short.id;
+
+    Widget statusAction({
+      required String label,
+    }) {
+      final disabled = isUpdating || shortId == null || selectedStatus == label;
+      return Expanded(
+          child: ElevatedButton(
+        onPressed: disabled
+            ? null
+            : () async {
+                final success = await provider.updateShortApprovalStatus(
+                  shortId: shortId,
+                  status: label,
+                );
+                if (!mounted || !success) return;
+                await provider.fetchShortDetail(
+                  shortId: widget.shortId,
+                  userId: 1,
+                );
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              selectedStatus == label ? theme.cardColor : theme.primaryColor,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: theme.cardColor,
+          disabledForegroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: disabled
+            ? Text(label)
+            : Text(
+                label.toLowerCase() == 'approved'
+                    ? 'Approve'
+                    : label.toLowerCase() == 'rejected'
+                        ? 'Reject'
+                        : 'Set Pending',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+      ));
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.cardColor.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.canvasColor.withValues(alpha: 0.12),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                "Admin Actions - ",
+                style: TextStyle(
+                  color: theme.canvasColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                selectedStatus,
+                style: TextStyle(
+                  color: theme.primaryColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              selectedStatus == "PENDING"
+                  ? SizedBox()
+                  : statusAction(
+                      label: "PENDING",
+                    ),
+              const SizedBox(width: 8),
+              selectedStatus == "APPROVED"
+                  ? SizedBox()
+                  : statusAction(
+                      label: "APPROVED",
+                    ),
+              const SizedBox(width: 8),
+              selectedStatus == "REJECTED"
+                  ? SizedBox()
+                  : statusAction(
+                      label: "REJECTED",
+                    ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPartTile({
+    required ThemeData theme,
+    required ShortDetailData short,
+    required ShortDetailPart part,
+    required int index,
+  }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Stack(
@@ -269,18 +396,22 @@ class _ShortMasterPageState extends State<ShortMasterPage> {
           if ((part.videoUrl ?? '').isNotEmpty)
             InkWell(
               onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => Dialog(
-                    child: AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: TrailerPage(trailerUrl: part.videoUrl ?? ''),
+                final initialIndex = short.parts.indexWhere(
+                  (p) => p.partId == part.partId,
+                );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdminShortsPlayerPage(
+                      short: short,
+                      initialIndex: initialIndex >= 0 ? initialIndex : index,
                     ),
                   ),
                 );
               },
               child: const Center(
-                child: Icon(Icons.play_circle_fill, color: Colors.white, size: 46),
+                child:
+                    Icon(Icons.play_circle_fill, color: Colors.white, size: 46),
               ),
             ),
           Positioned(
@@ -289,7 +420,8 @@ class _ShortMasterPageState extends State<ShortMasterPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: part.isFreePreview == true ? Colors.green : Colors.black54,
+                color:
+                    part.isFreePreview == true ? Colors.green : Colors.black54,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(

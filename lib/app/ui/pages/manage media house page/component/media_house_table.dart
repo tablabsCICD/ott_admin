@@ -15,7 +15,6 @@ class MediaHouseTable extends StatefulWidget {
 class _MediaHouseTableState extends State<MediaHouseTable> {
   // Sample data extracted from the provided JSON response
 
-
   // State variables for sorting
   bool ascending = true;
   int sortColumnIndex = 0;
@@ -44,106 +43,110 @@ class _MediaHouseTableState extends State<MediaHouseTable> {
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
 
     return Scaffold(
-      body: widget.mediaHouseData==null? Center(
-          child: Text(
-            "The media house list is empty because no media houses have been added yet.",
-            style: TextStyle(color: selectedThemeData.primaryColor),
-          )):SingleChildScrollView(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            sortColumnIndex: sortColumnIndex,
-            sortAscending: ascending,
-            columns: [
-              DataColumn(
-                label: Text(
-                  'Logo',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: selectedThemeData.primaryColor,
+      body: widget.mediaHouseData == null
+          ? Center(
+              child: Text(
+              "The media house list is empty because no media houses have been added yet.",
+              style: TextStyle(color: selectedThemeData.primaryColor),
+            ))
+          : SingleChildScrollView(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  sortColumnIndex: sortColumnIndex,
+                  sortAscending: ascending,
+                  columns: [
+                    DataColumn(
+                      columnWidth: FixedColumnWidth(90),
+                      label: Text(
+                        'Logo',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: selectedThemeData.primaryColor,
+                        ),
+                      ),
+                      numeric: true,
+                      //  onSort: (columnIndex, ascending) => onSort(columnIndex, ascending),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Media House',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: selectedThemeData.primaryColor,
+                        ),
+                      ),
+                      // onSort: (columnIndex, ascending) => onSort(columnIndex, ascending),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Revenue',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: selectedThemeData.primaryColor,
+                        ),
+                      ),
+                      numeric: true,
+                      //  onSort: (columnIndex, ascending) => onSort(columnIndex, ascending),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Total Views',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: selectedThemeData.primaryColor,
+                        ),
+                      ),
+                      numeric: true,
+                      // onSort: (columnIndex, ascending) => onSort(columnIndex, ascending),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Posts',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: selectedThemeData.primaryColor),
+                      ),
+                      numeric: true,
+                      //   onSort: (columnIndex, ascending) => onSort(columnIndex, ascending),
+                    ),
+                  ],
+                  rows: widget.mediaHouseData!.map((data) {
+                    return DataRow(cells: [
+                      DataCell(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: CircleAvatar(
+                            radius: 25,
+                            backgroundImage: NetworkImage(data.logo ?? ''),
+                          ),
+                        ),
+                      ),
+                      DataCell(Text(
+                        data.mediaHouseName!,
+                        style: TextStyle(fontSize: 16),
+                      )),
+                      DataCell(Text(
+                        data.totalReveneu!,
+                        style: TextStyle(fontSize: 16),
+                      )),
+                      DataCell(Text(
+                        data.totalViews!,
+                        style: TextStyle(fontSize: 16),
+                      )),
+                      DataCell(Text(
+                        data.postCount!,
+                        style: TextStyle(fontSize: 16),
+                      )),
+                    ]);
+                  }).toList(),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                numeric: true,
-                //  onSort: (columnIndex, ascending) => onSort(columnIndex, ascending),
               ),
-              DataColumn(
-                label: Text(
-                  'Media House',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: selectedThemeData.primaryColor,
-                  ),
-                ),
-               // onSort: (columnIndex, ascending) => onSort(columnIndex, ascending),
-              ),
-              DataColumn(
-                label: Text(
-                  'Revenue',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: selectedThemeData.primaryColor,
-                  ),
-                ),
-                numeric: true,
-              //  onSort: (columnIndex, ascending) => onSort(columnIndex, ascending),
-              ),
-              DataColumn(
-                label: Text(
-                  'Total Views',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: selectedThemeData.primaryColor,
-                  ),
-                ),
-                numeric: true,
-               // onSort: (columnIndex, ascending) => onSort(columnIndex, ascending),
-              ),
-              DataColumn(
-                label: Text(
-                  'Posts',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: selectedThemeData.primaryColor
-                  ),
-                ),
-                numeric: true,
-             //   onSort: (columnIndex, ascending) => onSort(columnIndex, ascending),
-              ),
-            ],
-            rows: widget.mediaHouseData!.map((data) {
-              return DataRow(cells: [
-                DataCell( Padding(
-                  padding: const EdgeInsets.symmetric(vertical:   8.0),
-                  child: CircleAvatar(
-                    radius: 25,
-                    backgroundImage: NetworkImage(data.logo??''),
-                  ),
-                ),),
-                DataCell(Text(
-                  data.mediaHouseName!,
-                  style: TextStyle(fontSize: 16),
-                )),
-                DataCell(Text(
-                  data.totalReveneu!,
-                  style: TextStyle(fontSize: 16),
-                )),
-                DataCell(Text(
-                  data.totalViews!,
-                  style: TextStyle(fontSize: 16),
-                )),
-                DataCell(Text(
-                  data.postCount!,
-                  style: TextStyle(fontSize: 16),
-                )),
-              ]);
-            }).toList(),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(8),
             ),
-          ),
-        ),
-      ),
     );
   }
 }

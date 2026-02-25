@@ -2,8 +2,10 @@ import 'package:admin_ott/app/provider/dashboardProvider.dart';
 import 'package:admin_ott/app/provider/fullscreenProvider.dart';
 import 'package:admin_ott/app/provider/mediaHouseProvider.dart';
 import 'package:admin_ott/app/provider/promoterProvider.dart';
+import 'package:admin_ott/app/provider/shortsProvider.dart';
 import 'package:admin_ott/app/provider/userGraphProvider.dart';
 import 'package:admin_ott/app/provider/videoProvider.dart';
+import 'package:admin_ott/app/ui/pages/dashboard%20page/component/ShortsApprovalsWidget.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/contentApprovalWidget.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/media_house_onboardGraph.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/MediaHouseApprovalsWidget.dart';
@@ -45,6 +47,8 @@ class _DashboardPageState extends State<DashboardPage> {
           .fetchMediaHouseByStatus("PENDING");
       Provider.of<PromoterProvider>(context, listen: false)
           .fetchPromotersByStatus("PENDING");
+      Provider.of<ShortsProvider>(context, listen: false)
+          .fetchShortsByStatus(status: "PENDING");
     });
   }
 
@@ -97,6 +101,14 @@ class _DashboardPageState extends State<DashboardPage> {
         .isNotEmpty;
     final showPromoterApprovals =
         context.watch<PromoterProvider>().filteredPromotersByStatus.isNotEmpty;
+    final shortsProvider = context.watch<ShortsProvider>();
+    final showShortsApprovals = shortsProvider.isStatusListLoading ||
+        shortsProvider.filteredShortsByStatus.isNotEmpty;
+
+    final allApprovalsPresent = showContentApprovals &&
+        showMediaHouseApprovals &&
+        showPromoterApprovals &&
+        showShortsApprovals;
 
     return Scaffold(
         backgroundColor: selectedThemeData.scaffoldBackgroundColor,
@@ -180,8 +192,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     Divider(
                       color: selectedThemeData.cardColor,
                     ),
-
-                    // Cards for Requests (Responsive Layout)
                     ResponsiveWidget.isMobile(context)
                         ? SizedBox()
                         : Row(
@@ -227,103 +237,185 @@ class _DashboardPageState extends State<DashboardPage> {
                               )
                             ],
                           ),
-                    SizedBox(
-                      height: 10,
-                    ),
 
-                    ResponsiveWidget.isMobile(context) //// for mobile screen
-                        ? Column(
-                            children: [
-                              if (showContentApprovals)
-                                SizedBox(
-                                  height: 450,
-                                  child: _buildRequestCard(
-                                    context,
-                                    title: 'Content Approvals',
-                                    child: ContentApprovalWidget(),
-                                  ),
-                                ),
-                              if (showContentApprovals &&
-                                  (showMediaHouseApprovals ||
-                                      showPromoterApprovals))
-                                const SizedBox(height: 10),
-                              if (showMediaHouseApprovals)
-                                SizedBox(
-                                  height: 450,
-                                  child: _buildRequestCard(
-                                    context,
-                                    title: 'Media House Approvals',
-                                    child: MediaHouseApprovalsWidget(),
-                                  ),
-                                ),
-                              if (showMediaHouseApprovals &&
-                                  showPromoterApprovals)
-                                const SizedBox(height: 10),
-                              if (showPromoterApprovals)
-                                SizedBox(
-                                  height: 450,
-                                  child: _buildRequestCard(
-                                    context,
-                                    title: 'Promoter Approvals',
-                                    child: PromoterApprovalsWidget(),
-                                  ),
-                                ),
-                            ],
-                          )
-                        : Row(
-                            // for web n tablet screen
-                            children: [
-                              if (showContentApprovals)
-                                Expanded(
-                                  flex: 1,
-                                  child: SizedBox(
-                                    height: 450,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: ResponsiveWidget.isMobile(
+                              context) //// for mobile screen
+                          ? Column(
+                              children: [
+                                if (showContentApprovals)
+                                  SizedBox(
+                                    height: 350,
                                     child: _buildRequestCard(
                                       context,
                                       title: 'Content Approvals',
                                       child: ContentApprovalWidget(),
                                     ),
                                   ),
-                                ),
-                              if (showContentApprovals &&
-                                  (showMediaHouseApprovals ||
-                                      showPromoterApprovals))
-                                const SizedBox(width: 10),
-                              if (showMediaHouseApprovals)
-                                Expanded(
-                                  flex: 1,
-                                  child: SizedBox(
-                                    height: 450,
+                                if (showContentApprovals &&
+                                    (showMediaHouseApprovals ||
+                                        showPromoterApprovals ||
+                                        showShortsApprovals))
+                                  const SizedBox(height: 10),
+                                if (showMediaHouseApprovals)
+                                  SizedBox(
+                                    height: 350,
                                     child: _buildRequestCard(
                                       context,
                                       title: 'Media House Approvals',
                                       child: MediaHouseApprovalsWidget(),
                                     ),
                                   ),
-                                ),
-                              if (showMediaHouseApprovals &&
-                                  showPromoterApprovals)
-                                const SizedBox(width: 10),
-                              if (showPromoterApprovals)
-                                Expanded(
-                                  flex: 1,
-                                  child: SizedBox(
-                                    height: 450,
+                                if (showMediaHouseApprovals &&
+                                    (showPromoterApprovals ||
+                                        showShortsApprovals))
+                                  const SizedBox(height: 10),
+                                if (showPromoterApprovals)
+                                  SizedBox(
+                                    height: 350,
                                     child: _buildRequestCard(
                                       context,
                                       title: 'Promoter Approvals',
                                       child: PromoterApprovalsWidget(),
                                     ),
                                   ),
+                                if (showPromoterApprovals &&
+                                    showShortsApprovals)
+                                  const SizedBox(height: 10),
+                                if (showShortsApprovals)
+                                  SizedBox(
+                                    height: 350,
+                                    child: _buildRequestCard(
+                                      context,
+                                      title: 'Shorts Approvals',
+                                      child: ShortsApprovalsWidget(),
+                                    ),
+                                  ),
+                              ],
+                            )
+                          : allApprovalsPresent // this condition is also used in _buildInsightsSection  to manage space when all 4 approvals are present, also used in
+                              ? Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 1,
+                                      child: SizedBox(
+                                        height: 450,
+                                        child: _buildRequestCard(
+                                          context,
+                                          title: 'Content Approvals',
+                                          child: ContentApprovalWidget(),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      flex: 1,
+                                      child: SizedBox(
+                                        height: 450,
+                                        child: _buildRequestCard(
+                                          context,
+                                          title: 'Promoter Approvals',
+                                          child: PromoterApprovalsWidget(),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      flex: 1,
+                                      child: SizedBox(
+                                        height: 450,
+                                        child: _buildRequestCard(
+                                          context,
+                                          title: 'Shorts Approvals',
+                                          child: const ShortsApprovalsWidget(),
+                                        ),
+                                      ),
+                                    )
+                                  ],
+                                )
+                              : Row(
+                                  children: [
+                                    if (showContentApprovals)
+                                      Expanded(
+                                        flex: 1,
+                                        child: SizedBox(
+                                          height: 450,
+                                          child: _buildRequestCard(
+                                            context,
+                                            title: 'Content Approvals',
+                                            child: ContentApprovalWidget(),
+                                          ),
+                                        ),
+                                      ),
+                                    if (showContentApprovals &&
+                                        (showMediaHouseApprovals ||
+                                            showPromoterApprovals ||
+                                            showShortsApprovals))
+                                      const SizedBox(width: 10),
+                                    if (showMediaHouseApprovals)
+                                      Expanded(
+                                        flex: 1,
+                                        child: SizedBox(
+                                          height: 450,
+                                          child: _buildRequestCard(
+                                            context,
+                                            title: 'Media House Approvals',
+                                            child: MediaHouseApprovalsWidget(),
+                                          ),
+                                        ),
+                                      ),
+                                    if (showMediaHouseApprovals &&
+                                        (showPromoterApprovals ||
+                                            showShortsApprovals))
+                                      const SizedBox(width: 10),
+                                    if (showPromoterApprovals)
+                                      Expanded(
+                                        flex: 1,
+                                        child: SizedBox(
+                                          height: 450,
+                                          child: _buildRequestCard(
+                                            context,
+                                            title: 'Promoter Approvals',
+                                            child: PromoterApprovalsWidget(),
+                                          ),
+                                        ),
+                                      ),
+                                    if (showPromoterApprovals &&
+                                        showShortsApprovals)
+                                      const SizedBox(width: 10),
+                                    if (showShortsApprovals)
+                                      Expanded(
+                                        flex: 1,
+                                        child: SizedBox(
+                                          height: 450,
+                                          child: _buildRequestCard(
+                                            context,
+                                            title: 'Shorts Approvals',
+                                            child:
+                                                const ShortsApprovalsWidget(),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                            ],
-                          ),
-                    SizedBox(
-                      height: ResponsiveWidget.isMobile(context) ? 10 : 10,
                     ),
+                    SizedBox(
+                      height: 10,
+                    ),
+                    ResponsiveWidget.isMobile(context)
+                        ? SizedBox(
+                            height: 350,
+                            child: Card(
+                                color: Theme.of(context).cardColor,
+                                child: RevenueChart()),
+                          )
+                        : SizedBox(),
+
                     Consumer<DashboardProvider>(
                         builder: (context, provider, _) {
-                      return _buildInsightsSection(context, provider);
+                      return _buildInsightsSection(
+                          context, provider, allApprovalsPresent);
                     }),
                   ],
                 ),
@@ -745,8 +837,8 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildInsightsSection(
-      BuildContext context, DashboardProvider provider) {
+  Widget _buildInsightsSection(BuildContext context, DashboardProvider provider,
+      bool allApprovalsPresent) {
     final isMobile = ResponsiveWidget.isMobile(context);
     final revenueData = _buildRevenueSplitData();
     final contentData = _buildContentTypeData(provider);
@@ -768,9 +860,11 @@ class _DashboardPageState extends State<DashboardPage> {
             title: 'Content Types',
             subtitle: 'Distribution of approved content',
             totalLabel: 'Total Units',
-            totalValue: contentData
-                .fold<num>(0, (sum, item) => sum + (item['value'] as num))
-                .toStringAsFixed(0),
+            totalValue: provider.contentTypeTotal > 0
+                ? provider.contentTypeTotal.toString()
+                : contentData
+                    .fold<num>(0, (sum, item) => sum + (item['value'] as num))
+                    .toStringAsFixed(0),
             data: contentData,
             chartKey: 'content',
           ),
@@ -779,8 +873,24 @@ class _DashboardPageState extends State<DashboardPage> {
     }
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        allApprovalsPresent
+            ? Expanded(
+                flex: 1,
+                child: SizedBox(
+                  height: 450,
+                  child: _buildRequestCard(
+                    context,
+                    title: 'Media House Approvals',
+                    child: MediaHouseApprovalsWidget(),
+                  ),
+                ),
+              )
+            : SizedBox(),
+        allApprovalsPresent ? const SizedBox(width: 10) : SizedBox(),
         Expanded(
+          flex: 1,
           child: _buildInsightCard(
             title: 'Average Revenue',
             subtitle: 'Revenue split by content category',
@@ -793,13 +903,16 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         const SizedBox(width: 10),
         Expanded(
+          flex: 1,
           child: _buildInsightCard(
             title: 'Content Types',
             subtitle: 'Distribution of approved content',
             totalLabel: 'Total Units',
-            totalValue: contentData
-                .fold<num>(0, (sum, item) => sum + (item['value'] as num))
-                .toStringAsFixed(0),
+            totalValue: provider.contentTypeTotal > 0
+                ? provider.contentTypeTotal.toString()
+                : contentData
+                    .fold<num>(0, (sum, item) => sum + (item['value'] as num))
+                    .toStringAsFixed(0),
             data: contentData,
             chartKey: 'content',
           ),
@@ -817,22 +930,18 @@ class _DashboardPageState extends State<DashboardPage> {
         'revenue': 750.0,
         'value': 75.0,
         'percentText': '75%',
-        'color': primary,
       },
       {
         'title': 'Series Revenue',
         'revenue': 127.0,
         'value': 12.7,
         'percentText': '12.7%',
-        'color': Color.alphaBlend(primary.withValues(alpha: 0.55), Colors.blue),
       },
       {
         'title': 'Short Revenue',
         'revenue': 123.0,
         'value': 12.3,
         'percentText': '12.3%',
-        'color':
-            Color.alphaBlend(primary.withValues(alpha: 0.5), Colors.orange),
       },
     ];
   }
@@ -847,26 +956,12 @@ class _DashboardPageState extends State<DashboardPage> {
         return {
           'title': item['title'] ?? 'Unknown',
           'value': value,
-          'percentText': '${value.toStringAsFixed(1)}%',
+          'percentText':
+              item['percentText']?.toString() ?? '${value.toStringAsFixed(1)}%',
+          'count': (item['count'] as num?)?.toInt(),
           'color': item['color'] ?? primary,
         };
       }).toList();
-
-      final hasShort = mapped.any(
-          (item) => item['title'].toString().toLowerCase().contains('short'));
-
-      if (!hasShort) {
-        mapped.add({
-          'title': 'Shorts',
-          'value': 12.3,
-          'percentText': '12.3%',
-          'color': Color.alphaBlend(
-            primary.withValues(alpha: 0.5),
-            Colors.orange,
-          ),
-        });
-      }
-
       return mapped;
     }
 
@@ -945,6 +1040,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         data: data,
                         theme: theme,
                         touchedIndex: touchedIndex,
+                        totalValue: totalValue,
                         chartKey: chartKey,
                         total: total,
                       ),
@@ -965,6 +1061,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           data: data,
                           theme: theme,
                           touchedIndex: touchedIndex,
+                          totalValue: totalValue,
                           chartKey: chartKey,
                           total: total,
                         ),
@@ -998,7 +1095,9 @@ class _DashboardPageState extends State<DashboardPage> {
                   percentText: item['percentText']?.toString() ?? '',
                   revenueText: isCurrency
                       ? '₹${(item['revenue'] as num).toStringAsFixed(0)}'
-                      : null,
+                      : ((item['count'] as int?) != null
+                          ? '${item['count']} items'
+                          : null),
                 );
               }),
             ),
@@ -1012,9 +1111,13 @@ class _DashboardPageState extends State<DashboardPage> {
     required List<Map<String, dynamic>> data,
     required ThemeData theme,
     required int? touchedIndex,
+    required String totalValue,
     required String chartKey,
     required num total,
   }) {
+    final hasValidTouchedIndex =
+        touchedIndex != null && touchedIndex >= 0 && touchedIndex < data.length;
+
     return SizedBox(
       height: 170,
       child: Stack(
@@ -1022,12 +1125,15 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           PieChart(
             PieChartData(
-              sectionsSpace: 2,
-              centerSpaceRadius: 44,
+              sectionsSpace: 5,
+              centerSpaceRadius: 49,
               pieTouchData: PieTouchData(
                 touchCallback: (event, response) {
-                  if (!event.isInterestedForInteractions ||
-                      response?.touchedSection == null) {
+                  final section = response?.touchedSection;
+                  final index = section?.touchedSectionIndex ?? -1;
+                  final isValidIndex = index >= 0 && index < data.length;
+
+                  if (!event.isInterestedForInteractions || !isValidIndex) {
                     setState(() {
                       if (chartKey == 'revenue') {
                         _revenueTouchedIndex = null;
@@ -1037,7 +1143,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     });
                     return;
                   }
-                  final index = response!.touchedSection!.touchedSectionIndex;
                   setState(() {
                     if (chartKey == 'revenue') {
                       _revenueTouchedIndex = index;
@@ -1052,19 +1157,24 @@ class _DashboardPageState extends State<DashboardPage> {
                 final highlighted = touchedIndex == index;
                 return PieChartSectionData(
                   value: value,
-                  color: _sliceColorForIndex(theme.primaryColor, index),
-                  title: '',
+                  color: theme.primaryColor,
+                  title: (data[index]['title'] ?? '').toString(),
+                  titleStyle: TextStyle(
+                    fontSize: highlighted ? 12 : 0,
+                    fontWeight: FontWeight.w600,
+                    color: theme.canvasColor,
+                  ),
                   radius: highlighted ? 40 : 34,
                 );
               }),
             ),
           ),
           Text(
-            touchedIndex != null
+            hasValidTouchedIndex
                 ? data[touchedIndex]['percentText'].toString()
-                : total.toStringAsFixed(0),
+                : totalValue, //total.toStringAsFixed(0),
             style: TextStyle(
-              fontSize: touchedIndex != null ? 16 : 14,
+              fontSize: hasValidTouchedIndex ? 16 : 14,
               fontWeight: FontWeight.w700,
               color: theme.canvasColor,
             ),
@@ -1186,22 +1296,27 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
             const SizedBox(height: 6),
-            Text(
-              percentText,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-            if (revenueText != null)
-              Text(
-                revenueText,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: theme.canvasColor.withValues(alpha: 0.72),
+            Row(
+              children: [
+                Text(
+                  percentText,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 6),
+                if (revenueText != null)
+                  Text(
+                    revenueText,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: theme.canvasColor.withValues(alpha: 0.72),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),

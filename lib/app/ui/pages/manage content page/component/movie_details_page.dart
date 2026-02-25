@@ -1,7 +1,7 @@
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/provider/videoProvider.dart';
 import 'package:admin_ott/app/ui/pages/manage%20media%20house%20page/component/movie_sales_chart.dart';
-import 'package:admin_ott/app/ui/pages/manage%20video%20page/component/DisplayTrailer.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/DisplayTrailer.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:admin_ott/domain/entities/content.dart';
 import 'package:admin_ott/domain/entities/mediaHouse.dart';
@@ -241,8 +241,8 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
     final result = await showDialog<double>(
       context: context,
       builder: (dialogContext) {
-        final theme = Provider.of<ThemeProvider>(dialogContext, listen: false)
-            .getTheme;
+        final theme =
+            Provider.of<ThemeProvider>(dialogContext, listen: false).getTheme;
         return StatefulBuilder(
           builder: (_, setDialogState) {
             return AlertDialog(
@@ -705,6 +705,10 @@ class ActionPanel extends StatelessWidget {
               final provider =
                   Provider.of<VideoProvider>(context, listen: false);
               provider.reasonController.text = controller.text;
+              if (content.id != null) {
+                Provider.of<VideoProvider>(context, listen: false)
+                    .changeContentStatus(context, "PENDING", content.id!);
+              }
               Navigator.pop(context);
               provider.editContent(context, content);
             },

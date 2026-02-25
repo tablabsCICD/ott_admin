@@ -90,7 +90,7 @@ class _ShortsPageState extends State<ShortsPage> {
     final crossAxisCount = ResponsiveWidget.isDesktop(context)
         ? 4
         : ResponsiveWidget.isTablet(context)
-            ? 3
+            ? 4
             : 2;
 
     return Scaffold(
@@ -105,16 +105,19 @@ class _ShortsPageState extends State<ShortsPage> {
 
           final filteredShorts = provider.shorts.where((short) {
             final title = (short.title ?? '').toLowerCase();
-            final date = _parseDate(short.createdAt ?? short.createdDate ?? short.uploadDateTime);
+            final date = _parseDate(
+                short.createdAt ?? short.createdDate ?? short.uploadDateTime);
             final matchesSearch = _query.isEmpty || title.contains(_query);
             return matchesSearch && _inDateRange(date);
           }).toList();
 
           filteredShorts.sort((a, b) {
-            DateTime dateA = _parseDate(a.createdAt ?? a.createdDate ?? a.uploadDateTime) ??
-                DateTime(1970);
-            DateTime dateB = _parseDate(b.createdAt ?? b.createdDate ?? b.uploadDateTime) ??
-                DateTime(1970);
+            DateTime dateA =
+                _parseDate(a.createdAt ?? a.createdDate ?? a.uploadDateTime) ??
+                    DateTime(1970);
+            DateTime dateB =
+                _parseDate(b.createdAt ?? b.createdDate ?? b.uploadDateTime) ??
+                    DateTime(1970);
             switch (_sortBy) {
               case 'views_high':
                 return (b.viewCount ?? 0).compareTo(a.viewCount ?? 0);
@@ -191,19 +194,35 @@ class _ShortsPageState extends State<ShortsPage> {
                             child: DropdownButton<String>(
                               value: _sortBy,
                               onChanged: (value) {
-                                if (value != null) setState(() => _sortBy = value);
+                                if (value != null)
+                                  setState(() => _sortBy = value);
                               },
                               items: const [
-                                DropdownMenuItem(value: 'newest', child: Text("Newest")),
-                                DropdownMenuItem(value: 'oldest', child: Text("Oldest")),
-                                DropdownMenuItem(value: 'views_high', child: Text("Views High")),
-                                DropdownMenuItem(value: 'likes_high', child: Text("Likes High")),
-                                DropdownMenuItem(value: 'parts_high', child: Text("Parts High")),
-                                DropdownMenuItem(value: 'coins_high', child: Text("Coins High")),
                                 DropdownMenuItem(
-                                    value: 'trending_first', child: Text("Trending First")),
-                                DropdownMenuItem(value: 'title_az', child: Text("Title A-Z")),
-                                DropdownMenuItem(value: 'title_za', child: Text("Title Z-A")),
+                                    value: 'newest', child: Text("Newest")),
+                                DropdownMenuItem(
+                                    value: 'oldest', child: Text("Oldest")),
+                                DropdownMenuItem(
+                                    value: 'views_high',
+                                    child: Text("Views High")),
+                                DropdownMenuItem(
+                                    value: 'likes_high',
+                                    child: Text("Likes High")),
+                                DropdownMenuItem(
+                                    value: 'parts_high',
+                                    child: Text("Parts High")),
+                                DropdownMenuItem(
+                                    value: 'coins_high',
+                                    child: Text("Coins High")),
+                                DropdownMenuItem(
+                                    value: 'trending_first',
+                                    child: Text("Trending First")),
+                                DropdownMenuItem(
+                                    value: 'title_az',
+                                    child: Text("Title A-Z")),
+                                DropdownMenuItem(
+                                    value: 'title_za',
+                                    child: Text("Title Z-A")),
                               ],
                             ),
                           ),
@@ -221,7 +240,9 @@ class _ShortsPageState extends State<ShortsPage> {
                         children: [
                           searchField,
                           const SizedBox(height: 8),
-                          Align(alignment: Alignment.centerRight, child: filterBar),
+                          Align(
+                              alignment: Alignment.centerRight,
+                              child: filterBar),
                         ],
                       );
                     }
@@ -286,7 +307,8 @@ class _ShortsPageState extends State<ShortsPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_circle_outline, color: theme.primaryColor, size: 46),
+              Icon(Icons.add_circle_outline,
+                  color: theme.primaryColor, size: 46),
               const SizedBox(height: 10),
               Text(
                 "Add New Short",

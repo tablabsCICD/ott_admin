@@ -37,6 +37,8 @@ class ShortMaster {
   int? mediaHouseId;
   String? rentlDuration;
   dynamic uploadDateTime;
+  String? approvalStatus;
+  dynamic approvedDateTime;
   dynamic createdAt;
   dynamic createdDate;
   List<LanguageFile> languageList;
@@ -56,6 +58,8 @@ class ShortMaster {
     this.mediaHouseId,
     this.rentlDuration,
     this.uploadDateTime,
+    this.approvalStatus,
+    this.approvedDateTime,
     this.createdAt,
     this.createdDate,
     this.languageList = const [],
@@ -78,6 +82,8 @@ class ShortMaster {
       mediaHouseId: _asInt(json['mediaHouseId']),
       rentlDuration: json['rentlDuration']?.toString(),
       uploadDateTime: json['uploadDateTime'],
+      approvalStatus: json['approvalStatus']?.toString(),
+      approvedDateTime: json['approvedDateTime'],
       createdAt: json['createdAt'],
       createdDate: json['createdDate'],
       languageList: rawLang is List
@@ -205,6 +211,8 @@ class ShortDetailData {
   List<LanguageFile> languageList;
   List<ShortDetailPart> parts;
   String? rentlDuration;
+  String? approvalStatus;
+  dynamic approvedDateTime;
 
   ShortDetailData({
     this.id,
@@ -221,6 +229,8 @@ class ShortDetailData {
     this.languageList = const [],
     this.parts = const [],
     this.rentlDuration,
+    this.approvalStatus,
+    this.approvedDateTime,
   });
 
   factory ShortDetailData.fromJson(Map<String, dynamic> json) {
@@ -245,10 +255,13 @@ class ShortDetailData {
           : <LanguageFile>[],
       parts: rawParts is List
           ? rawParts
-              .map((e) => ShortDetailPart.fromJson(Map<String, dynamic>.from(e)))
+              .map(
+                  (e) => ShortDetailPart.fromJson(Map<String, dynamic>.from(e)))
               .toList()
           : <ShortDetailPart>[],
       rentlDuration: json['rentlDuration']?.toString(),
+      approvalStatus: json['approvalStatus']?.toString(),
+      approvedDateTime: json['approvedDateTime'],
     );
   }
 }
@@ -323,6 +336,57 @@ class ShortDetailResponse {
       success: _asBool(json['success']),
       data: json['data'] is Map<String, dynamic>
           ? ShortDetailData.fromJson(json['data'])
+          : null,
+    );
+  }
+}
+
+class ShortsByStatusPageData {
+  int totalItems;
+  int totalPages;
+  int currentPage;
+  List<ShortMaster> shorts;
+
+  ShortsByStatusPageData({
+    this.totalItems = 0,
+    this.totalPages = 0,
+    this.currentPage = 0,
+    this.shorts = const [],
+  });
+
+  factory ShortsByStatusPageData.fromJson(Map<String, dynamic> json) {
+    final rawShorts = json['shorts'];
+    return ShortsByStatusPageData(
+      totalItems: _asInt(json['totalItems']) ?? 0,
+      totalPages: _asInt(json['totalPages']) ?? 0,
+      currentPage: _asInt(json['currentPage']) ?? 0,
+      shorts: rawShorts is List
+          ? rawShorts
+              .map((e) => ShortMaster.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
+          : <ShortMaster>[],
+    );
+  }
+}
+
+class ShortsByStatusPageResponse {
+  String? message;
+  ShortsByStatusPageData? data;
+  bool? success;
+
+  ShortsByStatusPageResponse({
+    this.message,
+    this.data,
+    this.success,
+  });
+
+  factory ShortsByStatusPageResponse.fromJson(Map<String, dynamic> json) {
+    return ShortsByStatusPageResponse(
+      message: json['message']?.toString(),
+      success: _asBool(json['success']),
+      data: json['data'] is Map<String, dynamic>
+          ? ShortsByStatusPageData.fromJson(
+              Map<String, dynamic>.from(json['data']))
           : null,
     );
   }

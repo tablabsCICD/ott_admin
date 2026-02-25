@@ -363,7 +363,7 @@ class VideoProvider extends ChangeNotifier {
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.getApi(apiUrl);
-      log("get movie response by status::: " + response.body);
+      //log("get movie response by status::: " + response.body);
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
         GetAllVideoResponse getAllContentResponse =
@@ -376,7 +376,7 @@ class VideoProvider extends ChangeNotifier {
               _contentListByMediaHouse =
                   getAllContentResponse.data!.contentList!;
               _filteredContentListByMediaHouse.addAll(_contentListByMediaHouse);
-              log("filtered content list by media house size: ${_filteredContentListByMediaHouse.length}");
+              //log("filtered content list by media house size: ${_filteredContentListByMediaHouse.length}");
               _filteredContentList.clear();
               _filteredContentList = getAllContentResponse.data!.contentList!;
             } else {
@@ -386,12 +386,12 @@ class VideoProvider extends ChangeNotifier {
             notifyListeners();
           } else {
             _filteredContentList.clear();
-            log("empty list: ${getAllContentResponse.message}");
+            //log("empty list: ${getAllContentResponse.message}");
             notifyListeners();
           }
         } else {
           _filteredContentList.clear();
-          log("Error: ${getAllContentResponse.message}");
+          //log("Error: ${getAllContentResponse.message}");
           notifyListeners();
         }
       } else if (response.statusCode == 404) {

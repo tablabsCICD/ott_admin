@@ -10,23 +10,17 @@ import '../core/network/api_helper.dart';
 import '../core/utils/sharepreferences.dart';
 
 class LanguageProvider with ChangeNotifier {
-
-  LanguageProvider(){
+  LanguageProvider() {
     fetchLanguages();
     _fetchUserData();
   }
-
-
-
 
   Future<void> _fetchUserData() async {
     final localSharePreferences = LocalSharePreferences();
     final user = await localSharePreferences.getUser();
 
     _selectedLanguages = user!.selectedLanguages!;
-
   }
-
 
   List<String> _selectedLanguages = []; // Stores selected languages
 
@@ -39,7 +33,7 @@ class LanguageProvider with ChangeNotifier {
   void updateLanguages(List<String> newLanguages) {
     _selectedLanguages = newLanguages;
     notifyListeners(); // Notifies UI to update
-    log('$_selectedLanguages');
+    //log('$_selectedLanguages');
   }
 
   Future<void> fetchLanguages() async {
@@ -49,11 +43,12 @@ class LanguageProvider with ChangeNotifier {
       var response = await apiHelper.getApi(apiUrl);
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        AllLangResponse addUserResponse = AllLangResponse.fromJson(responseBody);
-        addUserResponse.data!.languages!.forEach((elemnet)=>{
-          _allLanguages.add(elemnet.name.toString())
-         // AppConstant().availableLanguages.add(elemnet.name.toString())
-        });
+        AllLangResponse addUserResponse =
+            AllLangResponse.fromJson(responseBody);
+        addUserResponse.data!.languages!.forEach((elemnet) => {
+              _allLanguages.add(elemnet.name.toString())
+              // AppConstant().availableLanguages.add(elemnet.name.toString())
+            });
         notifyListeners();
       } else {
         throw Exception('Failed to fetch languages');

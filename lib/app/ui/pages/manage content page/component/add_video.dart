@@ -1,5 +1,5 @@
 import 'package:admin_ott/app/provider/videoProvider.dart';
-import 'package:admin_ott/app/ui/pages/manage%20video%20page/component/setPercentageDialog.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/setPercentageDialog.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
 import 'package:admin_ott/domain/entities/content.dart';
 import 'package:admin_ott/domain/entities/mediaHouse.dart';

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:admin_ott/app/provider/dashboardProvider.dart';
+import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 // ignore: depend_on_referenced_packages
@@ -72,25 +73,6 @@ class _RevenueChartState extends State<RevenueChart> {
     }
   }
 
-  /*void _openDateRangePicker(BuildContext context) async {
-    final selectedRange = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      initialDateRange: startDate != null && endDate != null
-          ? DateTimeRange(start: startDate!, end: endDate!)
-          : null,
-    );
-
-    if (selectedRange != null) {
-      setState(() {
-        startDate = selectedRange.start;
-        endDate = selectedRange.end;
-      });
-      updateChartData();
-    }
-  }*/
-
   @override
   Widget build(BuildContext context) {
     final selectedThemeData = Provider.of<ThemeProvider>(context).getTheme;
@@ -106,90 +88,96 @@ class _RevenueChartState extends State<RevenueChart> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    buildDropdown(
-                      'Country',
-                      selectedCountry,
-                      locationSelection.keys.toList(),
-                      (value) {
-                        if (value != null) {
-                          setState(() {
-                            selectedCountry = value;
-                            selectedState = null;
-                            selectedDistrict = null;
-                            selectedArea = null;
-                          });
-                        }
-                      },
-                      selectedThemeData.cardColor,
-                    ),
-                    const SizedBox(width: 10),
-                    if (locationSelection[selectedCountry]?.isNotEmpty ?? false)
-                      buildDropdown(
-                        'State',
-                        selectedState,
-                        locationSelection[selectedCountry]!.keys.toList(),
-                        (value) {
-                          if (value != null) {
-                            setState(() {
-                              selectedState = value;
-                              selectedDistrict = null;
-                              selectedArea = null;
-                            });
-                          }
-                        },
-                        selectedThemeData.cardColor,
+                ResponsiveWidget.isMobile(context)
+                    ? SizedBox()
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          buildDropdown(
+                            'Country',
+                            selectedCountry,
+                            locationSelection.keys.toList(),
+                            (value) {
+                              if (value != null) {
+                                setState(() {
+                                  selectedCountry = value;
+                                  selectedState = null;
+                                  selectedDistrict = null;
+                                  selectedArea = null;
+                                });
+                              }
+                            },
+                            selectedThemeData.cardColor,
+                          ),
+                          const SizedBox(width: 10),
+                          if (locationSelection[selectedCountry]?.isNotEmpty ??
+                              false)
+                            buildDropdown(
+                              'State',
+                              selectedState,
+                              locationSelection[selectedCountry]!.keys.toList(),
+                              (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    selectedState = value;
+                                    selectedDistrict = null;
+                                    selectedArea = null;
+                                  });
+                                }
+                              },
+                              selectedThemeData.cardColor,
+                            ),
+                          const SizedBox(width: 10),
+                          if (selectedState != null &&
+                              locationSelection[selectedCountry]
+                                      ?[selectedState] !=
+                                  null &&
+                              locationSelection[selectedCountry]![
+                                      selectedState]!
+                                  .isNotEmpty)
+                            buildDropdown(
+                              'District',
+                              selectedDistrict,
+                              locationSelection[selectedCountry]![
+                                      selectedState]!
+                                  .keys
+                                  .toList(),
+                              (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    selectedDistrict = value;
+                                    selectedArea = null;
+                                  });
+                                }
+                              },
+                              selectedThemeData.cardColor,
+                            ),
+                          const SizedBox(width: 10),
+                          if (selectedDistrict != null &&
+                              locationSelection[selectedCountry]?[selectedState]
+                                      ?[selectedDistrict] !=
+                                  null &&
+                              locationSelection[selectedCountry]?[selectedState]
+                                      ?[selectedDistrict] !=
+                                  null)
+                            buildDropdown(
+                              'Taluka',
+                              selectedArea,
+                              locationSelection[selectedCountry]?[selectedState]
+                                          ?[selectedDistrict]
+                                      ?.toList() ??
+                                  [],
+                              (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    selectedArea = value;
+                                  });
+                                }
+                              },
+                              selectedThemeData.cardColor,
+                            ),
+                        ],
                       ),
-                    const SizedBox(width: 10),
-                    if (selectedState != null &&
-                        locationSelection[selectedCountry]?[selectedState] !=
-                            null &&
-                        locationSelection[selectedCountry]![selectedState]!
-                            .isNotEmpty)
-                      buildDropdown(
-                        'District',
-                        selectedDistrict,
-                        locationSelection[selectedCountry]![selectedState]!
-                            .keys
-                            .toList(),
-                        (value) {
-                          if (value != null) {
-                            setState(() {
-                              selectedDistrict = value;
-                              selectedArea = null;
-                            });
-                          }
-                        },
-                        selectedThemeData.cardColor,
-                      ),
-                    const SizedBox(width: 10),
-                    if (selectedDistrict != null &&
-                        locationSelection[selectedCountry]?[selectedState]
-                                ?[selectedDistrict] !=
-                            null &&
-                        locationSelection[selectedCountry]?[selectedState]
-                                ?[selectedDistrict] !=
-                            null)
-                      buildDropdown(
-                        'Taluka',
-                        selectedArea,
-                        locationSelection[selectedCountry]?[selectedState]
-                                    ?[selectedDistrict]
-                                ?.toList() ??
-                            [],
-                        (value) {
-                          if (value != null) {
-                            setState(() {
-                              selectedArea = value;
-                            });
-                          }
-                        },
-                        selectedThemeData.cardColor,
-                      ),
-                  ],
-                ),
                 ///////////////////////////////   GRAPH  ///////////////////////////////
                 Expanded(
                   child: SfCartesianChart(
@@ -202,7 +190,7 @@ class _RevenueChartState extends State<RevenueChart> {
                     ),
                     title: ChartTitle(
                         text: startDate != null && endDate != null
-                            ? 'Revenue Data ($startDate - $endDate) Total : ${provider.totalRevenue}'
+                            ? 'Revenue Data ($startDate - $endDate) \nTotal Revenue: ${provider.totalRevenue}'
                             : 'Revenue Data (No Date Range)',
                         textStyle: TextStyle(
                           color: selectedThemeData.canvasColor,

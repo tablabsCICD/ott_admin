@@ -37,7 +37,7 @@ import '../widgets/show_toast.dart';
 
 class UserProvider extends ChangeNotifier {
   UserProvider() : super() {
-    searchController.addListener(filterUsers);
+    searchController.addListener(applySearch);
   }
 
   TextEditingController firstNameController = TextEditingController();
@@ -68,18 +68,43 @@ class UserProvider extends ChangeNotifier {
 
   bool isEnbale = false;
 
-  void filterUsers() {
+  void applySearch([String? rawQuery]) {
+    final query = (rawQuery ?? searchController.text).trim().toLowerCase();
+
+    if (query.isEmpty) {
+      _filteredUsers = List<User>.from(_users);
+      notifyListeners();
+      return;
+    }
+
     _filteredUsers = _users.where((user) {
-      final query = searchController.text.toLowerCase();
-      return user.firstName!.toLowerCase().contains(query) ||
-          user.lastName!.toLowerCase().contains(query) ||
-          user.mobileNumber!.toLowerCase().contains(query) ||
-          (user.emailId!.toLowerCase().contains(query) ?? false) ||
-          (user.location!.state!.toLowerCase().contains(query) ?? false) ||
-          (user.location!.district!.toLowerCase().contains(query) ?? false) ||
-          (user.location!.taluka!.toLowerCase().contains(query) ?? false);
+      final values = [
+        user.firstName,
+        user.lastName,
+        user.mobileNumber,
+        user.emailId,
+        user.refferedBy,
+        user.location?.city,
+        user.location?.state,
+        user.location?.district,
+        user.location?.taluka,
+      ];
+
+      return values
+          .any((value) => value?.toLowerCase().contains(query) ?? false);
     }).toList();
     notifyListeners();
+  }
+
+  void clearUserSearch() {
+    if (searchController.text.isNotEmpty) {
+      searchController.clear();
+    }
+    applySearch('');
+  }
+
+  void filterUsers() {
+    applySearch();
   }
 
   setValue(User? user) async {
@@ -292,7 +317,7 @@ class UserProvider extends ChangeNotifier {
     try {
       var response = await apiHelper.postApiWithBody(apiUrl, data);
       if (response.statusCode == 200) {
-        log("user login response: ${response.body}");
+        //log("user login response: ${response.body}");
         Map<String, dynamic> responseBody = json.decode(response.body);
         LoginUserResponse addUserResponse =
             LoginUserResponse.fromJson(responseBody);
@@ -306,16 +331,16 @@ class UserProvider extends ChangeNotifier {
 
             if (loggedInUser.admin == true || hasAdminRole) {
               user = loggedInUser;
-              log("before SEtData ${user.firstName}");
+              //log("before SEtData ${user.firstName}");
               LocalSharePreferences localSharePreferences =
                   LocalSharePreferences();
               localSharePreferences.setBool(
                   SharedPreferencesConstant.isAdminLoggedIn, true);
-              log("check  SEtLogin ${await localSharePreferences.getBool(SharedPreferencesConstant.isAdminLoggedIn)}");
+              //log("check  SEtLogin ${await localSharePreferences.getBool(SharedPreferencesConstant.isAdminLoggedIn)}");
               localSharePreferences.setString(
                   SharedPreferencesConstant.currentAdmin,
                   jsonEncode(addUserResponse.data!.user));
-              log("after SEtData ${await localSharePreferences.getString(SharedPreferencesConstant.currentAdmin)}");
+              //log("after SEtData ${await localSharePreferences.getString(SharedPreferencesConstant.currentAdmin)}");
               notifyListeners();
               return {
                 'success': true,
@@ -380,8 +405,7 @@ class UserProvider extends ChangeNotifier {
         if (getAllUserResponse.success == true) {
           if (getAllUserResponse.data != null) {
             _users = getAllUserResponse.data!.users!;
-            _filteredUsers = _users;
-            notifyListeners();
+            applySearch();
           } else {
             debugPrint("empty list: ${getAllUserResponse.message}");
           }
@@ -513,13 +537,13 @@ class UserProvider extends ChangeNotifier {
         }
       }
     } on PlatformException catch (e) {
-      log('Image picker permission error: $e');
+      //log('Image picker permission error: $e');
       CustomToast.show(
         'Permission denied. Please allow photo/gallery access in app settings.',
         isSuccess: false,
       );
     } catch (e) {
-      log('Error picking image: $e');
+      //log('Error picking image: $e');
       CustomToast.show(
         'Unable to select image. Please try again.',
         isSuccess: false,
@@ -576,26 +600,26 @@ class UserProvider extends ChangeNotifier {
         if (fileUrl != null && fileUrl is String) {
           _uploadedImageUrl = fileUrl;
           profileController.text = _uploadedImageUrl!;
-          log('Image uploaded: $_uploadedImageUrl');
+          //log('Image uploaded: $_uploadedImageUrl');
           CustomToast.show('Image uploaded successfully', isSuccess: true);
         } else {
-          log('Upload success but fileUrl missing');
+          //log('Upload success but fileUrl missing');
           CustomToast.show(
             'Upload succeeded but image URL was not returned.',
             isSuccess: false,
           );
         }
       } else {
-        log(
-          'Upload failed: ${streamedResponse.statusCode} -> $responseBody',
-        );
+        //log(
+        //   'Upload failed: ${streamedResponse.statusCode} -> $responseBody',
+        // );
         CustomToast.show(
           'Upload failed (${streamedResponse.statusCode}). Please try again.',
           isSuccess: false,
         );
       }
     } catch (e) {
-      log('Error uploading image: $e');
+      //log('Error uploading image: $e');
       CustomToast.show(
         'Image upload failed. Please check network and permissions.',
         isSuccess: false,

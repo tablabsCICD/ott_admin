@@ -1,15 +1,17 @@
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/provider/userProvider.dart';
 import 'package:admin_ott/app/ui/pages/manage%20user%20page/SignUpPage.dart';
-import 'package:admin_ott/app/widgets/custom_textfield.dart';
 import 'package:admin_ott/data/models/request/user_request.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:provider/provider.dart';
 import '../../../../domain/entities/user.dart';
 import 'package:intl/intl.dart';
 
 class ManageUserPage extends StatefulWidget {
+  const ManageUserPage({super.key});
+
   @override
   _ManageUserPageState createState() => _ManageUserPageState();
 }
@@ -26,7 +28,7 @@ class _ManageUserPageState extends State<ManageUserPage> {
 
   @override
   Widget build(BuildContext context) {
-    return  _buildPage(context);
+    return _buildPage(context);
   }
 
   Widget _buildFloatingActionButton(ThemeData theme) {
@@ -37,7 +39,8 @@ class _ManageUserPageState extends State<ManageUserPage> {
     );
   }
 
-  Future<void> showUserPromoterDialog(BuildContext context, void Function(UserRequest) onAdd) async {
+  Future<void> showUserPromoterDialog(
+      BuildContext context, void Function(UserRequest) onAdd) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -58,7 +61,8 @@ class _ManageUserPageState extends State<ManageUserPage> {
   void _onUserPromoter(UserRequest userRequest) {}
 
   Widget _buildPage(BuildContext context) {
-    var selectedThemeData = Provider.of<ThemeProvider>(context, listen: true).getTheme;
+    var selectedThemeData =
+        Provider.of<ThemeProvider>(context, listen: true).getTheme;
 
     return Consumer<UserProvider>(builder: (context, provider, child) {
       return Scaffold(
@@ -66,17 +70,48 @@ class _ManageUserPageState extends State<ManageUserPage> {
         floatingActionButton: _buildFloatingActionButton(selectedThemeData),
         appBar: AppBar(
           toolbarHeight: 60,
-          leading: null,
+          automaticallyImplyLeading: false,
           title: Column(
             children: [
               SizedBox(height: 5),
               SizedBox(
-                width: ResponsiveWidget.isMobile(context) ? double.infinity : 400,
-                child: CustomTextField(
+                width:
+                    ResponsiveWidget.isMobile(context) ? double.infinity : 400,
+                child: TextField(
                   controller: provider.searchController,
-                  hintText: 'Search users...',
-                  prefixIcon: Icon(Icons.search),
-                  textInputType: TextInputType.text,
+                  onChanged: provider.applySearch,
+                  decoration: InputDecoration(
+                    hintText: 'Search users...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: provider.searchController.text.isNotEmpty
+                        ? IconButton(
+                            onPressed: provider.clearUserSearch,
+                            icon: const Icon(Icons.close),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: selectedThemeData.cardColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: selectedThemeData.canvasColor
+                            .withValues(alpha: 0.2),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: selectedThemeData.canvasColor
+                            .withValues(alpha: 0.2),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: selectedThemeData.primaryColor,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -84,118 +119,63 @@ class _ManageUserPageState extends State<ManageUserPage> {
           backgroundColor: selectedThemeData.scaffoldBackgroundColor,
         ),
         body: Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-          child: GridView.builder(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: ResponsiveWidget.isMobile(context) ? 2 : ResponsiveWidget.isTablet(context) ? 3 : 5,
-              crossAxisSpacing: 8.0,
-              mainAxisSpacing: 8.0,
-              childAspectRatio: ResponsiveWidget.isMobile(context) ? 2 / 3 : 3 / 4,
-            ),
-            itemCount: provider.filteredUsers.length,
-            itemBuilder: (context, index) {
-              final user = provider.filteredUsers[index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => UserDetailsPage(
+          padding:
+              const EdgeInsets.only(top: 8, left: 16, right: 16, bottom: 16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final crossAxisCount =
+                  _getCrossAxisCount(constraints.maxWidth, context);
+              final avatarRadius = crossAxisCount >= 5 ? 46.0 : 38.0;
+              final canGrowWide = crossAxisCount <= 2;
+
+              if (provider.filteredUsers.isEmpty) {
+                return Center(
+                  child: Text(
+                    provider.searchController.text.trim().isEmpty
+                        ? 'No users available'
+                        : 'No users found',
+                    style: TextStyle(
+                      color:
+                          selectedThemeData.canvasColor.withValues(alpha: 0.75),
+                      fontSize: 14,
+                    ),
+                  ),
+                );
+              }
+
+              return SingleChildScrollView(
+                child: StaggeredGrid.count(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  children:
+                      List.generate(provider.filteredUsers.length, (index) {
+                    final user = provider.filteredUsers[index];
+                    final tileSpan = (canGrowWide && index % 3 == 0) ? 2 : 1;
+
+                    return StaggeredGridTile.fit(
+                      crossAxisCellCount:
+                          tileSpan > crossAxisCount ? 1 : tileSpan,
+                      child: _buildUserCard(
                         user: user,
-                        onRemoveUser: () {
-                          provider.deleteUser(user.id!);
+                        theme: selectedThemeData,
+                        avatarRadius: avatarRadius,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserDetailsPage(
+                                user: user,
+                                onRemoveUser: () {
+                                  provider.deleteUser(user.id!);
+                                },
+                              ),
+                            ),
+                          );
                         },
                       ),
-                    ),
-                  );
-                },
-                child: Card(
-                  color: selectedThemeData.cardColor,
-                  elevation: 5,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Align(
-                              alignment: Alignment.topRight,
-                              child: Text(
-                                '${user.joinDate}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ),
-                            CircleAvatar(
-                              backgroundImage: user.profilePhoto != null
-                                  ? NetworkImage(user.profilePhoto!)
-                                  : null,
-                              radius: 50,
-                              child: user.profilePhoto == null
-                                  ? Icon(Icons.person, size: 50)
-                                  : null,
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              '${user.firstName} ${user.lastName}',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              user.mobileNumber ?? "",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              user.emailId ?? "",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Location: ${user.location?.city ?? "N/A"}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                            Text(
-                              'Invited by: ${user.refferedBy ?? "N/A"}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  }),
                 ),
               );
             },
@@ -204,13 +184,148 @@ class _ManageUserPageState extends State<ManageUserPage> {
       );
     });
   }
+
+  int _getCrossAxisCount(double width, BuildContext context) {
+    if (width >= 1500) return 5;
+    if (width >= 1100) return 4;
+    if (width >= 800) return 3;
+    if (width >= 520) return 2;
+    return 1;
+  }
+
+  Widget _buildUserCard({
+    required User user,
+    required ThemeData theme,
+    required double avatarRadius,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: theme.canvasColor.withValues(alpha: 0.12),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircleAvatar(
+                    backgroundImage: user.profilePhoto != null
+                        ? NetworkImage(user.profilePhoto!)
+                        : null,
+                    backgroundColor: theme.canvasColor.withValues(alpha: 0.1),
+                    radius: avatarRadius,
+                    child: user.profilePhoto == null
+                        ? Icon(
+                            Icons.person,
+                            size: avatarRadius,
+                            color: theme.canvasColor.withValues(alpha: 0.75),
+                          )
+                        : null,
+                  ),
+                  user.verified ?? true
+                      ? Positioned(
+                          bottom: 4,
+                          right: 4,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.scaffoldBackgroundColor,
+                            ),
+                            child: Icon(
+                              Icons.verified,
+                              color: Colors.blue,
+                              size: 15,
+                            ),
+                          ),
+                        )
+                      : SizedBox()
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${user.firstName ?? ''} ${user.lastName ?? ''}'.trim(),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: theme.canvasColor,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+              const SizedBox(height: 8),
+              _buildUserInfoRow(
+                theme: theme,
+                icon: Icons.phone_rounded,
+                text: user.mobileNumber ?? 'N/A',
+              ),
+              const SizedBox(height: 6),
+              _buildUserInfoRow(
+                theme: theme,
+                icon: Icons.email_outlined,
+                text: user.emailId ?? 'N/A',
+              ),
+              const SizedBox(height: 6),
+              _buildUserInfoRow(
+                  theme: theme,
+                  icon: Icons.location_on_outlined,
+                  text:
+                      "${user.location?.taluka != null ? "${user.location?.taluka ?? ""}, " : ""}${user.location?.district != null ? "${user.location?.district ?? ""}, " : ""}${user.location?.state != null ? "${user.location?.state ?? ""}, " : ""}${user.location?.country != null ? "${user.location?.country ?? ""} " : "Unknown Location"}"),
+              const SizedBox(height: 6),
+              _buildUserInfoRow(
+                theme: theme,
+                icon: Icons.person_add_alt_1_outlined,
+                text: user.refferedBy ?? 'N/A',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserInfoRow({
+    required ThemeData theme,
+    required IconData icon,
+    required String text,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: theme.primaryColor),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.canvasColor.withValues(alpha: 0.75),
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class UserDetailsPage extends StatefulWidget {
   final User user;
   final Function onRemoveUser; // Callback for removing user
 
-  UserDetailsPage({required this.user, required this.onRemoveUser});
+  const UserDetailsPage(
+      {super.key, required this.user, required this.onRemoveUser});
 
   @override
   State<UserDetailsPage> createState() => _UserDetailsPageState();
@@ -224,7 +339,11 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
   @override
   void initState() {
     super.initState();
-    Provider.of<UserProvider>(context, listen: false).fetchUserContent(widget.user.id!);
+    final userId = widget.user.id;
+    if (userId != null) {
+      Provider.of<UserProvider>(context, listen: false)
+          .fetchUserContent(userId);
+    }
 
     _filterContent();
   }
@@ -288,29 +407,41 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
           children: [
             Center(
               child: CircleAvatar(
-                backgroundImage: NetworkImage(widget.user.profilePhoto ?? ""),
+                backgroundImage: (widget.user.profilePhoto != null &&
+                        widget.user.profilePhoto!.isNotEmpty)
+                    ? NetworkImage(widget.user.profilePhoto!)
+                    : null,
                 radius: 60,
+                child: (widget.user.profilePhoto == null ||
+                        widget.user.profilePhoto!.isEmpty)
+                    ? const Icon(Icons.person, size: 56)
+                    : null,
               ),
             ),
             SizedBox(height: 16),
             Text(
-              widget.user.firstName ?? "",
+              '${widget.user.firstName ?? ''} ${widget.user.lastName ?? ''}'
+                      .trim()
+                      .isEmpty
+                  ? 'Unknown User'
+                  : '${widget.user.firstName ?? ''} ${widget.user.lastName ?? ''}'
+                      .trim(),
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 8),
-            Text('Email: ${widget.user.emailId ?? ""}'),
+            Text('Email: ${widget.user.emailId ?? "N/A"}'),
             SizedBox(height: 8),
-            Text('Contact: ${widget.user.mobileNumber ?? ""}'),
+            Text('Contact: ${widget.user.mobileNumber ?? "N/A"}'),
             SizedBox(height: 8),
             Text(
-              'Location: ${widget.user.location!.state ?? ""}, '
-              '${widget.user.location!.district ?? ""}, '
-              '${widget.user.location!.taluka ?? ""}',
+              'Location: ${widget.user.location?.state ?? "N/A"}, '
+              '${widget.user.location?.district ?? "N/A"}, '
+              '${widget.user.location?.taluka ?? "N/A"}',
             ),
             SizedBox(height: 8),
-            Text('Referred By: ${widget.user.refferedBy ?? ""}'),
+            Text('Referred By: ${widget.user.refferedBy ?? "N/A"}'),
             SizedBox(height: 8),
-            Text('Join Date: ${widget.user.firstName ?? ""}'),
+            Text('Join Date: ${widget.user.joinDate ?? "N/A"}'),
             Divider(),
             SizedBox(height: 8),
             // Filter Options
@@ -342,35 +473,39 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
             ),
             SizedBox(height: 8),
             // Content List
-    Consumer<UserProvider>(
-    builder: (context, provider, child) {
-    return ListView.builder(
+            Consumer<UserProvider>(builder: (context, provider, child) {
+              return ListView.builder(
                 shrinkWrap: true,
                 physics: NeverScrollableScrollPhysics(),
                 itemCount: provider.filtteredUserContentList.length,
                 itemBuilder: (context, index) {
                   final item = provider.filtteredUserContentList[index];
-                  DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(item.dateTo!);
+                  final dateTo = item.dateTo;
+                  final DateTime? dateTime = dateTo != null
+                      ? DateTime.fromMillisecondsSinceEpoch(dateTo)
+                      : null;
 
                   // Format the DateTime into a readable string
-                  String formattedDate = DateFormat('EEEE, dd MMMM yyyy HH:mm:ss').format(dateTime);
+                  final String formattedDate = dateTime != null
+                      ? DateFormat('EEEE, dd MMMM yyyy HH:mm:ss')
+                          .format(dateTime)
+                      : 'N/A';
+                  final isActive = item.active ?? false;
                   return Card(
                     child: ListTile(
-                      title: Text(item.movie!.title??""),
-                      subtitle: Text('Expiry Date: ${formattedDate??""}'),
+                      title: Text(item.movie?.title ?? "Untitled"),
+                      subtitle: Text('Expiry Date: $formattedDate'),
                       trailing: Text(
-                        item.active! ? 'Available' : 'Expired',
+                        isActive ? 'Available' : 'Expired',
                         style: TextStyle(
-                          color: item.active!
-                              ? Colors.green
-                              : Colors.red,
+                          color: isActive ? Colors.green : Colors.red,
                         ),
                       ),
                     ),
                   );
                 },
-              );}
-            ),
+              );
+            }),
           ],
         ),
       ),

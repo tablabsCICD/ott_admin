@@ -75,57 +75,48 @@ class _ManagePromoterPageState extends State<ManagePromoterPage> {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
 
-    return SizedBox(
-      // height: 90,
-      width: 200,
-      child: Card(
-        color: selectedThemeData.cardColor,
-        child: Column(
+    return Expanded(
+      child: SizedBox(
+        // height: 90,
+
+        //width: 170,
+        child: Stack(
           children: [
-            ListTile(
-              // leading: Icon(
-              //   icon,
-              //   color: selectedThemeData.primaryColor,
-              // ),
-              title: Center(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: selectedThemeData.canvasColor,
+            Card(
+              color: selectedThemeData.cardColor,
+              child: Column(
+                children: [
+                  ListTile(
+                    // leading: Icon(
+                    //   icon,
+                    //   color: selectedThemeData.primaryColor,
+                    // ),
+                    title: Center(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: selectedThemeData.canvasColor,
+                        ),
+                      ),
+                    ),
+                    subtitle: Center(
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: selectedThemeData.primaryColor,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-              subtitle: Center(
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: selectedThemeData.primaryColor,
-                  ),
-                ),
-              ),
-              /*  trailing: IconButton(
-                onPressed: () {
-                  // _showGraphPopup(index);
-                },
-                icon: Icon(
-                  Icons.bar_chart_rounded,
-                ),
-                color: selectedThemeData.primaryColor,
-              ),*/
             ),
-            /* IconButton(
-              onPressed: () {
-                // _showGraphPopup(index);
-              },
-              icon: Icon(
-                Icons.bar_chart_rounded,
-              ),
-              color: selectedThemeData.primaryColor,
-            ),*/
           ],
         ),
       ),
@@ -157,6 +148,10 @@ class _ManagePromoterPageState extends State<ManagePromoterPage> {
                         icon: Icons.people,
                         index: 0,
                       ),
+                    ],
+                  ),
+                  Row(
+                    children: [
                       _buildStatisticCard(
                         title: 'District Promoters',
                         value: provider.districtCount.toString(),

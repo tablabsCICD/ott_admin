@@ -8,7 +8,7 @@ import 'package:admin_ott/app/ui/pages/dashboard%20page/DashboardPage.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/ui/pages/manage%20promoter%20page/ManagePromoterPage.dart';
 import 'package:admin_ott/app/ui/pages/manage%20media%20house%20page/ManageMediaHousePage.dart';
-import 'package:admin_ott/app/ui/pages/manage%20video%20page/ManageVideoPage.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/ManageContentPage.dart';
 import 'package:admin_ott/app/ui/pages/promoter%20perentage/manage_promoter_percentage.dart';
 import 'package:admin_ott/app/ui/pages/settlemet_page/SettlementPage.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/ShortsPage.dart';
@@ -33,8 +33,8 @@ class _NavigationPageState extends State<NavigationPage> {
     PageData(title: 'Dashboard', page: const DashboardPage()),
     PageData(title: 'Manage Media House', page: const ManageMediaHousePage()),
     PageData(title: 'Manage Promoters', page: const ManagePromoterPage()),
-    PageData(title: 'Manage Video', page: MovieListScreen()),
-    PageData(title: 'Shorts', page: ShortsPage()),
+    PageData(title: 'Manage Content', page: MovieListScreen()),
+    PageData(title: 'Manage Shorts', page: ShortsPage()),
     PageData(title: 'Manage User', page: ManageUserPage()),
     PageData(title: 'Transaction', page: const TransactionPage()),
     PageData(title: 'Access Control', page: const AccessControlPage()),

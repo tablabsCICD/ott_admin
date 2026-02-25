@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/provider/videoProvider.dart';
-import 'package:admin_ott/app/ui/pages/manage%20video%20page/component/add_video.dart';
-import 'package:admin_ott/app/ui/pages/manage%20video%20page/component/movie_card.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/add_video.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/movie_card.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 

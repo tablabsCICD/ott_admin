@@ -31,8 +31,7 @@ class ApiConstant {
   static String approvedContentCountGraph(
           startDate, endDate, isYear, isMonth, isWeek) =>
       "${baseUrl}api/adminLineCharts/contentApprovalCountChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
-  static String movieTypeChartData =
-      "${baseUrl}api/adminLineCharts/mediahouse/content-summary";
+  static String movieTypeChartData = "${baseUrl}api/admin/contentTypePieChart";
   static String revenueChartData =
       "${baseUrl}api/adminLineCharts/revenueSummary";
   static String getMediaHouseByStatus(status) =>
@@ -151,14 +150,27 @@ class ApiConstant {
   // Shorts
   static String shortsMaster = "${baseUrl}api/shortsMaster";
   static String shortParts = "${baseUrl}api/short-parts";
-  static String shortDetail(shortMasterId, userId) =>
-      "${baseUrl}api/shortsMaster/$shortMasterId?userId=$userId";
+  static String shortDetail(shortMasterId) =>
+      "${baseUrl}api/shortsMaster/forAdmin/$shortMasterId";
   static String deleteShortMaster(shortId) =>
       "${baseUrl}api/shortsMaster/$shortId";
   static String updateShortMaster(shortId) =>
       "${baseUrl}api/shortsMaster/$shortId";
   static String deleteShortPart(partId) => "${baseUrl}api/short-parts/$partId";
   static String updateShortPart(partId) => "${baseUrl}api/short-parts/$partId";
+  static String shortsByMediaHouse(mediaHouseId,
+      {int page = 0, int size = 10, String? keyword}) {
+    final query = keyword != null && keyword.trim().isNotEmpty
+        ? "&keyword=${Uri.encodeQueryComponent(keyword.trim())}"
+        : "";
+    return "${baseUrl}api/shortsMaster/by-mediahouse/$mediaHouseId?page=$page&size=$size$query";
+  }
+
+  static String shortsByStatusPage(String status,
+          {int page = 0, int size = 10}) =>
+      "${baseUrl}api/shortsMaster/by-status-page?status=$status&page=$page&size=$size";
+  static String approveShortStatus(int shortId, String status) =>
+      "${baseUrl}api/shortsMaster/ApproveShort?shortId=$shortId&status=$status";
 
   static String userTransactionApi(searchKey) =>
       "${baseUrl}api/admin/list?search=$searchKey";

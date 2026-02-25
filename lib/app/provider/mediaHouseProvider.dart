@@ -19,6 +19,7 @@ import 'package:admin_ott/data/models/response/addMediaHouseResponse.dart';
 import 'package:admin_ott/data/models/response/contentListByMediaHouse.dart';
 import 'package:admin_ott/data/models/response/getAllVideoResponse.dart';
 import 'package:admin_ott/data/models/response/searchResponse.dart';
+import 'package:admin_ott/data/models/response/shorts_models.dart';
 import 'package:admin_ott/domain/entities/content.dart';
 
 //import 'package:cross_file/src/types/interface.dart';
@@ -250,8 +251,7 @@ class MediaHouseProvider extends ChangeNotifier {
               'success': true,
               'message': 'media house created successfully'
             };
-          }
-          else {
+          } else {
             return {
               'success': false,
               'message': addMediaHouseResponse.message ?? 'Record not added'
@@ -287,6 +287,8 @@ class MediaHouseProvider extends ChangeNotifier {
 
   List<Content> _contentListByMediaHouseAndStatus = [];
   List<Content> _filteredContentListByMediaHouse = [];
+  List<ShortMaster> _shortsByMediaHouse = [];
+  bool _isShortsLoading = false;
   Content _mediaHouseContent = Content();
   Content _selectedMediaHouseContent = Content();
 
@@ -295,6 +297,8 @@ class MediaHouseProvider extends ChangeNotifier {
 
   List<Content> get filteredContentListByMediaHouse =>
       _filteredContentListByMediaHouse;
+  List<ShortMaster> get shortsByMediaHouse => _shortsByMediaHouse;
+  bool get isShortsLoading => _isShortsLoading;
 
   Content get mediaHouseContent => _mediaHouseContent;
 
@@ -335,6 +339,57 @@ class MediaHouseProvider extends ChangeNotifier {
     } catch (error) {
       debugPrint("Error: $error");
       throw Exception('An error occurred while fetching Content.');
+    }
+  }
+
+  Future<void> fetchShortsByMediaHouse(
+    int mediaHouseId, {
+    String? keyword,
+    int page = 0,
+    int size = 10,
+  }) async {
+    final apiUrl = ApiConstant.shortsByMediaHouse(
+      mediaHouseId,
+      page: page,
+      size: size,
+      keyword: keyword,
+    );
+    final apiHelper = ApiHelper();
+    _isShortsLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await apiHelper.getApi(apiUrl);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseBody = json.decode(response.body);
+        final success = responseBody['success'] == true;
+        if (success) {
+          final data = responseBody['data'];
+          final shortsRaw =
+              (data is Map<String, dynamic>) ? data['shorts'] : null;
+          if (shortsRaw is List) {
+            _shortsByMediaHouse = shortsRaw
+                .map((e) => ShortMaster.fromJson(Map<String, dynamic>.from(e)))
+                .toList();
+          } else {
+            _shortsByMediaHouse = [];
+          }
+        } else {
+          _shortsByMediaHouse = [];
+          debugPrint("shorts fetch failed: ${responseBody['message']}");
+        }
+      } else if (response.statusCode == 404) {
+        _shortsByMediaHouse = [];
+      } else {
+        throw Exception(
+            'Failed to fetch shorts. Status code: ${response.statusCode}');
+      }
+    } catch (error) {
+      debugPrint("Error while fetching shorts: $error");
+      _shortsByMediaHouse = [];
+    } finally {
+      _isShortsLoading = false;
+      notifyListeners();
     }
   }
 
@@ -422,8 +477,7 @@ class MediaHouseProvider extends ChangeNotifier {
       return; // No file selected
     }
 
-    final url = Uri.parse(
-        ApiConstant.uploadImg);
+    final url = Uri.parse(ApiConstant.uploadImg);
     _isUploading = true;
     notifyListeners();
 
@@ -617,7 +671,8 @@ class MediaHouseProvider extends ChangeNotifier {
         MediaHouse mediaHouse = MediaHouse.fromJson(responseBody);
         _mediaHouse = mediaHouse;
         print("responseBody\n\n\n${mediaHouse!.status}");
-        CustomToast.show("MediaHouse '${status.toLowerCase()}' successfully",isSuccess: true);
+        CustomToast.show("MediaHouse '${status.toLowerCase()}' successfully",
+            isSuccess: true);
         fetchMediaHouseByStatus("PENDING");
         notifyListeners();
       } else {
@@ -630,15 +685,13 @@ class MediaHouseProvider extends ChangeNotifier {
     }
   }
 
-
-
   deleteMediaHouse(int id, context) async {
     String apiUrl = ApiConstant.deleteMediaHouseById(id);
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.deleteApi(apiUrl);
       if (response.statusCode == 200 || response.statusCode == 500) {
-        CustomToast.show("Deleted Successfully",isSuccess: true);
+        CustomToast.show("Deleted Successfully", isSuccess: true);
         notifyListeners();
         Navigator.pop(context);
       } else {
@@ -662,7 +715,8 @@ class MediaHouseProvider extends ChangeNotifier {
       _mediaHouseDashboardData;
 
   Future<void> fetchMediaHouseDashboardData(int mediaHouseId) async {
-    String apiUrl = ApiConstant.getMediaHouseDashboardCountForAdmin(mediaHouseId);
+    String apiUrl =
+        ApiConstant.getMediaHouseDashboardCountForAdmin(mediaHouseId);
 
     ApiHelper apiHelper = ApiHelper();
     try {
@@ -700,22 +754,22 @@ class MediaHouseProvider extends ChangeNotifier {
   List<LineChartData> chartData = [];
 
   Future<void> fetchMediaHouseCountGraph(int selectedTimeRange) async {
-    if(selectedTimeRange==0){
-      isWeek=true;
-      isMonth=false;
-      isYear=false;
-    }else  if(selectedTimeRange==1){
-      isWeek=false;
-      isMonth=true;
-      isYear=false;
-    }else{
-      isWeek=false;
-      isMonth=false;
-      isYear=true;
+    if (selectedTimeRange == 0) {
+      isWeek = true;
+      isMonth = false;
+      isYear = false;
+    } else if (selectedTimeRange == 1) {
+      isWeek = false;
+      isMonth = true;
+      isYear = false;
+    } else {
+      isWeek = false;
+      isMonth = false;
+      isYear = true;
     }
     String apiUrl = ApiConstant.mediaHouseCountGraph(
-    '',
-     '',
+      '',
+      '',
       isYear,
       isMonth,
       isWeek,
@@ -725,11 +779,10 @@ class MediaHouseProvider extends ChangeNotifier {
     try {
       var response = await apiHelper.getApi(apiUrl);
 
-
       Map<String, dynamic> responseBody = json.decode(response.body);
 
       ChartResponse chartResponse = ChartResponse.fromJson(responseBody);
-      if(chartResponse.success==true){
+      if (chartResponse.success == true) {
         chartData.clear();
         for (var data in chartResponse.data!) {
           chartData.add(
@@ -745,7 +798,7 @@ class MediaHouseProvider extends ChangeNotifier {
           print('Label: ${item.label}, Value: ${item.value}');
         }
         notifyListeners();
-      }else{
+      } else {
         CustomToast.show(chartResponse.message.toString());
       }
     } catch (error) {
@@ -754,25 +807,25 @@ class MediaHouseProvider extends ChangeNotifier {
     }
   }
 
-
   List<LineChartData> graphData = [];
-  Future<void> releaseMovieCountGraph(int selectedTimeRange,String startDate,String endDate,int mediaId) async {
-    if(selectedTimeRange==0){
-      isWeek=true;
-      isMonth=false;
-      isYear=false;
-    }else  if(selectedTimeRange==1){
-      isWeek=false;
-      isMonth=true;
-      isYear=false;
-    }else  if(selectedTimeRange==2){
-      isWeek=false;
-      isMonth=false;
-      isYear=true;
-    }else{
-      isWeek=false;
-      isMonth=false;
-      isYear=false;
+  Future<void> releaseMovieCountGraph(int selectedTimeRange, String startDate,
+      String endDate, int mediaId) async {
+    if (selectedTimeRange == 0) {
+      isWeek = true;
+      isMonth = false;
+      isYear = false;
+    } else if (selectedTimeRange == 1) {
+      isWeek = false;
+      isMonth = true;
+      isYear = false;
+    } else if (selectedTimeRange == 2) {
+      isWeek = false;
+      isMonth = false;
+      isYear = true;
+    } else {
+      isWeek = false;
+      isMonth = false;
+      isYear = false;
     }
     String apiUrl = ApiConstant.releaseMovieCountGraphByMediaHouse(
       mediaId,
@@ -787,11 +840,10 @@ class MediaHouseProvider extends ChangeNotifier {
     try {
       var response = await apiHelper.getApi(apiUrl);
 
-
       Map<String, dynamic> responseBody = json.decode(response.body);
 
       ChartResponse chartResponse = ChartResponse.fromJson(responseBody);
-      if(chartResponse.success==true){
+      if (chartResponse.success == true) {
         graphData.clear();
         for (var data in chartResponse.data!) {
           graphData.add(
@@ -802,7 +854,7 @@ class MediaHouseProvider extends ChangeNotifier {
           );
         }
         notifyListeners();
-      }else{
+      } else {
         CustomToast.show(chartResponse.message.toString());
       }
     } catch (error) {
@@ -811,24 +863,24 @@ class MediaHouseProvider extends ChangeNotifier {
     }
   }
 
-
-  Future<void> viewsCountGraph(int selectedTimeRange,String startDate,String endDate,int mediaId) async {
-    if(selectedTimeRange==0){
-      isWeek=true;
-      isMonth=false;
-      isYear=false;
-    }else  if(selectedTimeRange==1){
-      isWeek=false;
-      isMonth=true;
-      isYear=false;
-    }else  if(selectedTimeRange==2){
-      isWeek=false;
-      isMonth=false;
-      isYear=true;
-    }else{
-      isWeek=false;
-      isMonth=false;
-      isYear=false;
+  Future<void> viewsCountGraph(int selectedTimeRange, String startDate,
+      String endDate, int mediaId) async {
+    if (selectedTimeRange == 0) {
+      isWeek = true;
+      isMonth = false;
+      isYear = false;
+    } else if (selectedTimeRange == 1) {
+      isWeek = false;
+      isMonth = true;
+      isYear = false;
+    } else if (selectedTimeRange == 2) {
+      isWeek = false;
+      isMonth = false;
+      isYear = true;
+    } else {
+      isWeek = false;
+      isMonth = false;
+      isYear = false;
     }
     String apiUrl = ApiConstant.viewCountGraphByMediaHouse(
       mediaId,
@@ -843,11 +895,10 @@ class MediaHouseProvider extends ChangeNotifier {
     try {
       var response = await apiHelper.getApi(apiUrl);
 
-
       Map<String, dynamic> responseBody = json.decode(response.body);
 
       ChartResponse chartResponse = ChartResponse.fromJson(responseBody);
-      if(chartResponse.success==true){
+      if (chartResponse.success == true) {
         graphData.clear();
         for (var data in chartResponse.data!) {
           graphData.add(
@@ -858,7 +909,7 @@ class MediaHouseProvider extends ChangeNotifier {
           );
         }
         notifyListeners();
-      }else{
+      } else {
         CustomToast.show(chartResponse.message.toString());
       }
     } catch (error) {
@@ -867,24 +918,25 @@ class MediaHouseProvider extends ChangeNotifier {
     }
   }
 
- // List<Map<String, dynamic>>? revenueCountList = [];
-  Future<void> revenueGraphByMediaHouse(int selectedTimeRange,String startDate,String endDate,int mediaId) async {
-    if(selectedTimeRange==0){
-      isWeek=true;
-      isMonth=false;
-      isYear=false;
-    }else  if(selectedTimeRange==1){
-      isWeek=false;
-      isMonth=true;
-      isYear=false;
-    }else  if(selectedTimeRange==2){
-      isWeek=false;
-      isMonth=false;
-      isYear=true;
-    }else{
-      isWeek=false;
-      isMonth=false;
-      isYear=false;
+  // List<Map<String, dynamic>>? revenueCountList = [];
+  Future<void> revenueGraphByMediaHouse(int selectedTimeRange, String startDate,
+      String endDate, int mediaId) async {
+    if (selectedTimeRange == 0) {
+      isWeek = true;
+      isMonth = false;
+      isYear = false;
+    } else if (selectedTimeRange == 1) {
+      isWeek = false;
+      isMonth = true;
+      isYear = false;
+    } else if (selectedTimeRange == 2) {
+      isWeek = false;
+      isMonth = false;
+      isYear = true;
+    } else {
+      isWeek = false;
+      isMonth = false;
+      isYear = false;
     }
     String apiUrl = ApiConstant.revenueGraphByMediaHouse(
       mediaId,
@@ -899,23 +951,23 @@ class MediaHouseProvider extends ChangeNotifier {
     try {
       var response = await apiHelper.getApi(apiUrl);
 
-
       Map<String, dynamic> responseBody = json.decode(response.body);
 
       ChartResponse chartResponse = ChartResponse.fromJson(responseBody);
-      if(chartResponse.success==true){
+      if (chartResponse.success == true) {
         graphData.clear();
         for (var data in chartResponse.data!) {
           graphData.add(
-              LineChartData(
-                data.label as String,
-                (data.value as num).toDouble(),
-              ),
+            LineChartData(
+              data.label as String,
+              (data.value as num).toDouble(),
+            ),
           );
         }
         notifyListeners();
-      }else{
-        CustomToast.show(chartResponse.message.toString(),isSuccess: chartResponse.success!);
+      } else {
+        CustomToast.show(chartResponse.message.toString(),
+            isSuccess: chartResponse.success!);
       }
     } catch (error) {
       debugPrint("Error occurred while fetching graph data: $error");
@@ -925,8 +977,7 @@ class MediaHouseProvider extends ChangeNotifier {
 
   // search all users
   Future<void> getMediaHouseById(int id) async {
-    String apiUrl =
-    ApiConstant.getMediaHouseById(id);
+    String apiUrl = ApiConstant.getMediaHouseById(id);
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.getApi(apiUrl);
@@ -934,11 +985,13 @@ class MediaHouseProvider extends ChangeNotifier {
         Map<String, dynamic> responseBody = json.decode(response.body);
         print("responseBody\n\n\n");
         print(responseBody);
-        GetMediaHouseResponse searchResponse = GetMediaHouseResponse.fromJson(responseBody);
+        GetMediaHouseResponse searchResponse =
+            GetMediaHouseResponse.fromJson(responseBody);
         if (searchResponse.success == true) {
           if (searchResponse.data != null) {
-             _mediaHouse = searchResponse.data!.mediaHouse!;
-             print("responseBody\n\n\n${searchResponse.data!.mediaHouse!.status}");
+            _mediaHouse = searchResponse.data!.mediaHouse!;
+            print(
+                "responseBody\n\n\n${searchResponse.data!.mediaHouse!.status}");
             notifyListeners();
           } else {
             debugPrint("empty object: ${searchResponse.message}");

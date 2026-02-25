@@ -1,7 +1,7 @@
 import 'dart:io' as io;
 
 import 'package:admin_ott/app/provider/shortsProvider.dart';
-import 'package:admin_ott/app/ui/pages/manage%20video%20page/component/DisplayTrailer.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/DisplayTrailer.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -156,13 +156,15 @@ class _CreateShortPartsDialogState extends State<CreateShortPartsDialog> {
                     theme,
                     title: "Short File",
                     child: provider.isMovieUploading
-                        ? LinearProgressIndicator(value: provider.movieUploadProgress)
+                        ? LinearProgressIndicator(
+                            value: provider.movieUploadProgress)
                         : videoUrlCtrl.text.isNotEmpty
                             ? Column(
                                 children: [
                                   Row(
                                     children: [
-                                      const Icon(Icons.check_circle, color: Colors.green),
+                                      const Icon(Icons.check_circle,
+                                          color: Colors.green),
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
@@ -185,7 +187,8 @@ class _CreateShortPartsDialogState extends State<CreateShortPartsDialog> {
                                           videoUrlCtrl.clear();
                                           setState(() {});
                                         },
-                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                        icon: const Icon(Icons.delete,
+                                            color: Colors.red),
                                       ),
                                       IconButton(
                                         onPressed: () {
@@ -239,7 +242,8 @@ class _CreateShortPartsDialogState extends State<CreateShortPartsDialog> {
                                   IconButton(
                                     onPressed: () =>
                                         setState(() => uploadedImageUrl = null),
-                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    icon: const Icon(Icons.delete,
+                                        color: Colors.red),
                                   )
                                 ],
                               )
@@ -273,7 +277,8 @@ class _CreateShortPartsDialogState extends State<CreateShortPartsDialog> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text("Save & Continue", style: TextStyle(color: Colors.white)),
+                    : const Text("Save & Continue",
+                        style: TextStyle(color: Colors.white)),
               ),
             ),
           )
@@ -282,7 +287,8 @@ class _CreateShortPartsDialogState extends State<CreateShortPartsDialog> {
     );
   }
 
-  Widget _uploadCard(ThemeData theme, {required String title, required Widget child}) {
+  Widget _uploadCard(ThemeData theme,
+      {required String title, required Widget child}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
