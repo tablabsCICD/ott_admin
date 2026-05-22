@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/provider/videoProvider.dart';
-import 'package:admin_ott/app/ui/pages/manage%20video%20page/component/add_video.dart';
-import 'package:admin_ott/app/ui/pages/manage%20video%20page/component/movie_card.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/add_video.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/movie_card.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 
@@ -25,8 +25,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
     super.initState();
     final provider = Provider.of<VideoProvider>(context, listen: false);
     provider.fetchMoviesByStatusAndMediaHouseId("All", 0);
-    provider.searchContentController.addListener(() {
-    });
+    provider.searchContentController.addListener(() {});
   }
 
   @override
@@ -36,7 +35,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
         var selectedThemeData =
             Provider.of<ThemeProvider>(context, listen: false).getTheme;
         int crossAxisCount = ResponsiveWidget.isDesktop(context)
-            ? 6
+            ? 4
             : ResponsiveWidget.isMobile(context)
                 ? 2
                 : 4;
@@ -45,55 +44,66 @@ class _MovieListScreenState extends State<MovieListScreen> {
           body: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0, vertical: 6.0),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Spacer(),
                     Expanded(
                       child: SizedBox(
                         width: ResponsiveWidget.isMobile(context)
                             ? double.infinity
-                            : 600,
-                        child: CustomTextField(
-                          controller: provider.searchContentController,
-                          prefixIcon: const Icon(Icons.search),
-                          hintText: 'Search...',
-                          textInputType: TextInputType.text,
+                            : 60,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: ResponsiveWidget.isMobile(context)
+                                  ? 8.0
+                                  : 16.0),
+                          child: CustomTextField(
+                            controller: provider.searchContentController,
+                            prefixIcon: const Icon(Icons.search),
+                            hintText: 'Search...',
+                            textInputType: TextInputType.text,
+                          ),
                         ),
                       ),
                     ),
-                    const Spacer(),
                     _buildDropdown(selectedThemeData, provider),
                   ],
                 ),
               ),
-              provider.filteredContentList.isEmpty? Center(
-                  child: Text(
-                    "Looks like there's no content yet. Check back soon!",
-                    style: TextStyle(color: selectedThemeData.primaryColor),
-                  )):Expanded(
-                child: GridView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 5,
-                      mainAxisSpacing: 10,
-                      childAspectRatio: 27 / 40,
+              provider.filteredContentList.isEmpty
+                  ? Center(
+                      child: Text(
+                      "Looks like there's no content yet. Check back soon!",
+                      style: TextStyle(color: selectedThemeData.primaryColor),
+                    ))
+                  : Expanded(
+                      child: GridView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            //crossAxisSpacing: 5,
+                            //mainAxisSpacing: 5,
+                            childAspectRatio: ResponsiveWidget.isMobile(context)
+                                ? 1.1
+                                : ResponsiveWidget.isDesktop(context)
+                                    ? 1.2
+                                    : 1.2,
+                          ),
+                          itemCount: provider.filteredContentList.length,
+                          itemBuilder: (context, index) {
+                            print(provider.filteredContentList[index].title);
+                            Content content =
+                                provider.filteredContentList[index];
+                            return MovieCard(movie: content);
+                          }),
                     ),
-                    itemCount: provider.filteredContentList.length,
-                    itemBuilder: (context, index) {
-                      print(provider.filteredContentList[index].title);
-                      Content content = provider.filteredContentList[index];
-                      return MovieCard(
-                          movie: content);
-                    }),
-              ),
             ],
           ),
-          floatingActionButton: _buildFloatingButton(selectedThemeData),
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          /*   floatingActionButton: _buildFloatingButton(selectedThemeData),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat, */
         );
       },
     );
@@ -101,7 +111,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
 
   Widget _buildDropdown(ThemeData selectedThemeData, VideoProvider provider) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
       height: 50,
       decoration: BoxDecoration(
         color: selectedThemeData.cardColor,
@@ -146,7 +156,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
       child: Row(
         children: [
           Icon(icon, color: iconColor),
-          const SizedBox(width: 8.0),
+          const SizedBox(width: 4.0),
           Text(text, style: TextStyle(color: selectedThemeData.canvasColor)),
         ],
       ),

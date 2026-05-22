@@ -6,11 +6,11 @@ class CustomToast {
   static final List<OverlayEntry> _overlayEntries = <OverlayEntry>[];
 
   static void show(
-      String message, {
-        bool isSuccess = true,
-        bool isWarning = false,
-        Duration duration = const Duration(seconds: 3),
-      }) {
+    String message, {
+    bool isSuccess = true,
+    bool isWarning = false,
+    Duration duration = const Duration(seconds: 3),
+  }) {
     final context = navigatorKey.currentState?.overlay?.context;
     final overlay = navigatorKey.currentState?.overlay;
 
@@ -26,8 +26,8 @@ class CustomToast {
 
     final overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
-        top: 20,
-        right: 10,
+        top: 50,
+        right: 16,
         child: _ToastWidget(
           message: message,
           backgroundColor: backgroundColor,

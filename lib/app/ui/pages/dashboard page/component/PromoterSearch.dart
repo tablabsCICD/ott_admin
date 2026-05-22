@@ -1,9 +1,7 @@
 import 'package:admin_ott/app/provider/promoterProvider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
-import 'package:admin_ott/app/ui/pages/manage%20promoter%20page/components/promoterList.dart';
 import 'package:admin_ott/app/ui/pages/manage%20promoter%20page/components/promoter_details_page.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
-import 'package:admin_ott/domain/entities/promoter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -13,7 +11,6 @@ class PromoterSearch extends StatefulWidget {
 }
 
 class _PromoterSearchState extends State<PromoterSearch> {
-
   OverlayEntry? _dropdownOverlay;
 
   @override
@@ -42,9 +39,9 @@ class _PromoterSearchState extends State<PromoterSearch> {
           color: selectedThemeData.cardColor,
           elevation: 4.0,
           borderRadius: BorderRadius.circular(8),
-          child: Consumer<PromoterProvider>(
-              builder: (context, provider, child) {
-                return Column(
+          child:
+              Consumer<PromoterProvider>(builder: (context, provider, child) {
+            return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
@@ -85,12 +82,12 @@ class _PromoterSearchState extends State<PromoterSearch> {
                         final promoter = provider.filteredPromoters[index];
                         return ListTile(
                           tileColor: selectedThemeData.cardColor,
-                          title: Text(promoter.promoterName??''),
+                          title: Text(promoter.promoterName ?? ''),
                           trailing: Text(
-                            'ID: ${promoter.id??0}',
+                            'ID: ${promoter.id ?? 0}',
                           ),
                           onTap: () {
-                           provider.setSelectedPromoter(promoter);
+                            provider.setSelectedPromoter(promoter);
                             _removeDropdown();
                           },
                         );
@@ -99,8 +96,7 @@ class _PromoterSearchState extends State<PromoterSearch> {
                   ),
               ],
             );
-              }
-          ),
+          }),
         ),
       ),
     );
@@ -131,9 +127,8 @@ class _PromoterSearchState extends State<PromoterSearch> {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
 
-    return Consumer<PromoterProvider>(
-        builder: (context, provider, child) {
-      return  Card(
+    return Consumer<PromoterProvider>(builder: (context, provider, child) {
+      return Card(
         color: selectedThemeData.cardColor,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -170,7 +165,8 @@ class _PromoterSearchState extends State<PromoterSearch> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        provider.selectedPromoter!.promoterName ?? 'Select a Promoter',
+                        provider.selectedPromoter!.promoterName ??
+                            'Select a Promoter',
                         style: TextStyle(color: selectedThemeData.canvasColor),
                       ),
                       Icon(
@@ -199,18 +195,21 @@ class _PromoterSearchState extends State<PromoterSearch> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   ElevatedButton(
-                    onPressed: provider.selectedPromoter!.promoterName == null || provider.selectedPromoter!.promoterName == ''
-                        ? null
-                        : () {
-                           /* Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => PromoterDetailsPage(
-                                  promoter: _selectedPromoter!,
-                                ),
-                              ),
-                            );*/
-                          },
+                    onPressed:
+                        provider.selectedPromoter!.promoterName == null ||
+                                provider.selectedPromoter!.promoterName == ''
+                            ? null
+                            : () {
+                                _removeDropdown();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => PromoterDetailsPage(
+                                      promoter: provider.selectedPromoter!,
+                                    ),
+                                  ),
+                                );
+                              },
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white,
                       backgroundColor: provider.selectedPromoter == null
@@ -221,7 +220,8 @@ class _PromoterSearchState extends State<PromoterSearch> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                     ),
                     child: Text('Show Profile'),
                   ),
@@ -230,7 +230,7 @@ class _PromoterSearchState extends State<PromoterSearch> {
             ],
           ),
         ),
-      );}
-    );
+      );
+    });
   }
 }

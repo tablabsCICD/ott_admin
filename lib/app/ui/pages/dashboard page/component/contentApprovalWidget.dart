@@ -7,39 +7,45 @@ import '../../../../provider/videoProvider.dart';
 import 'approve_content_detail_page.dart';
 
 class ContentApprovalWidget extends StatefulWidget {
+  const ContentApprovalWidget({super.key});
+
   @override
   State<ContentApprovalWidget> createState() => _ContentApprovalWidgetState();
 }
 
 class _ContentApprovalWidgetState extends State<ContentApprovalWidget> {
-
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    Provider.of<VideoProvider>(context, listen: false).fetchMoviesByStatusAndMediaHouseId("PENDING",0);
+    Provider.of<VideoProvider>(context, listen: false)
+        .fetchMoviesByStatusAndMediaHouseId("PENDING", 0);
   }
+
   @override
   Widget build(BuildContext context) {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
 
-
     return Expanded(
       child: Consumer<VideoProvider>(
         builder: (context, provider, child) {
-         return provider.filteredContentListByMediaHouse.isEmpty? Center(
-              child: Text(
-              "No content available for approval.",
-              style: TextStyle(color: selectedThemeData.primaryColor),
-          )):SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: provider.filteredContentListByMediaHouse.map((content) {
-                return _buildContentCard(context, content, selectedThemeData);
-              }).toList(),
-            ),
-          );
+          return provider.filteredContentListByMediaHouse.isEmpty
+              ? Center(
+                  child: Text(
+                    "No content available for approval.",
+                    style: TextStyle(color: selectedThemeData.canvasColor),
+                  ),
+                )
+              : SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children:
+                        provider.filteredContentListByMediaHouse.map((content) {
+                      return _buildContentCard(
+                          context, content, selectedThemeData);
+                    }).toList(),
+                  ),
+                );
         },
       ),
     );
@@ -47,6 +53,9 @@ class _ContentApprovalWidgetState extends State<ContentApprovalWidget> {
 
   Widget _buildContentCard(
       BuildContext context, Content content, ThemeData themeData) {
+    final primaryLanguage =
+        _languageName(content.languageList.firstOrNull) ?? 'Unknown';
+
     return Card(
       color: themeData.cardColor,
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
@@ -62,23 +71,27 @@ class _ContentApprovalWidgetState extends State<ContentApprovalWidget> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Title
-              Text(
-                content.title ?? "Untitled",
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              // Genre and Type
-              Text(
-                '${content.genreList?.firstOrNull ?? "Unknown Genre"} - ${content.type ?? "Unknown Type"}',
-                style: TextStyle(color: themeData.hintColor),
+              Row(
+                children: [
+                  Text(
+                    content.title ?? "Untitled",
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(
+                    width: 2,
+                  ),
+                  Text(
+                    '($primaryLanguage)',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
               // Media House and Language
               Text('Uploaded by: ${content.mediaHouseName ?? "Unknown"}'),
-              Text('Language: ${content.languageList?.join(", ") ?? "Unknown"}'),
-              // Upload Date and Status
-              Text('Uploaded at: ${content.uploadDateTime ?? "Unknown"}'),
-              Text('Status: ${content.approvalStatus ?? "Pending"}'),
-              const SizedBox(height: 12),
+
+              const SizedBox(height: 6),
               // Open Button
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -101,12 +114,26 @@ class _ContentApprovalWidgetState extends State<ContentApprovalWidget> {
 
   Future<void> _openContentDetailsPage(
       BuildContext context, Content content) async {
-    Navigator.push(
+    final shouldRefresh = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => ApproveContentDetailsPage(content: content),
       ),
     );
+    if (!context.mounted || shouldRefresh != true) return;
+    await Provider.of<VideoProvider>(context, listen: false)
+        .fetchMoviesByStatusAndMediaHouseId("PENDING", 0);
+  }
+
+  String? _languageName(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+
+    final match = RegExp(r'language\s*:\s*([^,}]+)').firstMatch(value);
+    if (match != null) {
+      return match.group(1)?.trim();
+    }
+
+    return value.trim();
   }
 }
 

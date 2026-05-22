@@ -1,38 +1,23 @@
-
 import 'dart:convert';
-
-
-import 'package:admin_ott/app/core/constant/prefrense_constant.dart';
 import 'package:admin_ott/data/models/response/topRevenueMovieForAdmin.dart';
 import 'package:flutter/foundation.dart';
-
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import '../../data/models/response/reportAndDataResponse.dart';
 import '../../data/models/response/topRatedMovie.dart';
-import '../../data/models/response/topRevenueMovie.dart' hide ContentWithRevenue;
 import '../core/constant/api_constant.dart';
-
 import '../core/network/api_helper.dart';
-
 import '../core/utils/sharepreferences.dart';
 import '../widgets/show_toast.dart';
 
-
-
 class AnalyticsProvider extends ChangeNotifier {
-
-
-
   DateTimeRange? selectedDateRange = DateTimeRange(
     start: DateTime.now().subtract(Duration(days: 7)),
     end: DateTime.now(),
   );
   DateTime get today => DateTime.now();
   DateTime? startDate = DateTime.now().subtract(Duration(days: 7));
-  DateTime? endDate =DateTime.now();
+  DateTime? endDate = DateTime.now();
   String activeButton = 'Week';
 
   bool isYear = false;
@@ -41,8 +26,7 @@ class AnalyticsProvider extends ChangeNotifier {
 
   List<ContentWithRevenue> chartData = [];
   List<ContentWithRating> chartData1 = [];
-  List<Map<String,dynamic>> graphData = [];
-
+  List<Map<String, dynamic>> graphData = [];
 
   falseAllFilter() {
     isYear = false;
@@ -84,7 +68,8 @@ class AnalyticsProvider extends ChangeNotifier {
       print(response);
       Map<String, dynamic> responseBody = json.decode(response.body);
 
-      TopRevenueMovieForAdmin topRevenueMovie = TopRevenueMovieForAdmin.fromJson(responseBody);
+      TopRevenueMovieForAdmin topRevenueMovie =
+          TopRevenueMovieForAdmin.fromJson(responseBody);
       if (topRevenueMovie.success == true) {
         if (topRevenueMovie.data!.contentWithRevenue != null) {
           chartData.clear();
@@ -95,17 +80,25 @@ class AnalyticsProvider extends ChangeNotifier {
           for (var data in chartData) {
             // Assuming ContentWithRating has `label` and `value` properties
             graphData.add({
-              "label": data.name, // Replace with actual property name from ContentWithRating
-              "value": data.totalRevenue, // Replace with actual property name from ContentWithRating
+              "label": data
+                  .name, // Replace with actual property name from ContentWithRating
+              "value": data
+                  .totalRevenue, // Replace with actual property name from ContentWithRating
             });
           }
 
           notifyListeners();
         } else {
-          CustomToast.show(topRevenueMovie.message.toString(), isSuccess: topRevenueMovie.success!,);
+          CustomToast.show(
+            topRevenueMovie.message.toString(),
+            isSuccess: topRevenueMovie.success!,
+          );
         }
       } else {
-        CustomToast.show(topRevenueMovie.message.toString(), isSuccess: topRevenueMovie.success!,);
+        CustomToast.show(
+          topRevenueMovie.message.toString(),
+          isSuccess: topRevenueMovie.success!,
+        );
       }
     } catch (error) {
       debugPrint("Error occurred while fetching graph data: $error");
@@ -131,7 +124,8 @@ class AnalyticsProvider extends ChangeNotifier {
       isYear = true;
     }
 
-    String apiUrl = ApiConstant.topRatedContentGraph(0,
+    String apiUrl = ApiConstant.topRatedContentGraph(
+      0,
       start,
       end,
       isYear,
@@ -158,17 +152,25 @@ class AnalyticsProvider extends ChangeNotifier {
           for (var data in chartData1) {
             // Assuming ContentWithRating has `label` and `value` properties
             graphData.add({
-              "label": data.name, // Replace with actual property name from ContentWithRating
-              "value": data.avgRating, // Replace with actual property name from ContentWithRating
+              "label": data
+                  .name, // Replace with actual property name from ContentWithRating
+              "value": data
+                  .avgRating, // Replace with actual property name from ContentWithRating
             });
           }
 
           notifyListeners();
         } else {
-          CustomToast.show(topRevenueMovie.message.toString(), isSuccess: topRevenueMovie.success!,);
+          CustomToast.show(
+            topRevenueMovie.message.toString(),
+            isSuccess: topRevenueMovie.success!,
+          );
         }
       } else {
-        CustomToast.show(topRevenueMovie.message.toString(), isSuccess: topRevenueMovie.success!,);
+        CustomToast.show(
+          topRevenueMovie.message.toString(),
+          isSuccess: topRevenueMovie.success!,
+        );
       }
     } catch (error) {
       debugPrint("Error occurred while fetching graph data: $error");
@@ -176,12 +178,13 @@ class AnalyticsProvider extends ChangeNotifier {
     }
   }
 
-  void setDateRange(String label, int days, BuildContext context, bool isRevenue) {
+  void setDateRange(
+      String label, int days, BuildContext context, bool isRevenue) {
     activeButton = label;
 
     // Set start and end date based on the label
     if (label == "Custom Dates") {
-      pickDateRange(context,isRevenue); // Trigger date range picker
+      pickDateRange(context, isRevenue); // Trigger date range picker
     } else {
       endDate = today;
       startDate = endDate!.subtract(Duration(days: days));
@@ -189,13 +192,21 @@ class AnalyticsProvider extends ChangeNotifier {
 
       // Fetch graph data based on the label
       if (label == "Week") {
-        isRevenue?fetchTopPerformingMovieGraph(0):fetchTopRatedMovieGraph(0);
+        isRevenue
+            ? fetchTopPerformingMovieGraph(0)
+            : fetchTopRatedMovieGraph(0);
       } else if (label == "Month") {
-        isRevenue?fetchTopPerformingMovieGraph(1):fetchTopRatedMovieGraph(1);
+        isRevenue
+            ? fetchTopPerformingMovieGraph(1)
+            : fetchTopRatedMovieGraph(1);
       } else if (label == "Year") {
-        isRevenue?fetchTopPerformingMovieGraph(2):fetchTopRatedMovieGraph(2);
+        isRevenue
+            ? fetchTopPerformingMovieGraph(2)
+            : fetchTopRatedMovieGraph(2);
       } else {
-        isRevenue?fetchTopPerformingMovieGraph(0):fetchTopRatedMovieGraph(0);
+        isRevenue
+            ? fetchTopPerformingMovieGraph(0)
+            : fetchTopRatedMovieGraph(0);
       }
 
       notifyListeners();
@@ -213,16 +224,14 @@ class AnalyticsProvider extends ChangeNotifier {
     if (picked != null) {
       selectedDateRange = picked;
       activeButton = 'Custom Dates';
-      startDate = picked.start;//DateFormat('yyyy-MM-dd').format(DateTime.parse("2025-05-01 00:00:00.000"));
+      startDate = picked
+          .start; //DateFormat('yyyy-MM-dd').format(DateTime.parse("2025-05-01 00:00:00.000"));
       endDate = picked.end;
       print("start date $startDate && end date $endDate");
-      isRevenue?fetchTopPerformingMovieGraph(0):fetchTopRatedMovieGraph(0);
+      isRevenue ? fetchTopPerformingMovieGraph(0) : fetchTopRatedMovieGraph(0);
       notifyListeners();
     }
   }
-
-
-
 
   List<ReportAndDataObject> _reportAndDataList = [];
   List<ReportAndDataObject> get reportAndDataList => _reportAndDataList;
@@ -231,32 +240,35 @@ class AnalyticsProvider extends ChangeNotifier {
     final localSharePreferences = LocalSharePreferences();
     final mediaHouse = await localSharePreferences.getMediaHouse();
 
-    String apiUrl = ApiConstant.reportAndDataForMediaHouse(
-        mediaHouse!.id
-    );
+    String apiUrl = ApiConstant.reportAndDataForMediaHouse(mediaHouse!.id);
 
     ApiHelper apiHelper = ApiHelper();
 
     try {
       var response = await apiHelper.getApi(apiUrl);
       Map<String, dynamic> responseBody = json.decode(response.body);
-      ReportAndDataResponse reportAndDataResponse = ReportAndDataResponse.fromJson(responseBody);
+      ReportAndDataResponse reportAndDataResponse =
+          ReportAndDataResponse.fromJson(responseBody);
       if (reportAndDataResponse.success == true) {
         if (reportAndDataResponse.data!.mediaHouse != null) {
           _reportAndDataList.clear();
           _reportAndDataList = reportAndDataResponse.data!.mediaHouse!;
           notifyListeners();
         } else {
-          CustomToast.show(reportAndDataResponse.message.toString(), isSuccess: reportAndDataResponse.success!,);
+          CustomToast.show(
+            reportAndDataResponse.message.toString(),
+            isSuccess: reportAndDataResponse.success!,
+          );
         }
       } else {
-        CustomToast.show(reportAndDataResponse.message.toString(), isSuccess: reportAndDataResponse.success!,);
+        CustomToast.show(
+          reportAndDataResponse.message.toString(),
+          isSuccess: reportAndDataResponse.success!,
+        );
       }
     } catch (error) {
       debugPrint("Error occurred while fetching graph data: $error");
       throw Exception('Failed to fetch graph data. Error: $error');
     }
   }
-
-
 }

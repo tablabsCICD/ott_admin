@@ -1,12 +1,13 @@
 import 'package:admin_ott/app/ui/pages/Live%20Room/LiveRoom.dart';
 import 'package:admin_ott/app/ui/pages/access%20control%20page/AccessControlPage.dart';
+import 'package:admin_ott/app/ui/pages/admin%20settings%20page/AdminSettingsPage.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/DashboardPage.dart';
 import 'package:admin_ott/app/ui/pages/login%20page/LoginPage.dart';
 import 'package:admin_ott/app/ui/pages/login%20page/SplashScreen.dart';
 import 'package:admin_ott/app/ui/pages/manage%20media%20house%20page/ManageMediaHousePage.dart';
 import 'package:admin_ott/app/ui/pages/manage%20promoter%20page/ManagePromoterPage.dart';
 import 'package:admin_ott/app/ui/pages/manage%20user%20page/ManageUserPage.dart';
-import 'package:admin_ott/app/ui/pages/manage%20video%20page/ManageVideoPage.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/ManageContentPage.dart';
 import 'package:admin_ott/app/ui/pages/profile%20page/ProfilePage.dart';
 import 'package:flutter/material.dart';
 
@@ -35,6 +36,9 @@ class RouteGenerator {
 
       case AppRoutes.accessControl:
         return buildRoute(AccessControlPage(), settings: settings);
+
+      case AppRoutes.adminSettings:
+        return buildRoute(AdminSettingsPage(), settings: settings);
 
       case AppRoutes.manageMediaHouse:
         return buildRoute(ManageMediaHousePage(), settings: settings);
@@ -65,11 +69,13 @@ class RouteGenerator {
         var begin = Offset(0.0, 1.0);
         var end = Offset.zero;
         const curve = Curves.ease;
-        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        var tween =
+            Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
         return SlideTransition(
           position: animation.drive(tween),
           child: child,
-        );;
+        );
+        ;
       },
     );
   }

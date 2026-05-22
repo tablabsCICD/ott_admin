@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
-import 'dart:html' as html; // For web download
+import 'package:universal_html/html.dart' as html; // For web download
 
 class TrailerPage extends StatefulWidget {
   final String trailerUrl;

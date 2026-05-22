@@ -5,34 +5,33 @@ class GraphResponse {
   bool? success;
   String? total;
 
-  GraphResponse({
-    this.message,
-    this.data,
-    this.statusCode,
-    this.success,
-    this.total
-  });
+  GraphResponse(
+      {this.message, this.data, this.statusCode, this.success, this.total});
 
   factory GraphResponse.fromJson(Map<String, dynamic> json) => GraphResponse(
-    message: json["message"],
-    data: json["data"] == null ? [] : List<GraphData>.from(json["data"]!.map((x) => GraphData.fromJson(x))),
-    statusCode: json["statusCode"],
-    success: json["success"],
-    total: json["total"]
-  );
+      message: json["message"],
+      data: json["data"] == null
+          ? []
+          : List<GraphData>.from(
+              json["data"]!.map((x) => GraphData.fromJson(x))),
+      statusCode: json["statusCode"],
+      success: json["success"],
+      total: json["total"]);
 
   Map<String, dynamic> toJson() => {
-    "message": message,
-    "data": data == null ? [] : List<dynamic>.from(data!.map((x) => x.toJson())),
-    "statusCode": statusCode,
-    "success": success,
-    "total": total
-  };
+        "message": message,
+        "data": data == null
+            ? []
+            : List<dynamic>.from(data!.map((x) => x.toJson())),
+        "statusCode": statusCode,
+        "success": success,
+        "total": total
+      };
 }
 
 class GraphData {
   String? label;
-  int? value;
+  double? value;
 
   GraphData({
     this.label,
@@ -40,12 +39,18 @@ class GraphData {
   });
 
   factory GraphData.fromJson(Map<String, dynamic> json) => GraphData(
-    label: json["label"],
-    value: json["value"],
-  );
+        label: json["label"],
+        value: _parseToDouble(json["value"]),
+      );
 
   Map<String, dynamic> toJson() => {
-    "label": label,
-    "value": value,
-  };
+        "label": label,
+        "value": value,
+      };
+
+  static double _parseToDouble(dynamic raw) {
+    if (raw is num) return raw.toDouble();
+    if (raw is String) return double.tryParse(raw) ?? 0.0;
+    return 0.0;
+  }
 }

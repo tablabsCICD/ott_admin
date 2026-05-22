@@ -38,36 +38,33 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       backgroundColor: selectedThemeData.scaffoldBackgroundColor,
-      body:
-          Column(
+      body: Column(
+        children: [
+          SizedBox(
+            height: 60,
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                height: 60,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    child: Image.asset(
-                      ImageConstant.logo,
-                      width: 200,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20,),
-              Center(
-                child: SizedBox(
-                  width: ResponsiveWidget.isMobile(context) ? double.infinity : 400,
-                  child: isforgotPassword
-                      ? forgotPasswordCard()
-                      : loginCard(),
+                child: Image.asset(
+                  ImageConstant.logo,
+                  width: 200,
                 ),
               ),
             ],
           ),
-
-
+          SizedBox(
+            height: 20,
+          ),
+          Center(
+            child: SizedBox(
+              width: ResponsiveWidget.isMobile(context) ? double.infinity : 400,
+              child: isforgotPassword ? forgotPasswordCard() : loginCard(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -119,23 +116,20 @@ class _LoginPageState extends State<LoginPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: (){
+              onPressed: () {
                 _isLoading ? null : _handleLogin(context);
-
               },
               child: _isLoading
                   ? CircularProgressIndicator(
-                valueColor:
-                AlwaysStoppedAnimation<Color>(Colors.white),
-              )
-                  :
-              Text(
-                'Login',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: selectedThemeData.canvasColor),
-              ),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    )
+                  : Text(
+                      'Login',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: selectedThemeData.canvasColor),
+                    ),
             ),
             const SizedBox(height: 20),
             TextButton(
@@ -171,11 +165,12 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    var result = await Provider.of<UserProvider>(context, listen: false).login(email,password);
+    var result = await Provider.of<UserProvider>(context, listen: false)
+        .login(email, password);
     if (result['success'] == true) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
-      CustomToast.show('Welcome back, $email!',isSuccess:true);
+      CustomToast.show('Welcome back, $email!', isSuccess: true);
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -188,12 +183,11 @@ class _LoginPageState extends State<LoginPage> {
       });
     } else {
       print('Failure: ${result['message']}');
-      CustomToast.show('Failure: ${result['message']}',isSuccess:false);
+      CustomToast.show('Failure: ${result['message']}', isSuccess: false);
       setState(() {
         _isLoading = false;
       });
     }
-
   }
 
   Widget forgotPasswordCard() {
@@ -265,8 +259,7 @@ class _LoginPageState extends State<LoginPage> {
                   );
                   return;
                 }
-              sendOptApiCall(mobile);
-
+                sendOptApiCall(mobile);
               },
               child: Text(
                 'Send Otp',
@@ -292,20 +285,21 @@ class _LoginPageState extends State<LoginPage> {
         AddUserResponse searchResponse = AddUserResponse.fromJson(responseBody);
         if (searchResponse.success == true) {
           CustomToast.show('${searchResponse.message}');
-          Navigator.of(context).push(MaterialPageRoute(builder: (builder)=>OtpScreen(mobile)));
+          Navigator.of(context)
+              .push(MaterialPageRoute(builder: (builder) => OtpScreen(mobile)));
         } else {
           CustomToast.show('Error: ${searchResponse.message}');
           debugPrint("Error: ${searchResponse.message}");
         }
       } else {
-        CustomToast.show('Failed to send otp. Status code: ${response.statusCode}');
-        throw Exception('Failed to send otp. Status code: ${response.statusCode}');
+        CustomToast.show(
+            'Failed to send otp. Status code: ${response.statusCode}');
+        throw Exception(
+            'Failed to send otp. Status code: ${response.statusCode}');
       }
     } catch (error) {
       debugPrint("Error: $error");
       throw Exception('An error occurred while fetching mediaHouse.');
     }
   }
-
-
 }

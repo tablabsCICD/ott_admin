@@ -2,7 +2,6 @@ import 'package:admin_ott/app/provider/promoterProvider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/ui/pages/manage%20media%20house%20page/component/stat_tile.dart';
 import 'package:admin_ott/app/ui/pages/manage%20promoter%20page/components/buildList.dart';
-import 'package:admin_ott/data/repositories/dateWiseRevenue.dart';
 import 'package:admin_ott/domain/entities/promoter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,34 +10,39 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 class PromoterDetailsPage extends StatefulWidget {
   final Promoters promoter;
 
-  const PromoterDetailsPage({Key? key, required this.promoter})
-      : super(key: key);
+  const PromoterDetailsPage({super.key, required this.promoter});
 
   @override
   State<PromoterDetailsPage> createState() => _PromoterDetailsPageState();
 }
 
 class _PromoterDetailsPageState extends State<PromoterDetailsPage> {
-
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     getUserData();
   }
 
-  getUserData() async {
-    PromoterProvider userProvider =
-    Provider.of<PromoterProvider>(context, listen: false);
-    await userProvider.getUsersByUserReferalCode(widget.promoter.userId!.refferCode!);
+  Future<void> getUserData() async {
+    final userProvider = Provider.of<PromoterProvider>(context, listen: false);
+    final referralCode = widget.promoter.userId?.refferCode;
+    if (referralCode == null || referralCode.isEmpty) return;
+    await userProvider.getUsersByUserReferalCode(referralCode);
   }
 
   @override
   Widget build(BuildContext context) {
     final selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
-
-
+    final promoter = widget.promoter;
+    final user = promoter.userId;
+    final location = user?.location;
+    final locationText = [
+      location?.taluka,
+      location?.district,
+      location?.state,
+      location?.country
+    ].where((e) => e != null && e.trim().isNotEmpty).join(', ');
 
     return Scaffold(
       backgroundColor: selectedThemeData.scaffoldBackgroundColor,
@@ -49,7 +53,7 @@ class _PromoterDetailsPageState extends State<PromoterDetailsPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => GraphPage(promoters: widget.promoter,),
+                  builder: (context) => GraphPage(promoters: promoter),
                 ),
               );
             },
@@ -79,7 +83,7 @@ class _PromoterDetailsPageState extends State<PromoterDetailsPage> {
               Align(
                 alignment: Alignment.topRight,
                 child: Text(
-                  'Joining date: ${widget.promoter.createdDate}',
+                  'Joining date: ${promoter.createdDate ?? "N/A"}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 14,
@@ -92,49 +96,39 @@ class _PromoterDetailsPageState extends State<PromoterDetailsPage> {
               ),
               const SizedBox(height: 20),
               Text(
-                widget.promoter.promoterName??"",
+                promoter.promoterName ?? "Unknown Promoter",
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
-                widget.promoter.userId!.emailId??"",
+                user?.emailId ?? "N/A",
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
               Text(
-                widget.promoter.userId!.mobileNumber??"",
+                user?.mobileNumber ?? "N/A",
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${widget.promoter.userId!.location!.taluka} ${widget.promoter.userId!.location!.district} ${widget.promoter.userId!.location!.state}, ',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  Text(
-                    widget.promoter.userId!.location!.country??"",
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                ],
+              Text(
+                locationText.isEmpty ? "Location: N/A" : locationText,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
               const SizedBox(height: 20),
-    Consumer<PromoterProvider>(
-    builder: (context, provider, child) {
-    return  Row(
+              Consumer<PromoterProvider>(builder: (context, provider, child) {
+                return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    StatTile(label: 'Refer', value: provider.refer??'0'),
-                    StatTile(label: 'Incentive', value: provider.incentive??'0'),
-                    StatTile(label: 'Revenue', value: provider.revenue??'0'),
+                    StatTile(label: 'Refer', value: provider.refer ?? '0'),
+                    StatTile(
+                        label: 'Incentive', value: provider.incentive ?? '0'),
+                    StatTile(label: 'Revenue', value: provider.revenue ?? '0'),
                   ],
-                );}
-              ),
+                );
+              }),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10.0),
                 child: Divider(
@@ -156,8 +150,8 @@ class _PromoterDetailsPageState extends State<PromoterDetailsPage> {
 }
 
 class GraphPage extends StatefulWidget {
-  final Promoters promoters; // Mark as final
-  const GraphPage({required this.promoters, Key? key}) : super(key: key); // Use required for null safety
+  final Promoters promoters;
+  const GraphPage({super.key, required this.promoters});
 
   @override
   _GraphPageState createState() => _GraphPageState();
@@ -170,16 +164,26 @@ class _GraphPageState extends State<GraphPage> {
   List<ChartData> filteredData = []; // Initialize with an empty list
 
   Future<void> getUserData() async {
-    PromoterProvider userProvider =
-    Provider.of<PromoterProvider>(context, listen: false);
-    await userProvider.getUsersAndRevenue(widget.promoters.id!);
+    final userProvider = Provider.of<PromoterProvider>(context, listen: false);
+    final promoterId = widget.promoters.id;
+    if (promoterId == null) {
+      setState(() {
+        chartData = [];
+        filteredData = [];
+      });
+      return;
+    }
+    await userProvider.getUsersAndRevenue(promoterId);
+    if (!mounted) return;
 
     setState(() {
       chartData = userProvider.promoterUserRevenueGraph
           .where((entry) =>
-      entry.date != null && entry.revenue != null && entry.usersOnboarded != null)
+              entry.date != null &&
+              entry.revenue != null &&
+              entry.usersOnboarded != null)
           .map((entry) =>
-          ChartData(entry.date!, entry.revenue!, entry.usersOnboarded!))
+              ChartData(entry.date!, entry.revenue!, entry.usersOnboarded!))
           .toList();
       filteredData = getFilteredData(7); // Default to 1W data
     });
@@ -218,19 +222,20 @@ class _GraphPageState extends State<GraphPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Analysis"),
-        backgroundColor: Colors.black,
+        backgroundColor: selectedThemeData.scaffoldBackgroundColor,
         actions: [
           DropdownButton<String>(
             value: selectedGraphType,
-            dropdownColor: Colors.black,
-            icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+            dropdownColor: selectedThemeData.cardColor,
+            icon: Icon(Icons.arrow_drop_down,
+                color: selectedThemeData.canvasColor),
             underline: const SizedBox(),
             items: ['Revenue', 'Users Onboarded'].map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
                 child: Text(
                   value,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: selectedThemeData.canvasColor),
                 ),
               );
             }).toList(),
@@ -256,9 +261,10 @@ class _GraphPageState extends State<GraphPage> {
                   LineSeries<ChartData, String>(
                     dataSource: filteredData,
                     xValueMapper: (ChartData data, _) => data.date,
-                    yValueMapper: (ChartData data, _) => selectedGraphType == 'Revenue'
-                        ? data.revenue
-                        : data.usersOnboarded,
+                    yValueMapper: (ChartData data, _) =>
+                        selectedGraphType == 'Revenue'
+                            ? data.revenue
+                            : data.usersOnboarded,
                     color: selectedThemeData.primaryColor,
                     markerSettings: const MarkerSettings(isVisible: true),
                   )
@@ -305,7 +311,6 @@ class _GraphPageState extends State<GraphPage> {
     );
   }
 }
-
 
 class ChartData {
   final String date;

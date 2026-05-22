@@ -1,7 +1,6 @@
-class AppRoutes{
-
-  static const login= '/login';
-  static const entry= '/splash';
+class AppRoutes {
+  static const login = '/login';
+  static const entry = '/splash';
   static const register = '/register';
   static const dashboard = '/dashboard';
   static const manageMediaHouse = '/manageMediaHouse';
@@ -11,13 +10,12 @@ class AppRoutes{
   static const transaction = '/transaction';
   static const manageUser = '/manageUser';
   static const accessControl = '/accessControl';
+  static const adminSettings = '/adminSettings';
   static const profile = '/profile';
   static const editProfile = '/editProfile';
   static const lowNetwork = '/lowNetwork';
-  static const videoDetail= '/videoDetail';
-  static const promoterDetail= '/promoterDetail';
+  static const videoDetail = '/videoDetail';
+  static const promoterDetail = '/promoterDetail';
   static const userDetail = '/userDetail';
   static const mediaHouseDetail = '/mediaHouseDetail';
-
-
 }

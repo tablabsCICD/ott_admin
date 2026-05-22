@@ -1,25 +1,23 @@
 import 'package:admin_ott/app/config/routes/app_routes.dart';
 import 'package:admin_ott/app/config/routes/routes.dart';
-import 'package:admin_ott/app/core/constant/prefrense_constant.dart';
-import 'package:admin_ott/app/core/utils/sharepreferences.dart';
 import 'package:admin_ott/app/provider/accessControleProvider.dart';
 import 'package:admin_ott/app/provider/analyticsProvider.dart';
+import 'package:admin_ott/app/provider/admin_settings_provider.dart';
 import 'package:admin_ott/app/provider/dashboardProvider.dart';
 import 'package:admin_ott/app/provider/fullscreenProvider.dart';
 import 'package:admin_ott/app/provider/graphProvider.dart';
 import 'package:admin_ott/app/provider/language_provider.dart';
-import 'package:admin_ott/app/provider/liveRoomProvider.dart';
 import 'package:admin_ott/app/provider/mediaHouseProvider.dart';
 import 'package:admin_ott/app/provider/promoterGraphProvider.dart';
 import 'package:admin_ott/app/provider/promoterProvider.dart';
 import 'package:admin_ott/app/provider/promoter_percentage_provider.dart';
 import 'package:admin_ott/app/provider/settelementProvider.dart';
+import 'package:admin_ott/app/provider/shortsProvider.dart';
 import 'package:admin_ott/app/provider/ticketProvider.dart';
 import 'package:admin_ott/app/provider/transactionProvider.dart';
 import 'package:admin_ott/app/provider/userGraphProvider.dart';
 import 'package:admin_ott/app/provider/userProvider.dart';
 import 'package:admin_ott/app/provider/videoProvider.dart';
-import 'package:admin_ott/app/ui/pages/login%20page/SplashScreen.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -88,6 +86,12 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => AccesscontroleProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AdminSettingsProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ShortsProvider(),
         ),
       ],
       child: MyApp(),

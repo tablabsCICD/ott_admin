@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:admin_ott/app/provider/dashboardProvider.dart';
+import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 // ignore: depend_on_referenced_packages
@@ -22,24 +23,20 @@ class _RevenueChartState extends State<RevenueChart> {
   String? selectedArea;
   DateTime todaysDate = DateTime.now();
   String endDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
-  String startDate =
-  DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(Duration(days: 7)));
+  String startDate = DateFormat('yyyy-MM-dd')
+      .format(DateTime.now().subtract(Duration(days: 7)));
   String? activeButton = '1W';
-
 
   @override
   void initState() {
     super.initState();
-   _fetchGraphData();
-
+    _fetchGraphData();
   }
-
 
   Future<void> _fetchGraphData() async {
     await Provider.of<DashboardProvider>(context, listen: false)
         .fetchAllRevenueGraph(startDate, endDate);
   }
-
 
   Widget buildDropdown<T>(
     String hint,
@@ -60,7 +57,6 @@ class _RevenueChartState extends State<RevenueChart> {
     );
   }
 
-
   Future<void> _openDateRangePicker() async {
     final picked = await showDateRangePicker(
       context: context,
@@ -77,33 +73,14 @@ class _RevenueChartState extends State<RevenueChart> {
     }
   }
 
-  /*void _openDateRangePicker(BuildContext context) async {
-    final selectedRange = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      initialDateRange: startDate != null && endDate != null
-          ? DateTimeRange(start: startDate!, end: endDate!)
-          : null,
-    );
-
-    if (selectedRange != null) {
-      setState(() {
-        startDate = selectedRange.start;
-        endDate = selectedRange.end;
-      });
-      updateChartData();
-    }
-  }*/
-
   @override
   Widget build(BuildContext context) {
     final selectedThemeData = Provider.of<ThemeProvider>(context).getTheme;
     final fullScreenProvider = Provider.of<FullScreenProvider>(context);
-    final dashboardProvider = Provider.of<DashboardProvider>(context, listen: false);
+    final dashboardProvider =
+        Provider.of<DashboardProvider>(context, listen: false);
 
-    return   Consumer<DashboardProvider>(
-        builder: (context, provider, child) {
+    return Consumer<DashboardProvider>(builder: (context, provider, child) {
       return Stack(
         children: [
           SizedBox(
@@ -111,107 +88,120 @@ class _RevenueChartState extends State<RevenueChart> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    buildDropdown(
-                      'Country',
-                      selectedCountry,
-                      locationSelection.keys.toList(),
-                      (value) {
-                        if (value != null) {
-                          setState(() {
-                            selectedCountry = value;
-                            selectedState = null;
-                            selectedDistrict = null;
-                            selectedArea = null;
-                          });
-                        }
-                      },
-                      selectedThemeData.cardColor,
-                    ),
-                    const SizedBox(width: 10),
-                    if (locationSelection[selectedCountry]?.isNotEmpty ?? false)
-                      buildDropdown(
-                        'State',
-                        selectedState,
-                        locationSelection[selectedCountry]!.keys.toList(),
-                        (value) {
-                          if (value != null) {
-                            setState(() {
-                              selectedState = value;
-                              selectedDistrict = null;
-                              selectedArea = null;
-                            });
-                          }
-                        },
-                        selectedThemeData.cardColor,
+                ResponsiveWidget.isMobile(context)
+                    ? SizedBox()
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          buildDropdown(
+                            'Country',
+                            selectedCountry,
+                            locationSelection.keys.toList(),
+                            (value) {
+                              if (value != null) {
+                                setState(() {
+                                  selectedCountry = value;
+                                  selectedState = null;
+                                  selectedDistrict = null;
+                                  selectedArea = null;
+                                });
+                              }
+                            },
+                            selectedThemeData.cardColor,
+                          ),
+                          const SizedBox(width: 10),
+                          if (locationSelection[selectedCountry]?.isNotEmpty ??
+                              false)
+                            buildDropdown(
+                              'State',
+                              selectedState,
+                              locationSelection[selectedCountry]!.keys.toList(),
+                              (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    selectedState = value;
+                                    selectedDistrict = null;
+                                    selectedArea = null;
+                                  });
+                                }
+                              },
+                              selectedThemeData.cardColor,
+                            ),
+                          const SizedBox(width: 10),
+                          if (selectedState != null &&
+                              locationSelection[selectedCountry]
+                                      ?[selectedState] !=
+                                  null &&
+                              locationSelection[selectedCountry]![
+                                      selectedState]!
+                                  .isNotEmpty)
+                            buildDropdown(
+                              'District',
+                              selectedDistrict,
+                              locationSelection[selectedCountry]![
+                                      selectedState]!
+                                  .keys
+                                  .toList(),
+                              (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    selectedDistrict = value;
+                                    selectedArea = null;
+                                  });
+                                }
+                              },
+                              selectedThemeData.cardColor,
+                            ),
+                          const SizedBox(width: 10),
+                          if (selectedDistrict != null &&
+                              locationSelection[selectedCountry]?[selectedState]
+                                      ?[selectedDistrict] !=
+                                  null &&
+                              locationSelection[selectedCountry]?[selectedState]
+                                      ?[selectedDistrict] !=
+                                  null)
+                            buildDropdown(
+                              'Taluka',
+                              selectedArea,
+                              locationSelection[selectedCountry]?[selectedState]
+                                          ?[selectedDistrict]
+                                      ?.toList() ??
+                                  [],
+                              (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    selectedArea = value;
+                                  });
+                                }
+                              },
+                              selectedThemeData.cardColor,
+                            ),
+                        ],
                       ),
-                    const SizedBox(width: 10),
-                    if (selectedState != null &&
-                        locationSelection[selectedCountry]?[selectedState] !=
-                            null &&
-                        locationSelection[selectedCountry]![selectedState]!
-                            .isNotEmpty)
-                      buildDropdown(
-                        'District',
-                        selectedDistrict,
-                        locationSelection[selectedCountry]![selectedState]!
-                            .keys
-                            .toList(),
-                        (value) {
-                          if (value != null) {
-                            setState(() {
-                              selectedDistrict = value;
-                              selectedArea = null;
-                            });
-                          }
-                        },
-                        selectedThemeData.cardColor,
-                      ),
-                    const SizedBox(width: 10),
-                    if (selectedDistrict != null &&
-                        locationSelection[selectedCountry]?[selectedState]
-                                ?[selectedDistrict] !=
-                            null &&
-                        locationSelection[selectedCountry]?[selectedState]
-                                ?[selectedDistrict] !=
-                            null)
-                      buildDropdown(
-                        'Taluka',
-                        selectedArea,
-                        locationSelection[selectedCountry]?[selectedState]
-                                    ?[selectedDistrict]
-                                ?.toList() ??
-                            [],
-                        (value) {
-                          if (value != null) {
-                            setState(() {
-                              selectedArea = value;
-                            });
-                          }
-                        },
-                        selectedThemeData.cardColor,
-                      ),
-                  ],
-                ),
                 ///////////////////////////////   GRAPH  ///////////////////////////////
                 Expanded(
                   child: SfCartesianChart(
                     primaryXAxis: CategoryAxis(
-                      labelStyle: TextStyle(color: selectedThemeData.textTheme.headlineSmall?.color),
+                      labelStyle: TextStyle(
+                          color:
+                              selectedThemeData.textTheme.headlineSmall?.color),
                       interval: 1, // Ensures all labels are displayed
                       labelRotation: 45, // Rotates labels to avoid overlapping
                     ),
                     title: ChartTitle(
-                      text: startDate != null && endDate != null
-                          ? 'Revenue Data ($startDate - $endDate) Total : ${provider.totalRevenue}'
-                          : 'Revenue Data (No Date Range)',
-                    ),
+                        text: startDate != null && endDate != null
+                            ? 'Revenue Data ($startDate - $endDate) \nTotal Revenue: ${provider.totalRevenue}'
+                            : 'Revenue Data (No Date Range)',
+                        textStyle: TextStyle(
+                          color: selectedThemeData.canvasColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        )),
                     tooltipBehavior: TooltipBehavior(enable: true),
                     series: <CartesianSeries>[
                       LineSeries<ChartData, String>(
-                        dataSource: provider.chartData, // Ensure this is updated by your provider
+                        dataSource: provider
+                            .chartData, // Ensure this is updated by your provider
                         xValueMapper: (data, _) => data.label,
                         yValueMapper: (data, _) => data.value,
                         name: 'Revenue',
@@ -237,27 +227,34 @@ class _RevenueChartState extends State<RevenueChart> {
                           onTap: () async {
                             setState(() {
                               activeButton = range['label'] as String;
-                              endDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
-                              startDate = DateFormat('yyyy-MM-dd')
-                                  .format(DateTime.now().subtract(Duration(days: int.parse(range['days'].toString()))));
+                              endDate = DateFormat('yyyy-MM-dd')
+                                  .format(DateTime.now());
+                              startDate = DateFormat('yyyy-MM-dd').format(
+                                  DateTime.now().subtract(Duration(
+                                      days: int.parse(
+                                          range['days'].toString()))));
                             });
                             // Fetch the graph data
-                            await provider.fetchAllRevenueGraph(startDate, endDate);
+                            await provider.fetchAllRevenueGraph(
+                                startDate, endDate);
                           },
                           child: Container(
                             decoration: BoxDecoration(
                               color: activeButton == range['label']
                                   ? selectedThemeData.primaryColor
-                                  : selectedThemeData.canvasColor.withOpacity(0.1),
+                                  : selectedThemeData.canvasColor
+                                      .withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: activeButton == range['label']
                                     ? selectedThemeData.primaryColor
-                                    : selectedThemeData.canvasColor.withOpacity(0.7),
+                                    : selectedThemeData.canvasColor
+                                        .withOpacity(0.7),
                                 width: 0.4,
                               ),
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 6, horizontal: 10),
                             child: Text(
                               range['label'] as String,
                               style: TextStyle(
@@ -286,11 +283,13 @@ class _RevenueChartState extends State<RevenueChart> {
                           border: Border.all(
                             color: activeButton == 'Custom Dates'
                                 ? selectedThemeData.primaryColor
-                                : selectedThemeData.canvasColor.withOpacity(0.7),
+                                : selectedThemeData.canvasColor
+                                    .withOpacity(0.7),
                             width: 0.4,
                           ),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 10),
                         child: Text(
                           'Custom Dates',
                           style: TextStyle(
@@ -323,8 +322,8 @@ class _RevenueChartState extends State<RevenueChart> {
             ),
           ),
         ],
-      );}
-    );
+      );
+    });
   }
 }
 

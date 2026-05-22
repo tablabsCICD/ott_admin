@@ -1,18 +1,19 @@
-
 import 'dart:convert';
+import 'dart:developer';
+import 'dart:async';
 import 'dart:io' as io;
 import 'package:admin_ott/data/models/response/getUserResponse.dart';
 import 'package:admin_ott/data/models/response/loginUser.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 
 import 'package:image_picker/image_picker.dart'; // For web-specific file handling
-
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/services.dart';
 
 import 'dart:io';
 
@@ -35,9 +36,8 @@ import '../core/utils/sharepreferences.dart';
 import '../widgets/show_toast.dart';
 
 class UserProvider extends ChangeNotifier {
-
-  UserProvider() : super(){
-    searchController.addListener(filterUsers);
+  UserProvider() : super() {
+    searchController.addListener(applySearch);
   }
 
   TextEditingController firstNameController = TextEditingController();
@@ -68,32 +68,53 @@ class UserProvider extends ChangeNotifier {
 
   bool isEnbale = false;
 
-  void filterUsers() {
+  void applySearch([String? rawQuery]) {
+    final query = (rawQuery ?? searchController.text).trim().toLowerCase();
+
+    if (query.isEmpty) {
+      _filteredUsers = List<User>.from(_users);
+      notifyListeners();
+      return;
+    }
+
     _filteredUsers = _users.where((user) {
-      final query = searchController.text.toLowerCase();
-      return user.firstName!.toLowerCase().contains(query) ||
-          user.lastName!.toLowerCase().contains(query) ||
-          user.mobileNumber!.toLowerCase().contains(query) ||
-          (user.emailId!.toLowerCase().contains(query) ??
-              false) ||
-          (user.location!.state!.toLowerCase().contains(query) ??
-              false) ||
-          (user.location!.district!.toLowerCase().contains(query) ??
-              false) ||
-          (user.location!.taluka!.toLowerCase().contains(query) ??
-              false);
+      final values = [
+        user.firstName,
+        user.lastName,
+        user.mobileNumber,
+        user.emailId,
+        user.refferedBy,
+        user.location?.city,
+        user.location?.state,
+        user.location?.district,
+        user.location?.taluka,
+      ];
+
+      return values
+          .any((value) => value?.toLowerCase().contains(query) ?? false);
     }).toList();
     notifyListeners();
   }
 
+  void clearUserSearch() {
+    if (searchController.text.isNotEmpty) {
+      searchController.clear();
+    }
+    applySearch('');
+  }
+
+  void filterUsers() {
+    applySearch();
+  }
+
   setValue(User? user) async {
     print("SEtData${user!.firstName}");
-    firstNameController.text = user.firstName??"";
-    lastNameController.text = user.lastName??"";
-    mobileController.text = user.mobileNumber??"";
-    emailController.text = user.emailId??"";
-    dobController.text = user.dob??"";
-    profileController.text = user.profilePhoto??"";
+    firstNameController.text = user.firstName ?? "";
+    lastNameController.text = user.lastName ?? "";
+    mobileController.text = user.mobileNumber ?? "";
+    emailController.text = user.emailId ?? "";
+    dobController.text = user.dob ?? "";
+    profileController.text = user.profilePhoto ?? "";
     notifyListeners();
   }
 
@@ -120,64 +141,85 @@ class UserProvider extends ChangeNotifier {
   List<User> get filteredUsers => _filteredUsers;
   User get userObj => user;
 
-
-
-
-
-
   // Update user data
   Future<Map<String, Object>> updateUser() async {
     User? user = await LocalSharePreferences.localSharePreferences.getUser();
     String apiUrl = ApiConstant.editUserById;
     ApiHelper apiHelper = ApiHelper();
-    Map<String,dynamic> data ={
+    Map<String, dynamic> data = {
       "admin": true,
       "emailId": emailController.text,
       "firstName": firstNameController.text,
       "id": user!.id,
       "lastName": lastNameController.text,
-      "mobileNumber": mobileController.text
+      "mobileNumber": mobileController.text,
+      "profilePhoto": profileController.text
     };
 
     try {
-      var response = await apiHelper.putApiWithBody(apiUrl,data);
+      var response = await apiHelper.putApiWithBody(apiUrl, data);
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        UpdateUserResponse updateUserResponse = UpdateUserResponse.fromJson(responseBody);
+        UpdateUserResponse updateUserResponse =
+            UpdateUserResponse.fromJson(responseBody);
 
         debugPrint("data: ${updateUserResponse.message}");
         if (updateUserResponse.success == true) {
           if (updateUserResponse.data != null) {
             this.user = updateUserResponse.data!;
             print("before SEtData ${user.firstName}");
-            LocalSharePreferences localSharePreferences=LocalSharePreferences();
-            localSharePreferences.setString(SharedPreferencesConstant.currentAdmin, jsonEncode(updateUserResponse.data!));
-            print("after SEtData ${ await localSharePreferences.getString(SharedPreferencesConstant.currentAdmin)}");
+            LocalSharePreferences localSharePreferences =
+                LocalSharePreferences();
+            localSharePreferences.setString(
+                SharedPreferencesConstant.currentAdmin,
+                jsonEncode(updateUserResponse.data!));
+            print(
+                "after SEtData ${await localSharePreferences.getString(SharedPreferencesConstant.currentAdmin)}");
             notifyListeners();
-            return {'success': true, 'message':updateUserResponse.message ??""};
+            return {
+              'success': true,
+              'message': updateUserResponse.message ?? ""
+            };
           } else {
             debugPrint("Empty data: ${updateUserResponse.message}");
-            return {'success': false, 'message': updateUserResponse.message ?? 'No data returned'};
+            return {
+              'success': false,
+              'message': updateUserResponse.message ?? 'No data returned'
+            };
           }
         } else {
           debugPrint("Error: ${updateUserResponse.message}");
-          return {'success': false, 'message': updateUserResponse.message ?? 'Error in response'};
+          return {
+            'success': false,
+            'message': updateUserResponse.message ?? 'Error in response'
+          };
         }
-      } else if(response.statusCode == 401 || response.statusCode == 404){
+      } else if (response.statusCode == 401 || response.statusCode == 404) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        AddUserResponse addUserResponse = AddUserResponse.fromJson(responseBody);
+        AddUserResponse addUserResponse =
+            AddUserResponse.fromJson(responseBody);
         debugPrint("Error: ${addUserResponse.message}");
-        return {'success': false, 'message': addUserResponse.message ?? 'Error in response'};
-      }else{
+        return {
+          'success': false,
+          'message': addUserResponse.message ?? 'Error in response'
+        };
+      } else {
         return {'failure': true, 'message': 'Something went wrong!'};
         // throw Exception('Failed to add user. Status code: ${response.statusCode}');
       }
+    } on TimeoutException {
+      return {
+        'success': false,
+        'message': 'Login request timed out. Please try again.'
+      };
     } catch (error) {
       debugPrint("Error: $error");
-      return {'success': false, 'message': 'An error occurred while update user: $error'};
+      return {
+        'success': false,
+        'message': 'An error occurred while update user: $error'
+      };
     }
   }
-
 
   // Delete a user
   Future<void> deleteUser(int id) async {
@@ -187,21 +229,27 @@ class UserProvider extends ChangeNotifier {
       var response = await apiHelper.deleteApi(apiUrl);
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        AddUserResponse deleteUserResponse = AddUserResponse.fromJson(responseBody);
+        AddUserResponse deleteUserResponse =
+            AddUserResponse.fromJson(responseBody);
         if (deleteUserResponse.success == true) {
-          CustomToast.show("Profile updated successfully!",isSuccess:true);
+          CustomToast.show("Profile updated successfully!", isSuccess: true);
           notifyListeners();
         } else {
           debugPrint("Error: ${deleteUserResponse.message}");
-          CustomToast.show("Error: ${deleteUserResponse.message}",isSuccess:false);
+          CustomToast.show("Error: ${deleteUserResponse.message}",
+              isSuccess: false);
         }
       } else {
-        CustomToast.show("Failed to delete user. Status code: ${response.statusCode}",isSuccess:false);
-        throw Exception('Failed to delete user. Status code: ${response.statusCode}');
+        CustomToast.show(
+            "Failed to delete user. Status code: ${response.statusCode}",
+            isSuccess: false);
+        throw Exception(
+            'Failed to delete user. Status code: ${response.statusCode}');
       }
     } catch (error) {
       debugPrint("Error: $error");
-      CustomToast.show("An error occurred while delete user.",isSuccess:false);
+      CustomToast.show("An error occurred while delete user.",
+          isSuccess: false);
       throw Exception('An error occurred while delete user.');
     }
   }
@@ -213,100 +261,133 @@ class UserProvider extends ChangeNotifier {
       var response = await apiHelper.getApi(apiUrl);
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        GetUserResponse addUserResponse = GetUserResponse.fromJson(responseBody);
+        GetUserResponse addUserResponse =
+            GetUserResponse.fromJson(responseBody);
         if (addUserResponse.success == true) {
-          if(addUserResponse.data != null && addUserResponse.data!.user != null){
+          if (addUserResponse.data != null &&
+              addUserResponse.data!.user != null) {
             user = addUserResponse.data!.user!;
             setValue(user);
             notifyListeners();
-          }else {
-            CustomToast.show("empty data: ${addUserResponse.message}",isSuccess:false);
+          } else {
+            CustomToast.show("empty data: ${addUserResponse.message}",
+                isSuccess: false);
             debugPrint("empty data: ${addUserResponse.message}");
           }
         } else {
-          CustomToast.show("Error: ${addUserResponse.message}",isSuccess:false);
+          CustomToast.show("Error: ${addUserResponse.message}",
+              isSuccess: false);
           debugPrint("Error: ${addUserResponse.message}");
         }
       } else {
-        CustomToast.show("Failed to delete user. Status code: ${response.statusCode}",isSuccess:false);
-        throw Exception('Failed to delete user. Status code: ${response.statusCode}');
+        CustomToast.show(
+            "Failed to delete user. Status code: ${response.statusCode}",
+            isSuccess: false);
+        throw Exception(
+            'Failed to delete user. Status code: ${response.statusCode}');
       }
     } catch (error) {
       debugPrint("Error: $error");
-      CustomToast.show("An error occurred while get user.",isSuccess:false);
+      CustomToast.show("An error occurred while get user.", isSuccess: false);
       throw Exception('An error occurred while get user.');
     }
   }
 
-  setImage(XFile pickedFile){
+  setImage(XFile pickedFile) {
     image = null;
     image = File(pickedFile.path);
     notifyListeners();
   }
 
-  setDate(DateTime pickedDate, bool isDob){
-    if(isDob){
-    dobController.text = pickedDate.toLocal().toString().split(' ')[0];}
-    else{
-      joinDateController.text = pickedDate.toLocal().toString().split(' ')[0];}
-
+  setDate(DateTime pickedDate, bool isDob) {
+    if (isDob) {
+      dobController.text = pickedDate.toLocal().toString().split(' ')[0];
+    } else {
+      joinDateController.text = pickedDate.toLocal().toString().split(' ')[0];
+    }
 
     notifyListeners();
   }
 
   login(String email, String password) async {
     String apiUrl = ApiConstant.login;
-    Map<String,dynamic> data = {
-      "emailId": email,
-      "password": password
-    };
+    Map<String, dynamic> data = {"emailId": email, "password": password};
     ApiHelper apiHelper = ApiHelper();
 
     try {
-      var response = await apiHelper.postApiWithBody(apiUrl,data);
+      var response = await apiHelper.postApiWithBody(apiUrl, data);
       if (response.statusCode == 200) {
+        //log("user login response: ${response.body}");
         Map<String, dynamic> responseBody = json.decode(response.body);
-        LoginUserResponse addUserResponse = LoginUserResponse.fromJson(responseBody);
+        LoginUserResponse addUserResponse =
+            LoginUserResponse.fromJson(responseBody);
 
         debugPrint("data: ${addUserResponse.message}");
         if (addUserResponse.success == true) {
-          if (addUserResponse.data != null) {
-            if(addUserResponse.data!.user!.admin==true){
-              user = addUserResponse.data!.user!;
-              print("before SEtData ${user.firstName}");
-              LocalSharePreferences localSharePreferences=LocalSharePreferences();
-              localSharePreferences.setBool(SharedPreferencesConstant.isAdminLoggedIn, true);
-              print("check  SEtLogin ${await localSharePreferences.getBool(SharedPreferencesConstant.isAdminLoggedIn)}");
-              localSharePreferences.setString(SharedPreferencesConstant.currentAdmin, jsonEncode(addUserResponse.data!.user));
-              print("after SEtData ${ await localSharePreferences.getString(SharedPreferencesConstant.currentAdmin)}");
-              notifyListeners();
-              return {'success': true, 'message': 'User logged in successfully'};
-            }else{
-              CustomToast.show("You are not admin..try with admin credentials...");
-              notifyListeners();
-              return {'success': false, 'message': "You are not admin..try with admin credentials..."};
-            }
+          if (addUserResponse.data?.user != null) {
+            final loggedInUser = addUserResponse.data!.user!;
+            final hasAdminRole = (loggedInUser.role ?? [])
+                .any((role) => role.toLowerCase() == 'admin');
 
+            if (loggedInUser.admin == true || hasAdminRole) {
+              user = loggedInUser;
+              //log("before SEtData ${user.firstName}");
+              LocalSharePreferences localSharePreferences =
+                  LocalSharePreferences();
+              localSharePreferences.setBool(
+                  SharedPreferencesConstant.isAdminLoggedIn, true);
+              //log("check  SEtLogin ${await localSharePreferences.getBool(SharedPreferencesConstant.isAdminLoggedIn)}");
+              localSharePreferences.setString(
+                  SharedPreferencesConstant.currentAdmin,
+                  jsonEncode(addUserResponse.data!.user));
+              //log("after SEtData ${await localSharePreferences.getString(SharedPreferencesConstant.currentAdmin)}");
+              notifyListeners();
+              return {
+                'success': true,
+                'message': 'User logged in successfully'
+              };
+            } else {
+              CustomToast.show(
+                  "You are not admin..try with admin credentials...");
+              notifyListeners();
+              return {
+                'success': false,
+                'message': "You are not admin..try with admin credentials..."
+              };
+            }
           } else {
             debugPrint("Empty data: ${addUserResponse.message}");
-            return {'success': false, 'message': addUserResponse.message ?? 'No data returned'};
+            return {
+              'success': false,
+              'message': addUserResponse.message ?? 'No data returned'
+            };
           }
         } else {
           debugPrint("Error: ${addUserResponse.message}");
-          return {'success': false, 'message': addUserResponse.message ?? 'Error in response'};
+          return {
+            'success': false,
+            'message': addUserResponse.message ?? 'Error in response'
+          };
         }
-      } else if(response.statusCode == 401 || response.statusCode == 404){
+      } else if (response.statusCode == 401 || response.statusCode == 404) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        AddUserResponse addUserResponse = AddUserResponse.fromJson(responseBody);
+        AddUserResponse addUserResponse =
+            AddUserResponse.fromJson(responseBody);
         debugPrint("Error: ${addUserResponse.message}");
-        return {'success': false, 'message': addUserResponse.message ?? 'Error in response'};
-      }else{
+        return {
+          'success': false,
+          'message': addUserResponse.message ?? 'Error in response'
+        };
+      } else {
         return {'failure': true, 'message': 'Something went wrong!'};
         // throw Exception('Failed to add user. Status code: ${response.statusCode}');
       }
     } catch (error) {
       debugPrint("Error: $error");
-      return {'success': false, 'message': 'An error occurred while logging user: $error'};
+      return {
+        'success': false,
+        'message': 'An error occurred while logging user: $error'
+      };
     }
   }
 
@@ -319,20 +400,21 @@ class UserProvider extends ChangeNotifier {
       var response = await apiHelper.getApi(apiUrl);
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        GetAllUserResponse getAllUserResponse = GetAllUserResponse.fromJson(responseBody);
+        GetAllUserResponse getAllUserResponse =
+            GetAllUserResponse.fromJson(responseBody);
         if (getAllUserResponse.success == true) {
-          if(getAllUserResponse.data != null){
+          if (getAllUserResponse.data != null) {
             _users = getAllUserResponse.data!.users!;
-            _filteredUsers=_users;
-            notifyListeners();
-          }else {
+            applySearch();
+          } else {
             debugPrint("empty list: ${getAllUserResponse.message}");
           }
         } else {
           debugPrint("Error: ${getAllUserResponse.message}");
         }
       } else {
-        throw Exception('Failed to fetch users. Status code: ${response.statusCode}');
+        throw Exception(
+            'Failed to fetch users. Status code: ${response.statusCode}');
       }
     } catch (error) {
       debugPrint("Error: $error");
@@ -370,14 +452,15 @@ class UserProvider extends ChangeNotifier {
     userRequest.state = stateController.text;
     userRequest.verified = true;
 
-
     ApiHelper apiHelper = ApiHelper();
 
     try {
-      var response = await apiHelper.postApiWithBody(apiUrl,userRequest.toJson());
+      var response =
+          await apiHelper.postApiWithBody(apiUrl, userRequest.toJson());
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        GetUserResponse addUserResponse = GetUserResponse.fromJson(responseBody);
+        GetUserResponse addUserResponse =
+            GetUserResponse.fromJson(responseBody);
 
         if (addUserResponse.success == true) {
           if (addUserResponse.data != null) {
@@ -387,35 +470,40 @@ class UserProvider extends ChangeNotifier {
             return {'success': true, 'message': 'User created successfully'};
           } else {
             debugPrint("Empty data: ${addUserResponse.message}");
-            return {'success': false, 'message': addUserResponse.message ?? 'No data returned'};
+            return {
+              'success': false,
+              'message': addUserResponse.message ?? 'No data returned'
+            };
           }
         } else {
           debugPrint("Error: ${addUserResponse.message}");
-          return {'success': false, 'message': addUserResponse.message ?? 'Error in response'};
+          return {
+            'success': false,
+            'message': addUserResponse.message ?? 'Error in response'
+          };
         }
       } else if (response.statusCode == 500) {
         Map<String, dynamic> responseBody = json.decode(response.body);
         ErrorResposne addUserResponse = ErrorResposne.fromJson(responseBody);
         return {'success': false, 'message': addUserResponse.message};
-        }else
-          {
-            return {'success': false, 'message': 'Something went wrong!'};
-          }
-        // throw Exception('Failed to add user. Status code: ${response.statusCode}');
-
+      } else {
+        return {'success': false, 'message': 'Something went wrong!'};
+      }
+      // throw Exception('Failed to add user. Status code: ${response.statusCode}');
     } catch (error) {
       debugPrint("Error: $error");
-      return {'success': false, 'message': 'An error occurred while adding user: $error'};
+      return {
+        'success': false,
+        'message': 'An error occurred while adding user: $error'
+      };
     }
   }
 
-
-  io.File? _imageFile; // For mobile platforms
-  html.File? _webFile; // For web platform
+  io.File? _imageFile; // Mobile/Desktop
+  html.File? _webFile; // Web
   String? _uploadedImageUrl;
   bool _isUploading = false;
 
-  // Getters
   io.File? get imageFile => _imageFile;
   html.File? get webFile => _webFile;
   String? get uploadedImageUrl => _uploadedImageUrl;
@@ -423,98 +511,129 @@ class UserProvider extends ChangeNotifier {
 
   // Pick Image
   Future<void> pickImage() async {
-    if (kIsWeb) {
-      // Web file picker
-      final html.FileUploadInputElement uploadInput =
-      html.FileUploadInputElement();
-      uploadInput.accept = 'image/*';
-      uploadInput.click();
+    try {
+      if (kIsWeb) {
+        final uploadInput = html.FileUploadInputElement();
+        uploadInput.accept = 'image/*';
+        uploadInput.click();
 
-      uploadInput.onChange.listen((event) async {
-        if (uploadInput.files != null && uploadInput.files!.isNotEmpty) {
-          _webFile = uploadInput.files!.first;
-          await uploadImage();
+        uploadInput.onChange.listen((event) async {
+          if (uploadInput.files != null && uploadInput.files!.isNotEmpty) {
+            _webFile = uploadInput.files!.first;
+            notifyListeners();
+            await uploadImage();
+          }
+        });
+      } else {
+        final picker = ImagePicker();
+        final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+        if (pickedFile != null) {
+          _imageFile = io.File(pickedFile.path);
           notifyListeners();
+          await uploadImage();
+        } else {
+          CustomToast.show('No image selected', isWarning: true);
         }
-      });
-    } else {
-      // Mobile/desktop file picker
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-      if (pickedFile != null) {
-        _imageFile = io.File(pickedFile.path);
-        if (kIsWeb && _webFile != null) {
-          await uploadImage();}
-        notifyListeners();
       }
+    } on PlatformException catch (e) {
+      //log('Image picker permission error: $e');
+      CustomToast.show(
+        'Permission denied. Please allow photo/gallery access in app settings.',
+        isSuccess: false,
+      );
+    } catch (e) {
+      //log('Error picking image: $e');
+      CustomToast.show(
+        'Unable to select image. Please try again.',
+        isSuccess: false,
+      );
     }
   }
 
   // Upload Image
-  Future<void> uploadImage( ) async {
+  Future<void> uploadImage() async {
     if ((!kIsWeb && _imageFile == null) || (kIsWeb && _webFile == null)) {
-      return; // No file selected
+      _isUploading = false;
+      notifyListeners();
+      return;
     }
 
-    final url = Uri.parse(
-        ApiConstant.uploadImg);
     _isUploading = true;
     notifyListeners();
 
     try {
+      final uri = Uri.parse(
+        ApiConstant.uploadImg,
+      );
+
+      final request = http.MultipartRequest('POST', uri);
       if (kIsWeb && _webFile != null) {
-        // Web upload logic
-        final request = http.MultipartRequest('POST', url);
         final reader = html.FileReader();
         reader.readAsArrayBuffer(_webFile!);
         await reader.onLoad.first;
 
-        final byteData = reader.result as List<int>;
-        final multipartFile = http.MultipartFile.fromBytes(
-          'profilePicture',
-          byteData,
-          filename: _webFile!.name,
+        final bytes = reader.result as List<int>;
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: _webFile!.name,
+          ),
         );
-
-        request.files.add(multipartFile);
-        final response = await request.send();
-
-        if (response.statusCode == 200) {
-          final responseBody = await response.stream.bytesToString();
-          _uploadedImageUrl = jsonDecode(responseBody);
-          profileController.text = _uploadedImageUrl!;
-
-        } else if (!kIsWeb && _imageFile != null) {
-          // Mobile/desktop upload logic
-          final request = http.MultipartRequest('POST', url);
-          request.files.add(await http.MultipartFile.fromPath(
-            'profilePicture',
+      } else if (_imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'file',
             _imageFile!.path,
-            //  contentType: MediaType('image', 'jpeg'),
-          ));
-          final response = await request.send();
+          ),
+        );
+      }
 
-          if (response.statusCode == 200) {
-            final responseBody = await response.stream.bytesToString();
-            _uploadedImageUrl = jsonDecode(responseBody);
-            profileController.text = _uploadedImageUrl!;
-          }
-          notifyListeners();
+      final streamedResponse = await request.send();
+      final responseBody = await streamedResponse.stream.bytesToString();
+
+      if (streamedResponse.statusCode == 200) {
+        final decoded = jsonDecode(responseBody);
+
+        final fileUrl = decoded['data']?['fileUrl'];
+        if (fileUrl != null && fileUrl is String) {
+          _uploadedImageUrl = fileUrl;
+          profileController.text = _uploadedImageUrl!;
+          //log('Image uploaded: $_uploadedImageUrl');
+          CustomToast.show('Image uploaded successfully', isSuccess: true);
+        } else {
+          //log('Upload success but fileUrl missing');
+          CustomToast.show(
+            'Upload succeeded but image URL was not returned.',
+            isSuccess: false,
+          );
         }
-      } }catch (e) {
-      CustomToast.show('Error uploading image: $e',isSuccess: false);
-
+      } else {
+        //log(
+        //   'Upload failed: ${streamedResponse.statusCode} -> $responseBody',
+        // );
+        CustomToast.show(
+          'Upload failed (${streamedResponse.statusCode}). Please try again.',
+          isSuccess: false,
+        );
+      }
+    } catch (e) {
+      //log('Error uploading image: $e');
+      CustomToast.show(
+        'Image upload failed. Please check network and permissions.',
+        isSuccess: false,
+      );
     } finally {
       _isUploading = false;
       notifyListeners();
     }
   }
 
-
-  List<UserContent> _userContentList =[];
+  List<UserContent> _userContentList = [];
   List<UserContent> get userContentList => _userContentList;
 
-  List<UserContent> _filtteredUserContentList =[];
+  List<UserContent> _filtteredUserContentList = [];
   List<UserContent> get filtteredUserContentList => _filtteredUserContentList;
 
   Future<void> fetchUserContent(int userId) async {
@@ -523,24 +642,27 @@ class UserProvider extends ChangeNotifier {
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.getApi(apiUrl);
-      debugPrint("response::: "+response.toString());
+      debugPrint("response::: " + response.toString());
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        debugPrint("response::: "+responseBody.toString());
-        MoviePurchaseByUserResponse moviePurchaseByUserResponse = MoviePurchaseByUserResponse.fromJson(responseBody);
-        debugPrint("data::: "+moviePurchaseByUserResponse.data.toString());
+        debugPrint("response::: " + responseBody.toString());
+        MoviePurchaseByUserResponse moviePurchaseByUserResponse =
+            MoviePurchaseByUserResponse.fromJson(responseBody);
+        debugPrint("data::: " + moviePurchaseByUserResponse.data.toString());
         if (moviePurchaseByUserResponse.success == true) {
-          if(moviePurchaseByUserResponse.data != null){
+          if (moviePurchaseByUserResponse.data != null) {
             _userContentList.clear();
             _filtteredUserContentList.clear();
             _userContentList = moviePurchaseByUserResponse.data!.userContent!;
             _filtteredUserContentList = _userContentList;
             debugPrint("message : ${moviePurchaseByUserResponse.message}");
             notifyListeners();
-          }else {
+          } else {
             _userContentList.clear();
             _filtteredUserContentList.clear();
-            CustomToast.show("empty list: ${moviePurchaseByUserResponse.message}",isSuccess: true);
+            CustomToast.show(
+                "empty list: ${moviePurchaseByUserResponse.message}",
+                isSuccess: true);
 
             debugPrint("empty list: ${moviePurchaseByUserResponse.message}");
             notifyListeners();
@@ -549,20 +671,22 @@ class UserProvider extends ChangeNotifier {
           _userContentList.clear();
           _filtteredUserContentList.clear();
           debugPrint("Error: ${moviePurchaseByUserResponse.message}");
-          CustomToast.show("Error: ${moviePurchaseByUserResponse.message}",isSuccess:false);
+          CustomToast.show("Error: ${moviePurchaseByUserResponse.message}",
+              isSuccess: false);
           notifyListeners();
         }
       } else {
-        CustomToast.show("Failed to fetch Content. Status code: ${response.statusCode}",isSuccess:false);
-        throw Exception('Failed to fetch Content. Status code: ${response.statusCode}');
+        CustomToast.show(
+            "Failed to fetch Content. Status code: ${response.statusCode}",
+            isSuccess: false);
+        throw Exception(
+            'Failed to fetch Content. Status code: ${response.statusCode}');
       }
     } catch (error) {
       debugPrint("Error: $error");
-      CustomToast.show("An error occurred while fetching user content.",isSuccess:false);
+      CustomToast.show("An error occurred while fetching user content.",
+          isSuccess: false);
       throw Exception('An error occurred while fetching Content.');
     }
   }
-
-
 }
-
