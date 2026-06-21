@@ -1,6 +1,7 @@
 import 'package:admin_ott/app/provider/admin_settings_provider.dart';
 import 'package:admin_ott/app/ui/pages/admin%20settings%20page/widgets/admin_settings_form_widgets.dart';
 import 'package:admin_ott/data/models/response/admin_settings_models.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -169,13 +170,10 @@ class _AdminRuleFormDialogState extends State<AdminRuleFormDialog> {
                           ),
                           onPressed: provider.isSaving ? null : _submit,
                           icon: provider.isSaving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
+                              ? const AppSpinner(
+                                  size: 18,
+                                  strokeWidth: 2,
+                                  color: Colors.white,
                                 )
                               : Icon(_isEdit ? Icons.save : Icons.add),
                           label: Text(_isEdit ? 'Update Rule' : 'Save Rule'),
@@ -252,10 +250,10 @@ class _AdminRuleFormDialogState extends State<AdminRuleFormDialog> {
           ),
           AdminSettingsTextField(
             controller: _mediaHousePercentageCtrl,
-            label: 'Media House Percentage',
+            label: 'Production House Percentage',
             keyboardType: TextInputType.number,
             prefixIcon: Icons.percent,
-            validator: _percentageValidator('Media house percentage'),
+            validator: _percentageValidator('Production house percentage'),
           ),
         ];
 
@@ -340,7 +338,7 @@ class _AdminRuleFormDialogState extends State<AdminRuleFormDialog> {
     if (_isRevenue && !_percentagesEqualHundred()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Admin % + Media House % must equal 100'),
+          content: Text('Admin % + Production House % must equal 100'),
         ),
       );
       return;

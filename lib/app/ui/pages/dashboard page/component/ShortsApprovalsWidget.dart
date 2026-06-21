@@ -1,6 +1,7 @@
 import 'package:admin_ott/app/provider/shortsProvider.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/components/short_master_page.dart';
 import 'package:admin_ott/data/models/response/shorts_models.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,9 +17,7 @@ class ShortsApprovalsWidget extends StatelessWidget {
           final shorts = provider.filteredShortsByStatus;
 
           if (provider.isStatusListLoading && shorts.isEmpty) {
-            return Center(
-              child: CircularProgressIndicator(color: theme.primaryColor),
-            );
+            return const AppCardSkeletonList(itemCount: 3);
           }
 
           if (shorts.isEmpty) {
@@ -33,9 +32,13 @@ class ShortsApprovalsWidget extends StatelessWidget {
           return SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: shorts.map((short) {
-                return _buildShortCard(context, short, theme, provider);
-              }).toList(),
+              children: [
+                ...shorts.map((short) {
+                  return _buildShortCard(context, short, theme, provider);
+                }),
+                if (provider.isStatusListLoading)
+                  const AppPaginationLoader(label: 'Refreshing approvals'),
+              ],
             ),
           );
         },

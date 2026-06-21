@@ -3,6 +3,7 @@ import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/approve_content_detail_page.dart';
 import 'package:admin_ott/domain/entities/content.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class MediahouseContentApprovalWidget extends StatelessWidget {
@@ -33,7 +34,7 @@ class MediahouseContentApprovalWidget extends StatelessWidget {
               physics: const ClampingScrollPhysics(),
               padding: EdgeInsets.zero,
               itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final content = items[index];
                 return _buildContentCard(
@@ -67,23 +68,23 @@ class MediahouseContentApprovalWidget extends StatelessWidget {
 
     return InkWell(
       onTap: () => _openContentDetailsPage(context, content),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(14),
+          color: theme.scaffoldBackgroundColor.withValues(alpha: 0.28),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: theme.canvasColor.withValues(alpha: 0.14)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: compact ? 120 : 160,
+              width: compact ? 104 : 132,
               child: AspectRatio(
                 aspectRatio: 16 / 9,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                   child: posterUrl.isNotEmpty
                       ? Image.network(
                           posterUrl,
@@ -94,7 +95,7 @@ class MediahouseContentApprovalWidget extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,35 +105,35 @@ class MediahouseContentApprovalWidget extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: theme.canvasColor,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
-                    '$genre • $type',
+                    '$genre - $type',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: theme.canvasColor.withValues(alpha: 0.75),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     'Language: ${_languageText(content)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: theme.canvasColor.withValues(alpha: 0.75),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                    spacing: 5,
+                    runSpacing: 5,
                     children: [
                       _buildTag(
                         label: content.approvalStatus ?? 'Pending',
@@ -140,7 +141,7 @@ class MediahouseContentApprovalWidget extends StatelessWidget {
                         theme: theme,
                       ),
                       _buildTag(
-                        label: content.uploadDateTime ?? 'Unknown Date',
+                        label: _formatUploadDate(content.uploadDateTime),
                         color: theme.canvasColor,
                         theme: theme,
                       ),
@@ -166,15 +167,15 @@ class MediahouseContentApprovalWidget extends StatelessWidget {
     required ThemeData theme,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(7),
       ),
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 10,
           color: color == theme.canvasColor ? theme.canvasColor : color,
           fontWeight: FontWeight.w600,
         ),
@@ -209,5 +210,18 @@ class MediahouseContentApprovalWidget extends StatelessWidget {
     final languages = content.languageList;
     if (languages == null || languages.isEmpty) return 'Unknown';
     return languages.join(', ');
+  }
+
+  String _formatUploadDate(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Unknown Date';
+
+    final rawValue = value.trim();
+    final epoch = int.tryParse(rawValue);
+    final date = epoch != null
+        ? DateTime.fromMillisecondsSinceEpoch(epoch)
+        : DateTime.tryParse(rawValue);
+
+    if (date == null) return 'Unknown Date';
+    return DateFormat('dd MMM yyyy, hh:mm a').format(date.toLocal());
   }
 }

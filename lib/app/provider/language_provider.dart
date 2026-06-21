@@ -11,7 +11,6 @@ import '../core/utils/sharepreferences.dart';
 
 class LanguageProvider with ChangeNotifier {
   LanguageProvider() {
-    fetchLanguages();
     _fetchUserData();
   }
 

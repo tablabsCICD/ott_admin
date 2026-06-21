@@ -6,10 +6,6 @@ import '../core/constant/api_constant.dart';
 import '../core/network/api_helper.dart';
 
 class PromoterPercentageProvider extends ChangeNotifier {
-  PromoterPercentageProvider() {
-    getAllPromoterPercentageData();
-  }
-
   // Properly initialized (not nullable)
   final List<PromoterPercentage> allEntries = [];
   final Map<String, PromoterPercentage> latestByLevel = {};

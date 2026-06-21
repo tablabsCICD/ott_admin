@@ -41,6 +41,11 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final dashboardProvider =
+          Provider.of<DashboardProvider>(context, listen: false);
+      dashboardProvider.getDashboradData();
+      dashboardProvider.getMovieTypeChartData();
+      dashboardProvider.getRevenueChartData();
       Provider.of<VideoProvider>(context, listen: false)
           .fetchMoviesByStatusAndMediaHouseId("PENDING", 0);
       Provider.of<MediaHouseProvider>(context, listen: false)
@@ -74,7 +79,7 @@ class _DashboardPageState extends State<DashboardPage> {
         userGraphProvider.fetchApprovedContentGraph(index);
         break;
       case 4:
-        print("Fetching Media House Graph Data for time range $index");
+        print("Fetching Production House Graph Data for time range $index");
         userGraphProvider.fetchMediaHouseCountGraph(index);
         break;
       default:
@@ -157,7 +162,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                         index: 1,
                                       ),
                                       _buildStatisticCard(
-                                        title: 'Total Media Houses',
+                                        title: 'Total Production Houses',
                                         value: provider
                                                 .dashboardData.totalMediaHouses
                                                 ?.toString() ??
@@ -263,7 +268,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                     height: 250,
                                     child: _buildRequestCard(
                                       context,
-                                      title: 'Media House Approvals',
+                                      title: 'Production House Approvals',
                                       child: MediaHouseApprovalsWidget(),
                                     ),
                                   ),
@@ -360,7 +365,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                           height: 450,
                                           child: _buildRequestCard(
                                             context,
-                                            title: 'Media House Approvals',
+                                            title: 'Production House Approvals',
                                             child: MediaHouseApprovalsWidget(),
                                           ),
                                         ),
@@ -578,7 +583,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ManagersOnboardedGraph(selectedTimeRange: _selectedTimeRange),
         ] else if (graphIndex == 4) ...[
           _buildGraphHeader('MediaHouse Onboarded Graph',
-              'This graph represents the media house onboarded for the selected time range.'),
+              'This graph represents the Production house onboarded for the selected time range.'),
           MediaHouseOnboardgraph(selectedTimeRange: _selectedTimeRange),
         ] else if (graphIndex == 3) ...[
           _buildGraphHeader('Content Approved Graph',
@@ -764,7 +769,7 @@ class _DashboardPageState extends State<DashboardPage> {
         StaggeredGridTile.fit(
           crossAxisCellCount: 1,
           child: _buildBentoCard(
-            title: 'Total Media Houses',
+            title: 'Total Production Houses',
             value: provider.dashboardData.totalMediaHouses?.toString() ?? '0',
             icon: Icons.home_work,
             index: 4,
@@ -886,7 +891,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   height: 450,
                   child: _buildRequestCard(
                     context,
-                    title: 'Media House Approvals',
+                    title: 'Production House Approvals',
                     child: MediaHouseApprovalsWidget(),
                   ),
                 ),

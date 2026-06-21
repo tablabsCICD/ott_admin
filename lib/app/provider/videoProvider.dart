@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:io';
 import 'dart:io' as io;
 import 'package:admin_ott/data/models/response/getAllMediaHouseByStatus.dart';
 import 'package:admin_ott/data/models/response/video_upload_response.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../core/loading/app_loading_controller.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:image_picker/image_picker.dart';
 import 'package:admin_ott/app/core/constant/api_constant.dart';
@@ -26,8 +26,6 @@ import '../widgets/show_toast.dart';
 
 class VideoProvider extends ChangeNotifier {
   VideoProvider() : super() {
-    fetchContent();
-    fetchMoviesByStatusAndMediaHouseId("PENDING", 0);
     searchContentController.addListener(filterContent);
   }
 
@@ -321,6 +319,31 @@ class VideoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<Content?> getContentById(int id) async {
+    final apiUrl = ApiConstant.getVideoById(id);
+    final apiHelper = ApiHelper();
+
+    try {
+      final response = await apiHelper.getApi(apiUrl);
+      debugPrint("response::: ${response.body}");
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+
+      final responseBody = _decodeResponseMap(response.body);
+      final contentJson = _extractContentJson(responseBody);
+      if (contentJson == null) return null;
+
+      _content = Content.fromJson(contentJson);
+      notifyListeners();
+      return _content;
+    } catch (error) {
+      debugPrint("Error fetching content by id: $error");
+      return null;
+    }
+  }
+
   // Fetch all moviesByMediaHouseId
   Future<void> fetchMoviesByMediaHouseId(int mediaHouseId) async {
     String apiUrl = ApiConstant.getVideoByMediaHouseId(mediaHouseId);
@@ -376,12 +399,15 @@ class VideoProvider extends ChangeNotifier {
               _contentListByMediaHouse =
                   getAllContentResponse.data!.contentList!;
               _filteredContentListByMediaHouse.addAll(_contentListByMediaHouse);
-              //log("filtered content list by media house size: ${_filteredContentListByMediaHouse.length}");
+              //log("filtered content list by production house size: ${_filteredContentListByMediaHouse.length}");
               _filteredContentList.clear();
               _filteredContentList = getAllContentResponse.data!.contentList!;
             } else {
               _filteredContentList.clear();
               _filteredContentList = getAllContentResponse.data!.contentList!;
+              if (status.toUpperCase() == "ALL") {
+                _contentList = List<Content>.from(_filteredContentList);
+              }
             }
             notifyListeners();
           } else {
@@ -425,16 +451,39 @@ class VideoProvider extends ChangeNotifier {
     try {
       var response = await apiHelper.putApi(apiUrl);
       debugPrint("response::: " + response.body);
-      if (response.statusCode == 200) {
-        Map<String, dynamic> responseBody = json.decode(response.body);
-        _content = Content.fromJson(responseBody);
-        CustomToast.show("Content Approved successfully");
+      final responseBody = _decodeResponseMap(response.body);
+      final apiMessage = _extractApiMessage(responseBody);
+      final isSuccess = _extractApiSuccess(responseBody);
+
+      if (response.statusCode == 200 && isSuccess != false) {
+        final contentJson = _extractContentJson(responseBody);
+        if (contentJson != null) {
+          _content = Content.fromJson(contentJson);
+        } else {
+          await getContentById(id);
+        }
+        CustomToast.show(
+          apiMessage ?? _contentStatusSuccessMessage(status),
+          isSuccess: true,
+        );
+        await fetchMoviesByStatusAndMediaHouseId("PENDING", 0);
+        notifyListeners();
+        return true;
+      } else if (_isAlreadyMarkedMessage(apiMessage)) {
+        await getContentById(id);
+        CustomToast.show(
+          apiMessage ?? _contentStatusSuccessMessage(status),
+          isSuccess: false,
+        );
         await fetchMoviesByStatusAndMediaHouseId("PENDING", 0);
         notifyListeners();
         return true;
       } else {
-        throw Exception(
-            'Failed to fetch Content. Status code: ${response.statusCode}');
+        CustomToast.show(
+          apiMessage ?? _contentStatusErrorMessage(status, response.statusCode),
+          isSuccess: false,
+        );
+        return false;
       }
     } catch (error) {
       debugPrint("Error: $error");
@@ -443,6 +492,85 @@ class VideoProvider extends ChangeNotifier {
         isSuccess: false,
       );
       return false;
+    }
+  }
+
+  Map<String, dynamic>? _decodeResponseMap(String body) {
+    try {
+      final decoded = json.decode(body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return decoded.map((key, value) => MapEntry(key.toString(), value));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Map<String, dynamic>? _extractContentJson(Map<String, dynamic>? body) {
+    if (body == null) return null;
+    final data = body['data'];
+    if (data is Map<String, dynamic>) {
+      final nested = data['content'] ?? data['contentList'] ?? data['movie'];
+      if (nested is Map<String, dynamic>) return nested;
+      return data;
+    }
+    if (data is Map) {
+      return data.map((key, value) => MapEntry(key.toString(), value));
+    }
+    return body.containsKey('id') ? body : null;
+  }
+
+  String? _extractApiMessage(Map<String, dynamic>? body) {
+    final message = body?['message'] ??
+        body?['error'] ??
+        body?['statusMessage'] ??
+        body?['details'];
+    final text = message?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
+  }
+
+  bool? _extractApiSuccess(Map<String, dynamic>? body) {
+    final value = body?['success'] ?? body?['isSuccess'] ?? body?['status'];
+    if (value == null) return null;
+    if (value is bool) return value;
+    final normalized = value.toString().trim().toLowerCase();
+    if (normalized == 'true' || normalized == 'success' || normalized == '1') {
+      return true;
+    }
+    if (normalized == 'false' || normalized == 'failed' || normalized == '0') {
+      return false;
+    }
+    return null;
+  }
+
+  bool _isAlreadyMarkedMessage(String? message) {
+    final normalized = message?.toLowerCase() ?? '';
+    return normalized.contains('already') && normalized.contains('marked');
+  }
+
+  String _contentStatusSuccessMessage(String status) {
+    switch (status.toUpperCase()) {
+      case 'APPROVED':
+        return 'Content approved successfully';
+      case 'REJECTED':
+        return 'Content rejected successfully';
+      case 'PENDING':
+        return 'Content moved to pending successfully';
+      default:
+        return 'Content status updated successfully';
+    }
+  }
+
+  String _contentStatusErrorMessage(String status, int statusCode) {
+    switch (status.toUpperCase()) {
+      case 'APPROVED':
+        return 'Failed to approve content ($statusCode)';
+      case 'REJECTED':
+        return 'Failed to reject content ($statusCode)';
+      case 'PENDING':
+        return 'Failed to move content to pending ($statusCode)';
+      default:
+        return 'Failed to update content status ($statusCode)';
     }
   }
 
@@ -620,6 +748,7 @@ class VideoProvider extends ChangeNotifier {
       if (kIsWeb && _webFile != null) {
         // Web upload logic
         final request = http.MultipartRequest('POST', url);
+        request.headers.addAll(await ApiHelper().multipartHeaders());
         final reader = html.FileReader();
         reader.readAsArrayBuffer(_webFile!);
         await reader.onLoad.first;
@@ -632,7 +761,8 @@ class VideoProvider extends ChangeNotifier {
         );
 
         request.files.add(multipartFile);
-        final response = await request.send();
+        final response =
+            await AppLoadingController.trackFuture(() => request.send());
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
@@ -655,12 +785,14 @@ class VideoProvider extends ChangeNotifier {
       } else if (!kIsWeb && _imageFile != null) {
         // Mobile/desktop upload logic
         final request = http.MultipartRequest('POST', url);
+        request.headers.addAll(await ApiHelper().multipartHeaders());
         request.files.add(await http.MultipartFile.fromPath(
           'profilePicture',
           _imageFile!.path,
           //  contentType: MediaType('image', 'jpeg'),
         ));
-        final response = await request.send();
+        final response =
+            await AppLoadingController.trackFuture(() => request.send());
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
@@ -833,7 +965,7 @@ class VideoProvider extends ChangeNotifier {
     }
     if (mediaHouse.id == null || mediaHouse.id! <= 0) {
       CustomToast.show(
-        "Unable to set percentage: media house not found.",
+        "Unable to set percentage: production house not found.",
         isSuccess: false,
       );
       return false;
@@ -926,7 +1058,7 @@ class VideoProvider extends ChangeNotifier {
     uploadInput.accept = 'video/*';
     uploadInput.click();
 
-    uploadInput.onChange.listen((event) {
+    uploadInput.onChange.listen((event) async {
       final file = uploadInput.files?.first;
       if (file == null) return;
 
@@ -951,6 +1083,7 @@ class VideoProvider extends ChangeNotifier {
       });
 
       xhr.onLoad.listen((_) {
+        AppLoadingController.end();
         if (xhr.status == 200) {
           final response = json.decode(xhr.responseText!);
           VideoUploadResponse contentImageUploadResponse =
@@ -973,6 +1106,7 @@ class VideoProvider extends ChangeNotifier {
       });
 
       xhr.onError.listen((_) {
+        AppLoadingController.end();
         if (isTrailer) {
           trailerUploadProgress = 0.0;
           _isTrailerUploading = false;
@@ -984,6 +1118,9 @@ class VideoProvider extends ChangeNotifier {
       });
 
       xhr.open('POST', ApiConstant.uploadVideo);
+      final headers = await ApiHelper().multipartHeaders();
+      headers.forEach(xhr.setRequestHeader);
+      AppLoadingController.begin();
       xhr.send(formData);
 
       if (isTrailer) {
@@ -1057,6 +1194,7 @@ class VideoProvider extends ChangeNotifier {
               );
 
           final request = http.MultipartRequest('POST', uploadUri);
+          request.headers.addAll(await ApiHelper().multipartHeaders());
 
           request.files.add(http.MultipartFile(
             'video',
@@ -1066,7 +1204,8 @@ class VideoProvider extends ChangeNotifier {
           ));
 
           print("Sending request...");
-          final response = await request.send();
+          final response =
+              await AppLoadingController.trackFuture(() => request.send());
 
           if (response.statusCode == 200) {
             final responseBody = await response.stream.bytesToString();

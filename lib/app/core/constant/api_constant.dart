@@ -5,7 +5,7 @@ class ApiConstant {
       "http://ec2-43-205-217-79.ap-south-1.compute.amazonaws.com:8080/ott/"; */
 
   //loginPage
-  static String login = "${baseUrl}user/email/login2";
+  static String login = "${baseUrl}userNew/admin/login";
   static String forgotPassword(mobileNumber) =>
       "${baseUrl}user/forgotPassword/findUserAndSendOTP?mobileNumber=$mobileNumber";
   static String verifyOtp(mobileNumber, otp) =>
@@ -36,6 +36,21 @@ class ApiConstant {
   static String movieTypeChartData = "${baseUrl}api/admin/contentTypePieChart";
   static String revenueChartData =
       "${baseUrl}api/adminLineCharts/revenueSummary";
+  static String analyticsSummary = "${baseUrl}api/admin/analytics/summary";
+  static String locationWiseAnalytics =
+      "${baseUrl}ott/admin/analytics/location-wise";
+  static String ageWiseRevenueAnalytics =
+      "${baseUrl}ott/admin/analytics/age-wise-revenue";
+  static String ageWiseViewsAnalytics =
+      "${baseUrl}ott/admin/analytics/age-wise-views";
+  static String contentPerformanceAnalytics =
+      "${baseUrl}ott/admin/analytics/content-performance";
+  static String deviceAnalytics = "${baseUrl}ott/admin/analytics/device";
+  static String engagementAnalytics =
+      "${baseUrl}ott/admin/analytics/engagement";
+  static String watchTimeAnalytics = "${baseUrl}ott/admin/analytics/watch-time";
+  static String dateWiseAnalytics(String fromDate, String toDate) =>
+      "${baseUrl}ott/admin/analytics/date-wise?fromDate=$fromDate&toDate=$toDate";
   static String getMediaHouseByStatus(status) =>
       "${baseUrl}api/MediaHouse/getByStatus?status=$status";
   static String getVideoByStatusAndMediaHouse(status, id) =>
@@ -79,11 +94,40 @@ class ApiConstant {
   static String editVideoById(id) => "${baseUrl}api/contentList/update/$id";
   static String getAllVideo = "${baseUrl}api/ContentList/getAll";
   static String getVideoById(id) => "${baseUrl}api/ContentList/getById?id=$id";
+  static String seriesDetails(id) => "${baseUrl}series/$id/details";
+  static String seriesAnalyticsBase(id) => "${baseUrl}series/$id/analytics";
+  static String seriesAnalytics(id) => seriesAnalyticsBase(id);
+  static String seriesAnalyticsSummary(id) =>
+      "${seriesAnalyticsBase(id)}/summary";
+  static String seriesRevenueAnalytics(id) =>
+      "${seriesAnalyticsBase(id)}/revenue";
+  static String seriesAudienceAnalytics(id) =>
+      "${seriesAnalyticsBase(id)}/audience";
+  static String seriesLocationAnalytics(id) =>
+      "${seriesAnalyticsBase(id)}/location";
+  static String seriesDatewiseAnalytics(id) =>
+      "${seriesAnalyticsBase(id)}/datewise";
+  static String seriesEngagementAnalytics(id) =>
+      "${seriesAnalyticsBase(id)}/engagement";
+  static String seriesSeasonsAnalyticsDashboard(id) =>
+      "${seriesAnalyticsBase(id)}/seasons";
+  static String seriesEpisodesAnalyticsDashboard(id) =>
+      "${seriesAnalyticsBase(id)}/episodes";
+  static String seriesFilterMetadata(id) =>
+      "${seriesAnalyticsBase(id)}/filters";
+  static String seriesFilterAnalytics(id) =>
+      "${seriesAnalyticsBase(id)}/filter";
+  static String changeSeriesSeasonStatus(seasonId, status) =>
+      "${baseUrl}series/ApproveSeasonBy?seasonId=$seasonId&status=$status";
+  static String seriesSeasonAnalytics(seriesId, seasonId) =>
+      "${seriesAnalyticsBase(seriesId)}/seasons";
+  static String seriesEpisodeAnalytics(seriesId, episodeId) =>
+      "${baseUrl}series/$seriesId/episode/$episodeId/analytics";
   static String searchContent(char) =>
       "${baseUrl}api/searchByanyKey%20?search=$char";
   static String deleteVideoById(id) => "${baseUrl}api/deleteContentBy/$id";
 
-  static String savePromoter = '${baseUrl}api/savePromoters';
+  static String savePromoter = '${baseUrl}api/savePromotersWithBankDetails';
   static String editPromoterById = "${baseUrl}user/updateUserBy/%7Bid%7D";
   static String getAllPromoter = "${baseUrl}api/Promoters/getAllActive";
   static String getPromoterById(id) => "${baseUrl}user/getUser/$id";
@@ -116,8 +160,36 @@ class ApiConstant {
           startDate, endDate, isYear, isMonth, isWeek) =>
       "${baseUrl}api/settelmentGraph/AllPromotersRevenueForAdmin?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isYear";
   static String topRevenueContentGraph(
-          startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/adminLineCharts/top-revenue-content?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
+    startDate,
+    endDate,
+    isYear,
+    isMonth,
+    isWeek, {
+    String contentType = "ALL",
+    String country = "",
+    String state = "",
+    String district = "",
+    String taluka = "",
+    String city = "",
+  }) {
+    final params = {
+      "startDate": startDate.toString(),
+      "endDate": endDate.toString(),
+      "isYear": isYear.toString(),
+      "isMonth": isMonth.toString(),
+      "isWeek": isWeek.toString(),
+      "contentType": contentType,
+      "country": country,
+      "state": state,
+      "district": district,
+      "taluka": taluka,
+      "city": city,
+    };
+    return Uri.parse("${baseUrl}api/adminLineCharts/top-revenue-content")
+        .replace(queryParameters: params)
+        .toString();
+  }
+
   static String contentRevenueGraph(
           id, startDate, endDate, isYear, isMonth, isWeek) =>
       "${baseUrl}api/contentList/graph?contentListId=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
@@ -144,9 +216,41 @@ class ApiConstant {
 
   static String weeklySettelementData = "${baseUrl}api/settelment/admin";
   static String weeklySettelementDataForMediaHouse(mediaHouseId) =>
-      "${baseUrl}api/settelment/user/$mediaHouseId";
+      "${baseUrl}api/settelment/mediaHouse/$mediaHouseId";
   static String reportAndData =
       "${baseUrl}api/adminLineCharts/getDetailsOfMovie";
+  static String reportAndDataMediaHouseBase =
+      "${baseUrl}api/adminLineCharts/reportAndDataMediaHouse/getById";
+  static String reportAndDataMediaHouse({
+    required String contentType,
+    required String country,
+    required String state,
+    required String district,
+    required String taluka,
+    required String city,
+    required String startDate,
+    required String endDate,
+    required String ageGroup,
+    required String gender,
+  }) {
+    return Uri.parse(
+      "${baseUrl}api/adminLineCharts/reportAndDataMediaHouse/getById",
+    ).replace(
+      queryParameters: {
+        "contentType": contentType,
+        "country": country,
+        "state": state,
+        "district": district,
+        "taluka": taluka,
+        "city": city,
+        "startDate": startDate,
+        "endDate": endDate,
+        "ageGroup": ageGroup,
+        "gender": gender,
+      },
+    ).toString();
+  }
+
   static String setPercentage = "${baseUrl}api/admin/saveMoviePercentAndRate";
 
   // Admin Settings
@@ -162,6 +266,27 @@ class ApiConstant {
       "${baseUrl}api/admin/registration-fee-rule/getAll";
   static String updateRegistrationFeeRule(id) =>
       "${baseUrl}api/admin/registration-fee-rule/update/$id";
+
+  // Notifications
+  static String notifications({
+    int pageNo = 0,
+    int pageSize = 20,
+    String sortBy = "sentDateTime",
+    String sortOrder = "DESC",
+  }) {
+    return Uri.parse("${baseUrl}api/notifications").replace(queryParameters: {
+      "pageNo": pageNo.toString(),
+      "pageSize": pageSize.toString(),
+      "sortBy": sortBy,
+      "sortOrder": sortOrder,
+    }).toString();
+  }
+
+  static String deleteNotification(id) =>
+      "${baseUrl}api/admin/notifications/$id";
+  static String resendNotification(id) =>
+      "${baseUrl}api/admin/notifications/$id/resend";
+  static String sendNotification = "${baseUrl}api/notifications/send";
 
   // Shorts
   static String shortsMaster = "${baseUrl}api/shortsMaster";

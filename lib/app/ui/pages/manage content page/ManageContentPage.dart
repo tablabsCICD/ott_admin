@@ -61,7 +61,10 @@ class _MovieListScreenState extends State<MovieListScreen> {
                                   : 16.0),
                           child: CustomTextField(
                             controller: provider.searchContentController,
-                            prefixIcon: const Icon(Icons.search),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: selectedThemeData.canvasColor,
+                            ),
                             hintText: 'Search...',
                             textInputType: TextInputType.text,
                           ),

@@ -15,13 +15,6 @@ class ContentApprovalWidget extends StatefulWidget {
 
 class _ContentApprovalWidgetState extends State<ContentApprovalWidget> {
   @override
-  void initState() {
-    super.initState();
-    Provider.of<VideoProvider>(context, listen: false)
-        .fetchMoviesByStatusAndMediaHouseId("PENDING", 0);
-  }
-
-  @override
   Widget build(BuildContext context) {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
@@ -88,7 +81,7 @@ class _ContentApprovalWidgetState extends State<ContentApprovalWidget> {
                   ),
                 ],
               ),
-              // Media House and Language
+              // Production House and Language
               Text('Uploaded by: ${content.mediaHouseName ?? "Unknown"}'),
 
               const SizedBox(height: 6),

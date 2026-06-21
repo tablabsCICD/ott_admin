@@ -1,7 +1,9 @@
 import 'dart:io' as io;
 
 import 'package:admin_ott/app/provider/shortsProvider.dart';
-import 'package:admin_ott/data/models/response/shorts_models.dart';
+
+import 'package:admin_ott/app/widgets/app_loaders.dart';
+import 'package:admin_ott/domain/entities/shorts_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,7 +12,7 @@ import 'package:universal_html/html.dart' as html;
 
 class EditShortMasterDialog extends StatefulWidget {
   final int shortId;
-  final ShortDetailData shortDetail;
+  final ShortMaster shortDetail;
 
   const EditShortMasterDialog({
     super.key,
@@ -42,7 +44,8 @@ class _EditShortMasterDialogState extends State<EditShortMasterDialog> {
     titleCtrl = TextEditingController(text: widget.shortDetail.title ?? '');
     totalPartsCtrl =
         TextEditingController(text: '${widget.shortDetail.totalParts ?? 0}');
-    categoryCtrl = TextEditingController(text: widget.shortDetail.category ?? '');
+    categoryCtrl =
+        TextEditingController(text: widget.shortDetail.category ?? '');
     creatorNameCtrl =
         TextEditingController(text: widget.shortDetail.creatorName ?? '');
     coinsPerPartCtrl =
@@ -50,8 +53,8 @@ class _EditShortMasterDialogState extends State<EditShortMasterDialog> {
     descriptionCtrl =
         TextEditingController(text: widget.shortDetail.description ?? '');
     mediaHouseIdCtrl = TextEditingController(text: '0');
-    rentalCtrl =
-        TextEditingController(text: widget.shortDetail.rentlDuration ?? 'One Time');
+    rentalCtrl = TextEditingController(
+        text: widget.shortDetail.rentlDuration ?? 'One Time');
     isTrending = widget.shortDetail.isTrending ?? false;
     uploadedImageUrl = widget.shortDetail.poster;
   }
@@ -69,7 +72,9 @@ class _EditShortMasterDialogState extends State<EditShortMasterDialog> {
       if (file == null) return;
       imageFile = io.File(file.path);
     }
-    final url = await context.read<ShortsProvider>().uploadThumbnail(imageFile, webFile);
+    final url = await context
+        .read<ShortsProvider>()
+        .uploadThumbnail(imageFile, webFile);
     if (mounted && url != null) setState(() => uploadedImageUrl = url);
   }
 
@@ -89,7 +94,8 @@ class _EditShortMasterDialogState extends State<EditShortMasterDialog> {
       "viewCount": widget.shortDetail.viewCount ?? 0,
       "mediaHouseId": int.tryParse(mediaHouseIdCtrl.text.trim()) ?? 0,
       "rentlDuration": rentalCtrl.text.trim(),
-      "languageList": widget.shortDetail.languageList.map((e) => e.toJson()).toList(),
+      "languageList":
+          widget.shortDetail.languageList.map((e) => e.toJson()).toList(),
     };
 
     final success = await provider.updateShortMaster(body, '${widget.shortId}');
@@ -124,24 +130,45 @@ class _EditShortMasterDialogState extends State<EditShortMasterDialog> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Title')),
+                    TextField(
+                        controller: titleCtrl,
+                        decoration: const InputDecoration(labelText: 'Title')),
                     const SizedBox(height: 10),
-                    TextField(controller: categoryCtrl, decoration: const InputDecoration(labelText: 'Category')),
+                    TextField(
+                        controller: categoryCtrl,
+                        decoration:
+                            const InputDecoration(labelText: 'Category')),
                     const SizedBox(height: 10),
-                    TextField(controller: creatorNameCtrl, decoration: const InputDecoration(labelText: 'Creator Name')),
+                    TextField(
+                        controller: creatorNameCtrl,
+                        decoration:
+                            const InputDecoration(labelText: 'Creator Name')),
                     const SizedBox(height: 10),
-                    TextField(controller: totalPartsCtrl, decoration: const InputDecoration(labelText: 'Total Parts')),
+                    TextField(
+                        controller: totalPartsCtrl,
+                        decoration:
+                            const InputDecoration(labelText: 'Total Parts')),
                     const SizedBox(height: 10),
-                    TextField(controller: coinsPerPartCtrl, decoration: const InputDecoration(labelText: 'Coins Per Part')),
+                    TextField(
+                        controller: coinsPerPartCtrl,
+                        decoration:
+                            const InputDecoration(labelText: 'Coins Per Part')),
                     const SizedBox(height: 10),
-                    TextField(controller: mediaHouseIdCtrl, decoration: const InputDecoration(labelText: 'MediaHouse ID')),
+                    TextField(
+                        controller: mediaHouseIdCtrl,
+                        decoration:
+                            const InputDecoration(labelText: 'MediaHouse ID')),
                     const SizedBox(height: 10),
-                    TextField(controller: rentalCtrl, decoration: const InputDecoration(labelText: 'Rental Duration')),
+                    TextField(
+                        controller: rentalCtrl,
+                        decoration: const InputDecoration(
+                            labelText: 'Rental Duration')),
                     const SizedBox(height: 10),
                     TextField(
                       controller: descriptionCtrl,
                       maxLines: 3,
-                      decoration: const InputDecoration(labelText: 'Description'),
+                      decoration:
+                          const InputDecoration(labelText: 'Description'),
                     ),
                     const SizedBox(height: 10),
                     if (uploadedImageUrl != null)
@@ -151,7 +178,9 @@ class _EditShortMasterDialogState extends State<EditShortMasterDialog> {
                       ),
                     TextButton(
                       onPressed: pickImage,
-                      child: Text(uploadedImageUrl == null ? 'Upload Poster' : 'Replace Poster'),
+                      child: Text(uploadedImageUrl == null
+                          ? 'Upload Poster'
+                          : 'Replace Poster'),
                     ),
                     SwitchListTile(
                       value: isTrending,
@@ -167,11 +196,13 @@ class _EditShortMasterDialogState extends State<EditShortMasterDialog> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: theme.primaryColor),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.primaryColor),
                   onPressed: provider.isSubmitting ? null : _submit,
                   child: provider.isSubmitting
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Update Short Master', style: TextStyle(color: Colors.white)),
+                      ? const AppButtonLoader(label: 'Updating')
+                      : const Text('Update Short Master',
+                          style: TextStyle(color: Colors.white)),
                 ),
               ),
             )

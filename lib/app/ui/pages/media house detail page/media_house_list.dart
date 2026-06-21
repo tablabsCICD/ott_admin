@@ -24,11 +24,10 @@ class MediaHouseList extends StatelessWidget {
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
 
     if (mediaHouses.isEmpty) {
-      return const Center(child: Text('No Media Houses found!'));
+      return const Center(child: Text('No Production Houses found!'));
     }
 
-    return Consumer<MediaHouseProvider>(
-        builder: (context, provider, child) {
+    return Consumer<MediaHouseProvider>(builder: (context, provider, child) {
       return ListView.builder(
         itemCount: provider.filteredMediaHouseList.length,
         itemBuilder: (context, index) {
@@ -38,24 +37,25 @@ class MediaHouseList extends StatelessWidget {
             elevation: 4,
             margin: const EdgeInsets.symmetric(vertical: 8),
             child: ListTile(
-              title: Text(mediaHouse.mediaHouseName??''),
-              subtitle: Text(mediaHouse.discription??""),
+              title: Text(mediaHouse.mediaHouseName ?? ''),
+              subtitle: Text(mediaHouse.discription ?? ""),
               leading: CircleAvatar(
-                backgroundImage: NetworkImage(mediaHouse.logo??''),
+                backgroundImage: NetworkImage(mediaHouse.logo ?? ''),
               ),
               onTap: () async {
                 await provider.fetchMoviesByMediaHouseId(mediaHouse.id!);
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => MediaHouseDetailPage(mediaHouse: mediaHouse),
+                    builder: (_) =>
+                        MediaHouseDetailPage(mediaHouse: mediaHouse),
                   ),
                 );
               },
             ),
           );
         },
-      );}
-    );
+      );
+    });
   }
 }

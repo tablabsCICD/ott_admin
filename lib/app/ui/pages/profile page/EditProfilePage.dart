@@ -1,6 +1,7 @@
 import 'package:admin_ott/app/core/constant/image_constant.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:admin_ott/app/widgets/show_toast.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -115,13 +116,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                 ),
                                 padding: const EdgeInsets.all(8),
                                 child: provider.isUploading
-                                    ? SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: selectedThemeData.primaryColor,
-                                        ),
+                                    ? AppSpinner(
+                                        size: 18,
+                                        strokeWidth: 2,
+                                        color: selectedThemeData.primaryColor,
                                       )
                                     : Icon(
                                         Icons.edit_outlined,

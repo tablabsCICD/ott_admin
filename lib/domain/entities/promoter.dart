@@ -14,6 +14,18 @@ class Promoters {
   String? createdDate;
   dynamic promoterId;
   bool? active;
+  String? aadharCard;
+  String? accountNumber;
+  String? bankName;
+  String? branchName;
+  String? contactNumber;
+  String? gst;
+  String? ifscCode;
+  String? panCard;
+  String? pincode;
+  String? refferedBy;
+  String? registrationCertificate;
+  String? website;
 
   Promoters({
     this.id,
@@ -27,6 +39,18 @@ class Promoters {
     this.createdDate,
     this.promoterId,
     this.active,
+    this.aadharCard,
+    this.accountNumber,
+    this.bankName,
+    this.branchName,
+    this.contactNumber,
+    this.gst,
+    this.ifscCode,
+    this.panCard,
+    this.pincode,
+    this.refferedBy,
+    this.registrationCertificate,
+    this.website,
   });
 
   factory Promoters.fromJson(Map<String, dynamic> json) => Promoters(
@@ -41,6 +65,18 @@ class Promoters {
     createdDate: json["createdDate"],
     promoterId: json["promoterId"],
     active: json["active"],
+    aadharCard: json["aadharCard"],
+    accountNumber: json["accountNumber"],
+    bankName: json["bankName"],
+    branchName: json["branchName"],
+    contactNumber: json["contactNumber"],
+    gst: json["gst"],
+    ifscCode: json["ifscCode"],
+    panCard: json["panCard"],
+    pincode: json["pincode"],
+    refferedBy: json["refferedBy"],
+    registrationCertificate: json["registrationCertificate"],
+    website: json["website"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -55,5 +91,17 @@ class Promoters {
     "createdDate": createdDate,
     "promoterId": promoterId,
     "active": active,
+    "aadharCard": aadharCard,
+    "accountNumber": accountNumber,
+    "bankName": bankName,
+    "branchName": branchName,
+    "contactNumber": contactNumber,
+    "gst": gst,
+    "ifscCode": ifscCode,
+    "panCard": panCard,
+    "pincode": pincode,
+    "refferedBy": refferedBy,
+    "registrationCertificate": registrationCertificate,
+    "website": website,
   };
 }

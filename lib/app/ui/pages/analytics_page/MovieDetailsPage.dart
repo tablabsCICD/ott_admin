@@ -1,5 +1,6 @@
 /*
 import 'package:flutter/material.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 
 import 'package:provider/provider.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
@@ -57,13 +58,13 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
     }
 
     return  isLoading
-        ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+        ? const Scaffold(body: Center(child: AppSpinner()))
         : Consumer<VideoProvider>(
         builder: (context, provider, child) {
           final movie = provider.content;
 
           if (movie == null) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: AppSpinner());
           }
 
           return Scaffold(

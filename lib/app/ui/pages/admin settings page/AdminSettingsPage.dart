@@ -261,7 +261,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>
       audienceScope: rule.audienceScope.apiValue,
       primaryLabel: 'Admin',
       primaryValue: '${_formatNumber(rule.adminPercentage)}%',
-      secondaryLabel: 'Media House',
+      secondaryLabel: 'Production House',
       secondaryValue: '${_formatNumber(rule.mediaHousePercentage)}%',
       effectiveFrom: rule.effectiveFrom,
       isActive: rule.isActive,

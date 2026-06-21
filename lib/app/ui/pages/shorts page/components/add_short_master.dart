@@ -2,6 +2,7 @@ import 'dart:io' as io;
 
 import 'package:admin_ott/app/provider/shortsProvider.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -233,14 +234,7 @@ class AddShortMaster {
                                 }
                               },
                         child: isSubmitting
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
+                            ? const AppButtonLoader(label: 'Submitting')
                             : const Text("Submit",
                                 style: TextStyle(color: Colors.white)),
                       ),

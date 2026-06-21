@@ -26,23 +26,26 @@ class _TransactionPageState extends State<TransactionPage> {
     _fetchGraphData();
   }
 
-
-Future<void> _fetchGraphData() async {
-  await Provider.of<TransactionProvider>(context, listen: false).fetchUserTransactions('');
-  await Provider.of<TransactionProvider>(context, listen: false).fetchTransactionGraph(0);
-}
-
-
+  Future<void> _fetchGraphData() async {
+    await Provider.of<TransactionProvider>(context, listen: false)
+        .fetchUserTransactions('');
+    await Provider.of<TransactionProvider>(context, listen: false)
+        .fetchTransactionGraph(0);
+  }
 
   Future<void> updateGraph(String buttonLabel, int days) async {
     setState(() {
       selectedButton = buttonLabel;
     });
-    if(selectedButton == "7D"){
-    await Provider.of<TransactionProvider>(context, listen: false).fetchTransactionGraph(0);}else if(selectedButton=="1M"){
-      await Provider.of<TransactionProvider>(context, listen: false).fetchTransactionGraph(1);
-    }else{
-      await Provider.of<TransactionProvider>(context, listen: false).fetchTransactionGraph(2);
+    if (selectedButton == "7D") {
+      await Provider.of<TransactionProvider>(context, listen: false)
+          .fetchTransactionGraph(0);
+    } else if (selectedButton == "1M") {
+      await Provider.of<TransactionProvider>(context, listen: false)
+          .fetchTransactionGraph(1);
+    } else {
+      await Provider.of<TransactionProvider>(context, listen: false)
+          .fetchTransactionGraph(2);
     }
   }
 
@@ -52,7 +55,6 @@ Future<void> _fetchGraphData() async {
     });
   }
 
-
   int selectedTimeRange = 0; // Default to weekly view
 
   @override
@@ -60,7 +62,7 @@ Future<void> _fetchGraphData() async {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: true).getTheme;
     return Scaffold(
-      body:Consumer<TransactionProvider>(builder: (context, provider, child) {
+      body: Consumer<TransactionProvider>(builder: (context, provider, child) {
         debugPrint("transactionList:::" +
             provider.filtteredUserTransactionList.length.toString());
         return Padding(
@@ -68,42 +70,13 @@ Future<void> _fetchGraphData() async {
           child: Column(
             children: [
               Expanded(
-                child: ResponsiveWidget.isMobile(context)
-                    ? _buildMobileLayout(selectedThemeData,provider)
-                    : _buildDesktopLayout(selectedThemeData,provider)
-              ),
+                  child: ResponsiveWidget.isMobile(context)
+                      ? _buildMobileLayout(selectedThemeData, provider)
+                      : _buildDesktopLayout(selectedThemeData, provider)),
             ],
           ),
-        );}
-      ),
-    );
-  }
-
-  Widget _toggleButton(String label, int index, ThemeData themeData) {
-    bool isSelected = selectedTimeRange == index;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedTimeRange = index;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? themeData.primaryColor : themeData.cardColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected
-                ? Colors.white
-                : themeData.textTheme.bodyLarge?.color,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+        );
+      }),
     );
   }
 
@@ -114,15 +87,19 @@ Future<void> _fetchGraphData() async {
           controller: provider.searchController,
           hintText: 'Search by user name',
           textInputType: TextInputType.text,
-          prefixIcon: Icon(Icons.search_sharp),
+          prefixIcon: Icon(
+            Icons.search_sharp,
+            color: themeData.canvasColor,
+          ),
         ),
         Expanded(
           child: ListView.builder(
             shrinkWrap: true,
             itemCount: provider.filtteredUserTransactionList.length,
-            itemBuilder: (context,index){
-              UserTransactionData userTransactionData = provider.filtteredUserTransactionList[index];
-              return _buildTransactionCards(themeData,userTransactionData);
+            itemBuilder: (context, index) {
+              UserTransactionData userTransactionData =
+                  provider.filtteredUserTransactionList[index];
+              return _buildTransactionCards(themeData, userTransactionData);
             },
           ),
         ),
@@ -130,7 +107,8 @@ Future<void> _fetchGraphData() async {
     );
   }
 
-  Widget _buildDesktopLayout(ThemeData themeData, TransactionProvider provider) {
+  Widget _buildDesktopLayout(
+      ThemeData themeData, TransactionProvider provider) {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: true).getTheme;
     return Row(
@@ -149,13 +127,14 @@ Future<void> _fetchGraphData() async {
                       primaryXAxis: CategoryAxis(),
                       title: ChartTitle(
                           text: selectedGraphType == 'Revenue'
-                              ? 'Revenue Analysis (Total : $provider)'
+                              ? 'Revenue Analysis (Total: ${_formatRevenue(provider.totalRevenue)})'
                               : 'User Onboarding Analysis'),
                       tooltipBehavior: TooltipBehavior(enable: true),
                       series: <CartesianSeries>[
                         LineSeries<TransactionChartData, String>(
                           dataSource: provider.chartData,
-                          xValueMapper: (TransactionChartData data, _) => data.date,
+                          xValueMapper: (TransactionChartData data, _) =>
+                              data.date,
                           yValueMapper: (TransactionChartData data, _) =>
                               selectedGraphType == 'Revenue'
                                   ? data.revenue
@@ -187,7 +166,7 @@ Future<void> _fetchGraphData() async {
         ),
         Flexible(
           flex: 3,
-          child:   Column(
+          child: Column(
             children: [
               CustomTextField(
                 controller: provider.searchController,
@@ -197,13 +176,15 @@ Future<void> _fetchGraphData() async {
               ),
               Expanded(
                 child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: provider.filtteredUserTransactionList.length,
-                    itemBuilder: (context,index){
-                      UserTransactionData userTransactionData = provider.filtteredUserTransactionList[index];
-                    return _buildTransactionCards(themeData,userTransactionData);
-                    },
-                    ),
+                  shrinkWrap: true,
+                  itemCount: provider.filtteredUserTransactionList.length,
+                  itemBuilder: (context, index) {
+                    UserTransactionData userTransactionData =
+                        provider.filtteredUserTransactionList[index];
+                    return _buildTransactionCards(
+                        themeData, userTransactionData);
+                  },
+                ),
               ),
             ],
           ),
@@ -235,123 +216,124 @@ Future<void> _fetchGraphData() async {
     );
   }
 
-  Widget _buildTransactionCards(ThemeData themeData, UserTransactionData userTransactionData) {
+  Widget _buildTransactionCards(
+      ThemeData themeData, UserTransactionData userTransactionData) {
     return Card(
-        color: themeData.cardColor,
-        elevation: 4,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "TXN"+userTransactionData.id.toString(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: themeData.primaryColor,
-                    ),
+      color: themeData.cardColor,
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "TXN" + userTransactionData.id.toString(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: themeData.primaryColor,
                   ),
-                  IconButton(
-                    icon: Icon(Icons.share, color: themeData.primaryColor),
-                    onPressed: () {
-                      Share.share(
-                        'Transaction Details\n'
-                        'Transaction ID: ${userTransactionData.id}\n'
-                        'Date: ${userTransactionData.movie!.releaseDate}\n'
-                        'Time: ${userTransactionData.movie!.releaseDate}\n'
-                        'User Name: ${userTransactionData.user!.firstName}\n'
-                        'User ID: ${userTransactionData.user!.id}\n'
-                        'Movie: ${userTransactionData.movie!.title}\n'
-                        'Price: ${userTransactionData.movie!.price}\n'
-                        'Accessible Till: ${userTransactionData.dateTo}\n',
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                userTransactionData.user!.firstName ?? '',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
                 ),
+                IconButton(
+                  icon: Icon(Icons.share, color: themeData.primaryColor),
+                  onPressed: () {
+                    Share.share(
+                      'Transaction Details\n'
+                      'Transaction ID: ${userTransactionData.id}\n'
+                      'Date: ${userTransactionData.movie!.releaseDate}\n'
+                      'Time: ${userTransactionData.movie!.releaseDate}\n'
+                      'User Name: ${userTransactionData.user!.firstName}\n'
+                      'User ID: ${userTransactionData.user!.id}\n'
+                      'Movie: ${userTransactionData.movie!.title}\n'
+                      'Price: ${userTransactionData.movie!.price}\n'
+                      'Accessible Till: ${userTransactionData.dateTo}\n',
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              userTransactionData.user!.firstName ?? '',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 4),
-              Text(
-                'User ID: ${userTransactionData.user!.id}',
-                style: const TextStyle(fontSize: 14),
-              ),
-              const Divider(),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Movie:', style: _boldTextStyle()),
-                        const SizedBox(height: 4),
-                        Text(userTransactionData.movie!.title ?? ''),
-                      ],
-                    ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'User ID: ${userTransactionData.user!.id}',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const Divider(),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Movie:', style: _boldTextStyle()),
+                      const SizedBox(height: 4),
+                      Text(userTransactionData.movie!.title ?? ''),
+                    ],
                   ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Price:', style: _boldTextStyle()),
-                        const SizedBox(height: 4),
-                        Text(userTransactionData.movie!.price.toString() ?? ''),
-                      ],
-                    ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Price:', style: _boldTextStyle()),
+                      const SizedBox(height: 4),
+                      Text(userTransactionData.movie!.price.toString()),
+                    ],
                   ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Admin Revenue:', style: _boldTextStyle()),
-                        const SizedBox(height: 4),
-                        Text('0'),
-                      ],
-                    ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Admin Revenue:', style: _boldTextStyle()),
+                      const SizedBox(height: 4),
+                      Text('0'),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Duration:', style: _boldTextStyle()),
-                        const SizedBox(height: 4),
-                        Text(userTransactionData.movie!.runtime.toString() ?? ''),
-                      ],
-                    ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Duration:', style: _boldTextStyle()),
+                      const SizedBox(height: 4),
+                      Text(userTransactionData.movie!.runtime.toString()),
+                    ],
                   ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Date & Time:', style: _boldTextStyle()),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${userTransactionData.movie!.releaseDate} ',
-                        ),
-                      ],
-                    ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Date & Time:', style: _boldTextStyle()),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${userTransactionData.movie!.releaseDate} ',
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 
   TextStyle _boldTextStyle() {
@@ -359,6 +341,12 @@ Future<void> _fetchGraphData() async {
       fontSize: 14,
       fontWeight: FontWeight.bold,
     );
+  }
+
+  String _formatRevenue(String? value) {
+    final amount = num.tryParse(value ?? '');
+    if (amount == null) return 'Rs. 0';
+    return 'Rs. ${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 2)}';
   }
 }
 

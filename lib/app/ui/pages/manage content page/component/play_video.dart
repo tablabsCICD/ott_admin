@@ -1,66 +1,67 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
+import 'package:admin_ott/app/widgets/ott_media_player.dart';
+import 'package:media_kit/media_kit.dart';
 
-void main() => runApp(VideoApp());
+void main() {
+  MediaKit.ensureInitialized();
+  runApp(const VideoApp());
+}
 
 class VideoApp extends StatelessWidget {
+  const VideoApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: VideoScreen(),
+      home: const VideoScreen(),
     );
   }
 }
 
 class VideoScreen extends StatefulWidget {
+  const VideoScreen({super.key});
+
   @override
-  _VideoScreenState createState() => _VideoScreenState();
+  State<VideoScreen> createState() => VideoScreenState();
 }
 
-class _VideoScreenState extends State<VideoScreen> {
-  late VideoPlayerController _controller;
+class VideoScreenState extends State<VideoScreen> {
+  static const _sampleUrl =
+      'https://tablabs-images.s3.ap-south-1.amazonaws.com/1750247436989-SampleVideo_360x240_30mb.mp4';
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.network(
-      'https://tablabs-images.s3.ap-south-1.amazonaws.com/1750247436989-SampleVideo_360x240_30mb.mp4',
-    )..initialize().then((_) {
-      setState(() {}); // Ensure the UI updates once the video is initialized
-    });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _controller.dispose(); // Dispose the controller to free resources
-  }
+  Player? _player;
+  bool _isReady = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Video Player'),
+        title: const Text('Video Player'),
       ),
       body: Center(
-        child: _controller.value.isInitialized
-            ? AspectRatio(
-          aspectRatio: _controller.value.aspectRatio,
-          child: VideoPlayer(_controller),
-        )
-            : CircularProgressIndicator(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            _controller.value.isPlaying
-                ? _controller.pause()
-                : _controller.play();
-          });
-        },
-        child: Icon(
-          _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+        // Shared media_kit wrapper keeps the sample screen on the modern
+        // playback engine with lifecycle and disposal handled in one place.
+        child: OttMediaPlayer(
+          url: _sampleUrl,
+          autoPlay: false,
+          onPlayerReady: (player) => _player = player,
+          onReadyChanged: (ready) {
+            if (!mounted) return;
+            setState(() => _isReady = ready);
+          },
+          errorBuilder: (_, __) => const Text('Failed to load video'),
         ),
+      ),
+      floatingActionButton: StreamBuilder<bool>(
+        stream: _player?.stream.playing,
+        initialData: _player?.state.playing ?? false,
+        builder: (context, snapshot) {
+          final isPlaying = snapshot.data ?? false;
+          return FloatingActionButton(
+            onPressed: _isReady ? _player?.playOrPause : null,
+            child: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+          );
+        },
       ),
     );
   }

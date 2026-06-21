@@ -12,6 +12,8 @@ class Content {
   List<String>? directorList;
   int? views;
   double? totalRevenue;
+  double? adminRevnue;
+  double? mediaHouseRevenue;
   String? ageRating;
   List<String>? posterUrlList;
   String? trailerUrl;
@@ -48,6 +50,8 @@ class Content {
       this.directorList,
       this.views,
       this.totalRevenue,
+      this.adminRevnue,
+      this.mediaHouseRevenue,
       this.ageRating,
       this.posterUrlList,
       this.trailerUrl,
@@ -84,6 +88,8 @@ class Content {
         directorList: _asStringList(json["directorList"]),
         views: _asInt(json["views"]),
         totalRevenue: _asDouble(json["totalRevenue"]),
+        adminRevnue: _asDouble(json["AdminRevnue"] ?? json["adminRevenue"]),
+        mediaHouseRevenue: _asDouble(json["mediaHouseRevenue"]),
         ageRating: _asString(json["ageRating"]),
         posterUrlList: _asStringList(json["posterUrlList"]),
         trailerUrl: _asString(json["trailerUrl"]),
@@ -131,6 +137,8 @@ class Content {
             : List<dynamic>.from(directorList!.map((x) => x)),
         "views": views,
         "totalRevenue": totalRevenue,
+        "AdminRevnue": adminRevnue,
+        "mediaHouseRevenue": mediaHouseRevenue,
         "ageRating": ageRating,
         "posterUrlList": posterUrlList == null
             ? []

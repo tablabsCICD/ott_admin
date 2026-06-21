@@ -11,7 +11,8 @@ class SetPercentageDialog extends StatefulWidget {
   final MediaHouse mediaHouse;
   const SetPercentageDialog({
     super.key,
-    required this.content, required this.mediaHouse,
+    required this.content,
+    required this.mediaHouse,
   });
 
   @override
@@ -21,7 +22,7 @@ class SetPercentageDialog extends StatefulWidget {
 class _SetPercentageDialogState extends State<SetPercentageDialog> {
   double _percentage = 50.00;
   final TextEditingController _textController =
-  TextEditingController(text: "50.00");
+      TextEditingController(text: "50.00");
 
   @override
   Widget build(BuildContext context) {
@@ -62,11 +63,11 @@ class _SetPercentageDialogState extends State<SetPercentageDialog> {
 
             const SizedBox(height: 10),
 
-            // Media House and Platform percentage display
+            // Production House and Platform percentage display
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Media House: ${_percentage.toStringAsFixed(2)}%"),
+                Text("Production House: ${_percentage.toStringAsFixed(2)}%"),
                 Text("Platform: ${(100 - _percentage).toStringAsFixed(2)}%"),
               ],
             ),
@@ -81,7 +82,7 @@ class _SetPercentageDialogState extends State<SetPercentageDialog> {
                 cursorColor: selectedThemeData.primaryColor,
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
-                  labelText: "Media House %",
+                  labelText: "Production House %",
                   labelStyle: TextStyle(
                     color: selectedThemeData.canvasColor,
                   ),
@@ -100,9 +101,10 @@ class _SetPercentageDialogState extends State<SetPercentageDialog> {
                   double? newValue = double.tryParse(value);
                   if (newValue != null) {
                     setState(() {
-                      _percentage = newValue.clamp(0, 100); // Ensure within range
-                      _textController.text =
-                          _percentage.toStringAsFixed(2); // Prevent invalid inputs
+                      _percentage =
+                          newValue.clamp(0, 100); // Ensure within range
+                      _textController.text = _percentage
+                          .toStringAsFixed(2); // Prevent invalid inputs
                     });
                   }
                 },

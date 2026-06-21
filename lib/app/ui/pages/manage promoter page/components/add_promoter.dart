@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:admin_ott/app/provider/promoterProvider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
@@ -7,7 +9,6 @@ import 'package:admin_ott/domain/entities/promoter.dart';
 import 'package:admin_ott/domain/entities/user.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../provider/userProvider.dart';
 
 class AddPromoterDialog extends StatefulWidget {
   final void Function(SavePromoterRequest) onAdd;
@@ -29,6 +30,15 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
   final TextEditingController talukaController = TextEditingController();
   final TextEditingController cityController = TextEditingController();
   final TextEditingController pincodeController = TextEditingController();
+  final TextEditingController aadharCardController = TextEditingController();
+  final TextEditingController panCardController = TextEditingController();
+  final TextEditingController accountNumberController =
+      TextEditingController();
+  final TextEditingController bankNameController = TextEditingController();
+  final TextEditingController branchNameController = TextEditingController();
+  final TextEditingController ifscCodeController = TextEditingController();
+  final TextEditingController gstController = TextEditingController();
+  final TextEditingController websiteController = TextEditingController();
 
   final List<String> levels = [
     'National',
@@ -40,12 +50,73 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
   String selectedLevel = 'National';
   User? _selectedUser;
   PromotersList? _selectedPromoters;
+  Timer? _reportingPromoterDebounce;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
     getUserData();
+  }
+
+  @override
+  void dispose() {
+    _reportingPromoterDebounce?.cancel();
+    nameController.dispose();
+    promoterNameController.dispose();
+    contactController.dispose();
+    emailController.dispose();
+    countryController.dispose();
+    stateController.dispose();
+    districtController.dispose();
+    talukaController.dispose();
+    cityController.dispose();
+    pincodeController.dispose();
+    aadharCardController.dispose();
+    panCardController.dispose();
+    accountNumberController.dispose();
+    bankNameController.dispose();
+    branchNameController.dispose();
+    ifscCodeController.dispose();
+    gstController.dispose();
+    websiteController.dispose();
+    super.dispose();
+  }
+
+  void _clearSelectedReportingPromoter() {
+    _selectedPromoters = null;
+    promoterNameController.clear();
+  }
+
+  void _fetchReportingPromoters(PromoterProvider provider) {
+    String reportingLevel = '';
+    String reportingLocation = '';
+
+    if (selectedLevel == 'State') {
+      reportingLevel = 'national';
+      reportingLocation = countryController.text.trim();
+    } else if (selectedLevel == 'District') {
+      reportingLevel = 'state';
+      reportingLocation = stateController.text.trim();
+    } else if (selectedLevel == 'Taluka') {
+      reportingLevel = 'district';
+      reportingLocation = districtController.text.trim();
+    }
+
+    if (reportingLevel.isEmpty || reportingLocation.isEmpty) {
+      return;
+    }
+    provider.getReportingPromoters(reportingLevel, reportingLocation);
+  }
+
+  void _scheduleReportingPromoterFetch(PromoterProvider provider) {
+    _reportingPromoterDebounce?.cancel();
+    _reportingPromoterDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) {
+        return;
+      }
+      _fetchReportingPromoters(provider);
+    });
   }
 
   getUserData() async {
@@ -55,6 +126,15 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
     if (userProvider.users.isNotEmpty) {
       _selectedUser =
           userProvider.users.first; // Optional: Set default to the first user
+      if (mounted) {
+        setState(() {
+          nameController.text =
+              "${_selectedUser?.firstName ?? ''} ${_selectedUser?.lastName ?? ''}"
+                  .trim();
+          emailController.text = _selectedUser?.emailId ?? '';
+          contactController.text = _selectedUser?.mobileNumber ?? '';
+        });
+      }
     }
   }
 
@@ -77,10 +157,11 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
                 DropdownButtonFormField<String>(
                   value: selectedLevel,
                   onChanged: (String? newValue) {
-                    provider.getReportingPromoters(newValue!, '');
                     setState(() {
-                      selectedLevel = newValue;
+                      selectedLevel = newValue!;
+                      _clearSelectedReportingPromoter();
                     });
+                    _scheduleReportingPromoterFetch(provider);
                   },
                   decoration: InputDecoration(
                     labelText: "Select Level",
@@ -130,9 +211,11 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
                   controller: countryController,
                   hintText: 'Country',
                   textInputType: TextInputType.name,
-                  onValueChange: (String value){
+                  onValueChange: (String value) {
                     print("Selected location :::::::::::: $value");
-                    provider.getReportingPromoters(selectedLevel, value);
+                    if (selectedLevel == 'State') {
+                      _scheduleReportingPromoterFetch(provider);
+                    }
                   },
                 ),
                 if (selectedLevel == 'State' ||
@@ -142,9 +225,11 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
                     controller: stateController,
                     hintText: 'State',
                     textInputType: TextInputType.name,
-                    onValueChange: (String value){
+                    onValueChange: (String value) {
                       print("Selected location :::::::::::: $value");
-                      provider.getReportingPromoters(selectedLevel, value);
+                      if (selectedLevel == 'District') {
+                        _scheduleReportingPromoterFetch(provider);
+                      }
                     },
                   ),
                 if (selectedLevel == 'District' ||
@@ -153,9 +238,11 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
                     controller: districtController,
                     hintText: 'District',
                     textInputType: TextInputType.name,
-                    onValueChange: (String value){
+                    onValueChange: (String value) {
                       print("Selected location :::::::::::: $value");
-                      provider.getReportingPromoters(selectedLevel, value);
+                      if (selectedLevel == 'Taluka') {
+                        _scheduleReportingPromoterFetch(provider);
+                      }
                     },
                   ),
                 if (selectedLevel == 'Taluka')
@@ -163,13 +250,13 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
                     controller: talukaController,
                     hintText: 'Taluka',
                     textInputType: TextInputType.name,
-                    onValueChange: (String value){
+                    onValueChange: (String value) {
                       print("Selected location :::::::::::: $value");
                     },
                   ),
                 _buildUserDropdownField('Select User', context,
                     provider.users, selectedThemeData),
-               CustomTextField(
+                CustomTextField(
                   controller: contactController,
                   hintText: 'Contact',
                   textInputType: TextInputType.number,
@@ -179,8 +266,56 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
                   hintText: 'Email',
                   textInputType: TextInputType.emailAddress,
                 ),
-               selectedLevel=="National"? SizedBox.shrink():_buildPromoterDropdownField('Select Reporting Promoter', context,
-                   provider.reportingPromoters, selectedThemeData),
+                CustomTextField(
+                  controller: aadharCardController,
+                  hintText: 'Aadhaar Card',
+                  textInputType: TextInputType.number,
+                  isDigits: true,
+                ),
+                CustomTextField(
+                  controller: panCardController,
+                  hintText: 'PAN Card',
+                  textInputType: TextInputType.text,
+                ),
+                CustomTextField(
+                  controller: bankNameController,
+                  hintText: 'Bank Name',
+                  textInputType: TextInputType.name,
+                ),
+                CustomTextField(
+                  controller: branchNameController,
+                  hintText: 'Branch Name',
+                  textInputType: TextInputType.name,
+                ),
+                CustomTextField(
+                  controller: accountNumberController,
+                  hintText: 'Account Number',
+                  textInputType: TextInputType.number,
+                  isDigits: true,
+                ),
+                CustomTextField(
+                  controller: ifscCodeController,
+                  hintText: 'IFSC Code',
+                  textInputType: TextInputType.text,
+                ),
+                CustomTextField(
+                  controller: gstController,
+                  hintText: 'GST Number',
+                  textInputType: TextInputType.text,
+                ),
+                CustomTextField(
+                  controller: websiteController,
+                  hintText: 'Website',
+                  textInputType: TextInputType.url,
+                ),
+                selectedLevel == "National"
+                    ? SizedBox.shrink()
+                    : _buildPromoterDropdownField(
+                        'Select Reporting Promoter',
+                        context,
+                        provider.reportingPromoters,
+                        selectedThemeData,
+                      ),
               ],
             ),
           ),
@@ -195,21 +330,33 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
           GestureDetector(
             onTap: () {
               widget.onAdd(SavePromoterRequest(
+                aadharCard: aadharCardController.text,
                 id: 0,
+                active: true,
                 area: cityController.text,
+                accountNumber: accountNumberController.text,
                 access: '',
+                bankName: bankNameController.text,
+                branchName: branchNameController.text,
                 city: cityController.text,
+                contactNumber: contactController.text,
                 district: districtController.text,
                 createdDate: DateTime.now().toString().split(' ')[0],
                 country: countryController.text,
+                gst: gstController.text,
+                ifscCode: ifscCodeController.text,
                 level: selectedLevel,
+                panCard: panCardController.text,
                 pincode: pincodeController.text,
                 promoterName: nameController.text,
+                refferedBy: _selectedPromoters?.promoterName ?? '',
+                registrationCertificate: '',
                 role: "PROMOTER",
                 state: stateController.text,
-                promoterId: _selectedPromoters?.id??0,
+                promoterId: _selectedPromoters?.id ?? 0,
                 taluka: talukaController.text,
                 userId: _selectedUser?.id ?? 0,
+                website: websiteController.text,
               ));
               Navigator.pop(context);
             },

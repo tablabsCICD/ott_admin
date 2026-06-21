@@ -13,12 +13,6 @@ import '../ui/pages/dashboard page/component/revenue_chart.dart';
 import '../widgets/show_toast.dart';
 
 class DashboardProvider extends ChangeNotifier {
-  DashboardProvider() : super() {
-    getDashboradData();
-    getMovieTypeChartData();
-    getRevenueChartData();
-  }
-
   DashboardData _dashboardData = DashboardData();
 
   DashboardData get dashboardData => _dashboardData;
@@ -91,7 +85,7 @@ class DashboardProvider extends ChangeNotifier {
                     "${((data['seriesPercent'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(1)}%",
               },
               {
-                "title": "Shorts",
+                "title": "Mini Series",
                 "value": (data['shortPercent'] as num?)?.toDouble() ?? 0.0,
                 "count": shortCount,
                 "percentText":

@@ -16,7 +16,7 @@ class _MediaHouseApprovalsWidgetState extends State<MediaHouseApprovalsWidget> {
   /*final List<Map<String, dynamic>> mediaHouseList = [
     {
       'id': 1,
-      'name': 'Times Media Group',
+      'name': 'Times Production Group',
       'email': 'contact@timesmedia.com',
       'location': 'New York, USA',
       'joinedDate': '2025-01-10',
@@ -32,7 +32,7 @@ class _MediaHouseApprovalsWidgetState extends State<MediaHouseApprovalsWidget> {
     },
     {
       'id': 3,
-      'name': 'Global Media Network',
+      'name': 'Global Production Network',
       'email': 'hello@globalmedia.com',
       'location': 'Sydney, Australia',
       'joinedDate': '2025-01-08',
@@ -50,13 +50,6 @@ class _MediaHouseApprovalsWidgetState extends State<MediaHouseApprovalsWidget> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    Provider.of<MediaHouseProvider>(context, listen: false)
-        .fetchMediaHouseByStatus("PENDING");
-  }
-
-  @override
   Widget build(BuildContext context) {
     var selectedThemeData = Theme.of(context); // Replace with your theme logic
     return Expanded(child:
@@ -64,7 +57,7 @@ class _MediaHouseApprovalsWidgetState extends State<MediaHouseApprovalsWidget> {
       return provider.filteredMediaHouseListByStatus.isEmpty
           ? Center(
               child: Text(
-              "No Media House available for approval.",
+              "No Production House available for approval.",
               style: TextStyle(color: selectedThemeData.canvasColor),
             ))
           : SingleChildScrollView(

@@ -1,6 +1,7 @@
 import 'package:admin_ott/app/provider/mediaHouseProvider.dart';
 import 'package:admin_ott/app/provider/userProvider.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -188,7 +189,7 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
         children: [
           CustomTextField(
             controller: provider.mediaHouseNameController,
-            hintText: "Media House Name",
+            hintText: "Production House Name",
             textInputType: TextInputType.text,
           ),
           CustomTextField(
@@ -216,7 +217,7 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
   Widget _buildUploadFilesSlide(ThemeData themeData) {
     return ListView(
       children: [
-        _buildUploadSection("Media House Logo", themeData),
+        _buildUploadSection("Production House Logo", themeData),
         _buildUploadSection("Aadhaar Card", themeData),
         _buildUploadSection("Pan Card", themeData),
         _buildUploadSection("Shop Act", themeData),
@@ -327,7 +328,7 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
       // Determine the container color based on the file upload status
       Color containerColor =
           selectedThemeData.primaryColor.withOpacity(0.5); // Default color
-      if ("Media House Logo" == label) {
+      if ("Production House Logo" == label) {
         if (provider.profileController.text.isEmpty ||
             provider.profileController.text == '')
           containerColor = containerColor;
@@ -391,7 +392,7 @@ class _AddMediaHouseWidgetState extends State<AddMediaHouseWidget> {
                 ),
                 child: Center(
                   child: provider.isUploading
-                      ? CircularProgressIndicator()
+                      ? const AppSpinner()
                       : Text(
                           "Upload $label",
                           style: TextStyle(

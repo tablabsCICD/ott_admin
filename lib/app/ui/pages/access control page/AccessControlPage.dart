@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 
-
 class AccessControlPage extends StatefulWidget {
   const AccessControlPage({Key? key}) : super(key: key);
 
@@ -14,7 +13,7 @@ class AccessControlPage extends StatefulWidget {
 class _AccessControlPageState extends State<AccessControlPage> {
   final List<String> modules = [
     'Manage Video',
-    'Manage Media House',
+    'Manage Production House',
     'Manage User',
     'Transaction',
     'Help Desk',
@@ -22,7 +21,7 @@ class _AccessControlPageState extends State<AccessControlPage> {
 
   final Map<String, String> moduleKeyMap = {
     'Manage Video': 'manageContent',
-    'Manage Media House': 'manageMediaHouse',
+    'Manage Production House': 'manageMediaHouse',
     'Manage User': 'manageUser',
     'Transaction': 'manageTrasaction',
     'Help Desk': 'helpDesk',
@@ -46,7 +45,8 @@ class _AccessControlPageState extends State<AccessControlPage> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final provider = Provider.of<AccesscontroleProvider>(context, listen: false);
+      final provider =
+          Provider.of<AccesscontroleProvider>(context, listen: false);
       await provider.getAllPromoterAccess();
       _syncAccessMapWithProvider(provider);
     });
@@ -58,7 +58,7 @@ class _AccessControlPageState extends State<AccessControlPage> {
       if (data != null) {
         accessMap[level] = {
           'Manage Video': data.manageContent ?? false,
-          'Manage Media House': data.manageMediaHouse ?? false,
+          'Manage Production House': data.manageMediaHouse ?? false,
           'Manage User': data.manageUser ?? false,
           'Transaction': data.manageTrasaction ?? false,
           'Help Desk': data.helpDesk ?? false,
@@ -94,12 +94,11 @@ class _AccessControlPageState extends State<AccessControlPage> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-
-                _buildAccessForm(theme,provider),
+                _buildAccessForm(theme, provider),
                 const SizedBox(height: 16),
-                _buildPermissionTable(theme,provider),
+                _buildPermissionTable(theme, provider),
                 const SizedBox(height: 20),
-                _buildSummarySection(theme,provider),
+                _buildSummarySection(theme, provider),
               ],
             ),
           );
@@ -108,7 +107,7 @@ class _AccessControlPageState extends State<AccessControlPage> {
     );
   }
 
-  Widget _buildAccessForm(ThemeData theme,AccesscontroleProvider provider) {
+  Widget _buildAccessForm(ThemeData theme, AccesscontroleProvider provider) {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -120,12 +119,14 @@ class _AccessControlPageState extends State<AccessControlPage> {
             Expanded(
               child: DropdownButtonFormField<String>(
                 value: selectedLevel,
-                decoration: const InputDecoration(labelText: 'Select Promoter Level'),
+                decoration:
+                    const InputDecoration(labelText: 'Select Promoter Level'),
                 dropdownColor: theme.cardColor,
                 items: levels.map((level) {
                   return DropdownMenuItem(
                     value: level,
-                    child: Text(level, style: TextStyle(color: theme.canvasColor)),
+                    child:
+                        Text(level, style: TextStyle(color: theme.canvasColor)),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -139,7 +140,8 @@ class _AccessControlPageState extends State<AccessControlPage> {
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.primaryColor,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               ),
               onPressed: _saveAccess,
               icon: const Icon(Icons.save, color: Colors.white),
@@ -151,7 +153,8 @@ class _AccessControlPageState extends State<AccessControlPage> {
     );
   }
 
-  Widget _buildPermissionTable(ThemeData theme,AccesscontroleProvider provider) {
+  Widget _buildPermissionTable(
+      ThemeData theme, AccesscontroleProvider provider) {
     return Expanded(
       child: Card(
         elevation: 2,
@@ -176,7 +179,8 @@ class _AccessControlPageState extends State<AccessControlPage> {
                   itemBuilder: (_, index) {
                     final module = modules[index];
                     return SwitchListTile(
-                      title: Text(module, style: TextStyle(color: theme.canvasColor)),
+                      title: Text(module,
+                          style: TextStyle(color: theme.canvasColor)),
                       value: accessMap[selectedLevel]![module] ?? false,
                       activeColor: theme.primaryColor,
                       onChanged: (val) {
@@ -193,7 +197,8 @@ class _AccessControlPageState extends State<AccessControlPage> {
     );
   }
 
-  Widget _buildSummarySection(ThemeData theme,AccesscontroleProvider provider) {
+  Widget _buildSummarySection(
+      ThemeData theme, AccesscontroleProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -209,7 +214,8 @@ class _AccessControlPageState extends State<AccessControlPage> {
         Card(
           elevation: 2,
           color: theme.cardColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
             padding: const EdgeInsets.all(12.0),
             child: Table(
@@ -220,7 +226,8 @@ class _AccessControlPageState extends State<AccessControlPage> {
               },
               children: [
                 TableRow(
-                  decoration: BoxDecoration(color: theme.primaryColor.withOpacity(0.1)),
+                  decoration:
+                      BoxDecoration(color: theme.primaryColor.withOpacity(0.1)),
                   children: [
                     _tableHeader('Level', theme),
                     _tableHeader('Allowed Modules', theme),
@@ -231,17 +238,26 @@ class _AccessControlPageState extends State<AccessControlPage> {
                   final allowedModules = <String>[];
 
                   if (access != null) {
-                    if (access.manageContent == true) allowedModules.add('Manage Video');
-                    if (access.manageMediaHouse == true) allowedModules.add('Manage Media House');
-                    if (access.manageUser == true) allowedModules.add('Manage User');
-                    if (access.manageTrasaction == true) allowedModules.add('Transaction');
-                    if (access.helpDesk == true) allowedModules.add('Help Desk');
+                    if (access.manageContent == true)
+                      allowedModules.add('Manage Video');
+                    if (access.manageMediaHouse == true)
+                      allowedModules.add('Manage Production House');
+                    if (access.manageUser == true)
+                      allowedModules.add('Manage User');
+                    if (access.manageTrasaction == true)
+                      allowedModules.add('Transaction');
+                    if (access.helpDesk == true)
+                      allowedModules.add('Help Desk');
                   }
 
                   return TableRow(
                     children: [
                       _tableCell(level, theme),
-                      _tableCell(allowedModules.isEmpty ? 'None' : allowedModules.join(', '), theme),
+                      _tableCell(
+                          allowedModules.isEmpty
+                              ? 'None'
+                              : allowedModules.join(', '),
+                          theme),
                     ],
                   );
                 }).toList(),
@@ -249,34 +265,34 @@ class _AccessControlPageState extends State<AccessControlPage> {
             ),
           ),
         )
-
       ],
     );
   }
 
   Widget _tableHeader(String text, ThemeData theme) => Padding(
-    padding: const EdgeInsets.all(8.0),
-    child: Text(text,
-        style: TextStyle(
-          color: theme.canvasColor,
-          fontWeight: FontWeight.w600,
-        ),
-        textAlign: TextAlign.center),
-  );
+        padding: const EdgeInsets.all(8.0),
+        child: Text(text,
+            style: TextStyle(
+              color: theme.canvasColor,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center),
+      );
 
   Widget _tableCell(String text, ThemeData theme) => Padding(
-    padding: const EdgeInsets.all(8.0),
-    child: Text(text, style: TextStyle(color: theme.canvasColor)),
-  );
+        padding: const EdgeInsets.all(8.0),
+        child: Text(text, style: TextStyle(color: theme.canvasColor)),
+      );
 
   void _saveAccess() async {
-    final provider = Provider.of<AccesscontroleProvider>(context, listen: false);
+    final provider =
+        Provider.of<AccesscontroleProvider>(context, listen: false);
     final currentAccess = accessMap[selectedLevel]!;
 
     final data = {
       'helpDesk': currentAccess['Help Desk'] ?? false,
       'manageContent': currentAccess['Manage Video'] ?? false,
-      'manageMediaHouse': currentAccess['Manage Media House'] ?? false,
+      'manageMediaHouse': currentAccess['Manage Production House'] ?? false,
       'manageTrasaction': currentAccess['Transaction'] ?? false,
       'manageUser': currentAccess['Manage User'] ?? false,
       'promoterLevel': selectedLevel,
@@ -325,5 +341,3 @@ class _AccessControlPageState extends State<AccessControlPage> {
     }
   }
 }
-
-

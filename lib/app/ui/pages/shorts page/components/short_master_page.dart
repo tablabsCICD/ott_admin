@@ -1,10 +1,13 @@
 import 'package:admin_ott/app/provider/shortsProvider.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/components/admin_shorts_player_page.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/components/create_short_parts_dialog.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/components/edit_short_master_dialog.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/components/edit_short_part_dialog.dart';
-import 'package:admin_ott/data/models/response/shorts_models.dart';
+
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
+import 'package:admin_ott/domain/entities/short_part.dart';
+import 'package:admin_ott/domain/entities/shorts_models.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -37,7 +40,7 @@ class _ShortMasterPageState extends State<ShortMasterPage> {
     if (provider.isDetailLoading) {
       return Scaffold(
         body: Center(
-          child: CircularProgressIndicator(color: theme.primaryColor),
+          child: AppSpinner(color: theme.primaryColor),
         ),
       );
     }
@@ -268,7 +271,7 @@ class _ShortMasterPageState extends State<ShortMasterPage> {
   Widget _buildApprovalActions({
     required ThemeData theme,
     required ShortsProvider provider,
-    required ShortDetailData short,
+    required ShortMaster short,
   }) {
     final selectedStatus = (short.approvalStatus ?? 'PENDING').toUpperCase();
     final isUpdating = provider.isUpdatingShortStatus;
@@ -376,8 +379,8 @@ class _ShortMasterPageState extends State<ShortMasterPage> {
 
   Widget _buildPartTile({
     required ThemeData theme,
-    required ShortDetailData short,
-    required ShortDetailPart part,
+    required ShortMaster short,
+    required ShortPartDTO part,
     required int index,
   }) {
     return ClipRRect(

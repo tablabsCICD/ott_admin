@@ -12,6 +12,7 @@ import 'package:image_picker/image_picker.dart'; // For web-specific file handli
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../core/loading/app_loading_controller.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 
@@ -315,7 +316,8 @@ class UserProvider extends ChangeNotifier {
     ApiHelper apiHelper = ApiHelper();
 
     try {
-      var response = await apiHelper.postApiWithBody(apiUrl, data);
+      var response =
+          await apiHelper.postApiWithBody(apiUrl, data, includeAuth: false);
       if (response.statusCode == 200) {
         //log("user login response: ${response.body}");
         Map<String, dynamic> responseBody = json.decode(response.body);
@@ -331,20 +333,35 @@ class UserProvider extends ChangeNotifier {
 
             if (loggedInUser.admin == true || hasAdminRole) {
               user = loggedInUser;
+              final authToken =
+                  addUserResponse.data!.jwt ?? addUserResponse.data!.token;
+              final tokenType = addUserResponse.data!.tokenType ?? "Bearer";
               //log("before SEtData ${user.firstName}");
               LocalSharePreferences localSharePreferences =
                   LocalSharePreferences();
-              localSharePreferences.setBool(
+              await localSharePreferences.setBool(
                   SharedPreferencesConstant.isAdminLoggedIn, true);
+              if (authToken != null && authToken.isNotEmpty) {
+                await localSharePreferences.setString(
+                    SharedPreferencesConstant.authToken, authToken);
+                await localSharePreferences.setString(
+                    SharedPreferencesConstant.authTokenType, tokenType);
+              }
+              if (addUserResponse.data!.sessionId != null) {
+                await localSharePreferences.setString(
+                    SharedPreferencesConstant.sessionId,
+                    addUserResponse.data!.sessionId!);
+              }
               //log("check  SEtLogin ${await localSharePreferences.getBool(SharedPreferencesConstant.isAdminLoggedIn)}");
-              localSharePreferences.setString(
+              await localSharePreferences.setString(
                   SharedPreferencesConstant.currentAdmin,
                   jsonEncode(addUserResponse.data!.user));
               //log("after SEtData ${await localSharePreferences.getString(SharedPreferencesConstant.currentAdmin)}");
               notifyListeners();
               return {
                 'success': true,
-                'message': 'User logged in successfully'
+                'message': addUserResponse.message ??
+                    'User logged in successfully'
               };
             } else {
               CustomToast.show(
@@ -568,6 +585,7 @@ class UserProvider extends ChangeNotifier {
       );
 
       final request = http.MultipartRequest('POST', uri);
+      request.headers.addAll(await ApiHelper().multipartHeaders());
       if (kIsWeb && _webFile != null) {
         final reader = html.FileReader();
         reader.readAsArrayBuffer(_webFile!);
@@ -590,7 +608,8 @@ class UserProvider extends ChangeNotifier {
         );
       }
 
-      final streamedResponse = await request.send();
+      final streamedResponse =
+          await AppLoadingController.trackFuture(() => request.send());
       final responseBody = await streamedResponse.stream.bytesToString();
 
       if (streamedResponse.statusCode == 200) {

@@ -1,10 +1,11 @@
-import 'dart:io';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'package:admin_ott/data/models/response/getAllMediaHouseByStatus.dart';
 import 'package:admin_ott/data/models/response/getMediaHouseResponse.dart';
+import 'package:admin_ott/domain/entities/shorts_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../core/loading/app_loading_controller.dart';
 import 'package:universal_html/html.dart' as html;
 
 import 'package:image_picker/image_picker.dart'; // For web-specific file handling
@@ -12,12 +13,10 @@ import 'package:image_picker/image_picker.dart'; // For web-specific file handli
 import 'package:admin_ott/app/core/constant/api_constant.dart';
 import 'package:admin_ott/app/core/network/api_helper.dart';
 import 'package:admin_ott/app/widgets/get_date_time.dart';
-import 'package:admin_ott/data/models/api_response.dart';
 import 'package:admin_ott/data/models/request/mediaHouse_request.dart';
-import 'package:admin_ott/data/models/request/user_request.dart';
 import 'package:admin_ott/data/models/response/addMediaHouseResponse.dart';
-import 'package:admin_ott/data/models/response/contentListByMediaHouse.dart';
-import 'package:admin_ott/data/models/response/getAllVideoResponse.dart';
+import 'package:admin_ott/data/models/response/getAllVideoResponse.dart'
+    hide Data;
 import 'package:admin_ott/data/models/response/searchResponse.dart';
 import 'package:admin_ott/data/models/response/shorts_models.dart';
 import 'package:admin_ott/domain/entities/content.dart';
@@ -30,15 +29,12 @@ import '../../data/models/response/getAllUserResponse.dart';
 import '../../data/models/response/mediaHouseDashboardCount.dart';
 import '../../domain/entities/mediaHouse.dart';
 import '../../domain/entities/user.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 import '../ui/pages/dashboard page/component/users_onboarded_graph.dart';
 import '../widgets/show_toast.dart';
 
 class MediaHouseProvider extends ChangeNotifier {
   MediaHouseProvider() : super() {
-    fetchMediaHouse();
     searchMediaHouseController.addListener(filterMediaHouse);
   }
 
@@ -99,7 +95,7 @@ class MediaHouseProvider extends ChangeNotifier {
           if (getAllMediaHouseResponse.data != null) {
             _mediaHouseList.clear();
             _filteredMediaHouseList.clear();
-            _mediaHouseList = getAllMediaHouseResponse.data!.mediaHouse!;
+            _mediaHouseList = getAllMediaHouseResponse.data!.mediaHouses!;
             _filteredMediaHouseList.addAll(_mediaHouseList);
             notifyListeners();
           } else {
@@ -158,12 +154,10 @@ class MediaHouseProvider extends ChangeNotifier {
       return mediaHouse.mediaHouseName!.toLowerCase().contains(query) ||
           mediaHouse.contactNumber!.toLowerCase().contains(query) ||
           mediaHouse.email!.toLowerCase().contains(query) ||
-          (mediaHouse.discription!.toLowerCase().contains(query) ?? false) ||
-          (mediaHouse.location!.state!.toLowerCase().contains(query) ??
-              false) ||
-          (mediaHouse.location!.district!.toLowerCase().contains(query) ??
-              false) ||
-          (mediaHouse.location!.taluka!.toLowerCase().contains(query) ?? false);
+          mediaHouse.discription!.toLowerCase().contains(query) ||
+          mediaHouse.location!.state!.toLowerCase().contains(query) ||
+          mediaHouse.location!.district!.toLowerCase().contains(query) ||
+          mediaHouse.location!.taluka!.toLowerCase().contains(query);
     }).toList();
     notifyListeners();
   }
@@ -193,7 +187,7 @@ class MediaHouseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Create a new media house
+  // Create a new Production house
   Future<Map<String, Object>> createMediaHouse(
       int userId, BuildContext context) async {
     print(
@@ -238,7 +232,7 @@ class MediaHouseProvider extends ChangeNotifier {
           await apiHelper.postApiWithBody(apiUrl, saveMediaHouse.toJson());
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        print("Add media house response:::" + response.body.toString());
+        print("Add production house response:::" + response.body.toString());
         AddMediaHouseResponse addMediaHouseResponse =
             AddMediaHouseResponse.fromJson(responseBody);
         if (addMediaHouseResponse.success == true) {
@@ -249,7 +243,7 @@ class MediaHouseProvider extends ChangeNotifier {
             notifyListeners();
             return {
               'success': true,
-              'message': 'media house created successfully'
+              'message': 'production house created successfully'
             };
           } else {
             return {
@@ -267,19 +261,19 @@ class MediaHouseProvider extends ChangeNotifier {
         return {
           'failure': true,
           'message':
-              'Failed to add media house. Status code: ${response.statusCode}'
+              'Failed to add production house. Status code: ${response.statusCode}'
         };
         /*throw Exception(
-            'Failed to add media house. Status code: ${response.statusCode}');
+            'Failed to add production house. Status code: ${response.statusCode}');
 */
       }
     } catch (error) {
       debugPrint("Error: $error");
       return {
         'success': false,
-        'message': 'An error occurred while adding media house: $error'
+        'message': 'An error occurred while adding production house: $error'
       };
-      // throw Exception('An error occurred while adding media house.');
+      // throw Exception('An error occurred while adding production house.');
     }
   }
 
@@ -365,8 +359,9 @@ class MediaHouseProvider extends ChangeNotifier {
         final success = responseBody['success'] == true;
         if (success) {
           final data = responseBody['data'];
-          final shortsRaw =
-              (data is Map<String, dynamic>) ? data['shorts'] : null;
+          final shortsRaw = (data is Map<String, dynamic>)
+              ? data['miniSeries'] ?? data['shorts']
+              : null;
           if (shortsRaw is List) {
             _shortsByMediaHouse = shortsRaw
                 .map((e) => ShortMaster.fromJson(Map<String, dynamic>.from(e)))
@@ -399,7 +394,7 @@ class MediaHouseProvider extends ChangeNotifier {
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.getApi(apiUrl);
-      debugPrint("media house by status response::: " + response.body);
+      debugPrint("production house by status response::: " + response.body);
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
         GetAllMediaHouseByStatus getAllMediaHouseResponse =
@@ -419,11 +414,11 @@ class MediaHouseProvider extends ChangeNotifier {
         }
       } else {
         throw Exception(
-            'Failed to fetch Media House. Status code: ${response.statusCode}');
+            'Failed to fetch production House. Status code: ${response.statusCode}');
       }
     } catch (error) {
       debugPrint("Error: $error");
-      throw Exception('An error occurred while fetching Media House.');
+      throw Exception('An error occurred while fetching production House.');
     }
   }
 
@@ -485,6 +480,7 @@ class MediaHouseProvider extends ChangeNotifier {
       if (kIsWeb && _webFile != null) {
         // Web upload logic
         final request = http.MultipartRequest('POST', url);
+        request.headers.addAll(await ApiHelper().multipartHeaders());
         final reader = html.FileReader();
         reader.readAsArrayBuffer(_webFile!);
         await reader.onLoad.first;
@@ -497,7 +493,8 @@ class MediaHouseProvider extends ChangeNotifier {
         );
 
         request.files.add(multipartFile);
-        final response = await request.send();
+        final response =
+            await AppLoadingController.trackFuture(() => request.send());
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
@@ -527,12 +524,14 @@ class MediaHouseProvider extends ChangeNotifier {
       } else if (!kIsWeb && _imageFile != null) {
         // Mobile/desktop upload logic
         final request = http.MultipartRequest('POST', url);
+        request.headers.addAll(await ApiHelper().multipartHeaders());
         request.files.add(await http.MultipartFile.fromPath(
           'profilePicture',
           _imageFile!.path,
           //  contentType: MediaType('image', 'jpeg'),
         ));
-        final response = await request.send();
+        final response =
+            await AppLoadingController.trackFuture(() => request.send());
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
@@ -670,7 +669,7 @@ class MediaHouseProvider extends ChangeNotifier {
         print(responseBody);
         MediaHouse mediaHouse = MediaHouse.fromJson(responseBody);
         _mediaHouse = mediaHouse;
-        print("responseBody\n\n\n${mediaHouse!.status}");
+        print("responseBody\n\n\n${mediaHouse.status}");
         CustomToast.show("MediaHouse '${status.toLowerCase()}' successfully",
             isSuccess: true);
         fetchMediaHouseByStatus("PENDING");

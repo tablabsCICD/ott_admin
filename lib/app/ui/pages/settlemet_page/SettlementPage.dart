@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../data/models/response/mediaHouseWeeklySettelement.dart';
-import '../../../../data/repositories/settlement_list.dart';
-import '../../../../domain/entities/user.dart';
-import '../../../core/utils/sharepreferences.dart';
 import '../../../provider/settelementProvider.dart';
 import '../../../provider/themeProvider.dart';
+import '../../../widgets/app_loaders.dart';
 import '../help support page/HelpSupportPage.dart';
-import '../media house detail page/component/settlementCards.dart';
 import 'package:intl/intl.dart';
 
 import 'adminSettelmentCard.dart';
@@ -23,6 +20,8 @@ class _SettlementPageState extends State<SettlementPage> {
   int _rowsPerPage = 10;
   int? _sortColumnIndex;
   bool _sortAscending = true;
+  bool _isLoading = true;
+  String? _loadError;
 
   @override
   void initState() {
@@ -31,31 +30,27 @@ class _SettlementPageState extends State<SettlementPage> {
   }
 
   Future<void> _initData() async {
-    final localSharePreferences = LocalSharePreferences();
-    User? user = await localSharePreferences.getUser();
-
-    if (user == null || user.id == null) {
-      debugPrint("User or User ID is null. Cannot fetch settlement data.");
-      return;
-    }
-
-    await Provider.of<SettelementProvider>(context, listen: false)
-        .fetchWeeklySettelementDataByMediaHouseId(user.id!);
-
-    final settlements = Provider.of<SettelementProvider>(context, listen: false)
-        .weeklySettelement;
-
-    if (settlements != null) {
-      _settlementDataSource = SettlementDataSource(settlements);
-    } else {
-      debugPrint("No settlements found.");
+    final provider = Provider.of<SettelementProvider>(context, listen: false);
+    try {
+      await provider.fetchWeeklySettelementData();
+      if (!mounted) return;
+      setState(() {
+        _settlementDataSource =
+            SettlementDataSource(provider.weeklySettelement);
+        _isLoading = false;
+        _loadError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = 'Unable to load admin settlement data.';
+      });
     }
   }
 
-  void _sort<T>(
-      Comparable<T> Function(Map<String, dynamic> d) getField,
-      int columnIndex,
-      bool ascending) {
+  void _sort<T>(Comparable<T> Function(Map<String, dynamic> d) getField,
+      int columnIndex, bool ascending) {
     setState(() {
       _sortColumnIndex = columnIndex;
       _sortAscending = ascending;
@@ -71,9 +66,19 @@ class _SettlementPageState extends State<SettlementPage> {
       body: Consumer<SettelementProvider>(
         builder: (context, provider, child) {
           final settlements = provider.weeklySettelement;
-          if (settlements == null || settlements.isEmpty) {
+          if (_isLoading) {
+            return const Center(child: AppSpinner());
+          }
+
+          if (_loadError != null) {
+            return Center(child: Text(_loadError!));
+          }
+
+          if (settlements.isEmpty) {
             return Center(child: Text("No settlement data available."));
           }
+
+          _settlementDataSource ??= SettlementDataSource(settlements);
 
           return Padding(
             padding: const EdgeInsets.all(16.0),
@@ -103,7 +108,8 @@ class _SettlementPageState extends State<SettlementPage> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          columns: _buildColumns(selectedThemeData, settlements),
+                          columns:
+                              _buildColumns(selectedThemeData, settlements),
                           source: _settlementDataSource!,
                           rowsPerPage: _rowsPerPage,
                           sortColumnIndex: _sortColumnIndex,
@@ -128,24 +134,24 @@ class _SettlementPageState extends State<SettlementPage> {
     );
   }
 
-  List<DataColumn> _buildColumns(
-      ThemeData selectedThemeData, List<WeeklySettelementData> weeklySettelement) {
+  List<DataColumn> _buildColumns(ThemeData selectedThemeData,
+      List<WeeklySettelementData> weeklySettelement) {
     return [
       _buildSortableColumn(
         'Transaction ID',
-            (d) => d['transactionId'] ?? 'N/A',
+        (d) => d['transactionId'] ?? 'N/A',
         0,
         selectedThemeData,
       ),
       _buildSortableColumn(
         'Start Date',
-            (d) => d['startDate'] ?? 'N/A',
+        (d) => d['startDate'] ?? 'N/A',
         1,
         selectedThemeData,
       ),
       _buildSortableColumn(
         'End Date',
-            (d) => d['endDate'] ?? 'N/A',
+        (d) => d['endDate'] ?? 'N/A',
         2,
         selectedThemeData,
       ),
@@ -158,21 +164,18 @@ class _SettlementPageState extends State<SettlementPage> {
       _buildSortableColumn(
           'Net Revenue', (d) => d['NetRevenue'] ?? 0, 5, selectedThemeData,
           numeric: true),
-      _buildSortableColumn(
-          'OTT Share', (d) => d['OTTPlatformRevenueShare'] ?? 0, 6,
-          selectedThemeData,
+      _buildSortableColumn('OTT Share',
+          (d) => d['OTTPlatformRevenueShare'] ?? 0, 6, selectedThemeData,
           numeric: true),
-      _buildSortableColumn(
-          'Media House Share', (d) => d['MediaHouseRevenueShare'] ?? 0, 7,
-          selectedThemeData,
+      _buildSortableColumn('Production House Share',
+          (d) => d['MediaHouseRevenueShare'] ?? 0, 7, selectedThemeData,
           numeric: true),
-      _buildSortableColumn(
-          'Total Purchases', (d) => d['TotalPurchases'] ?? 0, 8,
-          selectedThemeData,
+      _buildSortableColumn('Total Purchases', (d) => d['TotalPurchases'] ?? 0,
+          8, selectedThemeData,
           numeric: true),
       _buildSortableColumn(
         'Most Purchased Movie',
-            (d) => d['MostPurchasedMovie'] ?? 'N/A',
+        (d) => d['MostPurchasedMovie'] ?? 'N/A',
         9,
         selectedThemeData,
       ),
@@ -201,11 +204,10 @@ class _SettlementPageState extends State<SettlementPage> {
 }
 
 class SettlementDataSource extends DataTableSource {
-  List<WeeklySettelementData> _settlements;
   List<WeeklySettelementData> _sortedSettlements;
 
-  SettlementDataSource(this._settlements)
-      : _sortedSettlements = List.from(_settlements ?? []);
+  SettlementDataSource(List<WeeklySettelementData> settlements)
+      : _sortedSettlements = List.from(settlements);
 
   void sort<T>(
       Comparable<T> Function(Map<String, dynamic>) getField, bool ascending) {
@@ -249,7 +251,6 @@ class SettlementDataSource extends DataTableSource {
       DataCell(Text(settlement.mostPurchasedMovie ?? 'N/A')),
     ]);
   }
-
 
   @override
   bool get isRowCountApproximate => false;

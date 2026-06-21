@@ -8,6 +8,7 @@ import 'package:admin_ott/app/ui/pages/manage%20media%20house%20page/ManageMedia
 import 'package:admin_ott/app/ui/pages/manage%20promoter%20page/ManagePromoterPage.dart';
 import 'package:admin_ott/app/ui/pages/manage%20user%20page/ManageUserPage.dart';
 import 'package:admin_ott/app/ui/pages/manage%20content%20page/ManageContentPage.dart';
+import 'package:admin_ott/app/ui/pages/notification_page/NotificationScreen.dart';
 import 'package:admin_ott/app/ui/pages/profile%20page/ProfilePage.dart';
 import 'package:flutter/material.dart';
 
@@ -51,6 +52,9 @@ class RouteGenerator {
 
       case AppRoutes.manageVideo:
         return buildRoute(MovieListScreen(), settings: settings);
+
+      case AppRoutes.notifications:
+        return buildRoute(NotificationScreen(), settings: settings);
       default:
         return _errorRoute();
     }
@@ -60,24 +64,6 @@ class RouteGenerator {
       {required RouteSettings settings}) {
     return MaterialPageRoute(
         settings: settings, builder: (BuildContext context) => child);
-  }
-
-  static Route _createRoute(Widget root) {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => root,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        var begin = Offset(0.0, 1.0);
-        var end = Offset.zero;
-        const curve = Curves.ease;
-        var tween =
-            Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
-        ;
-      },
-    );
   }
 
   static Route<dynamic> _errorRoute() {

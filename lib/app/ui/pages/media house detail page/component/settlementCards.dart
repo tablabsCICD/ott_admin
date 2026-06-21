@@ -1,4 +1,3 @@
-
 import 'package:admin_ott/domain/entities/mediaHouse.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../../../../data/models/response/mediaHouseWeeklySettelement.dart';
 import '../../../../../device/utils/ResponsiveWidget.dart';
 import '../../../../../domain/entities/user.dart';
-import '../../../../core/utils/sharepreferences.dart';
 import '../../../../provider/settelementProvider.dart';
 import 'package:intl/intl.dart';
 
@@ -14,20 +12,15 @@ import '../../../../provider/themeProvider.dart';
 import '../../../../widgets/custom_textfield.dart';
 
 class SettlementCard extends StatefulWidget {
-  MediaHouse mediaHouse;
+  final MediaHouse mediaHouse;
   SettlementCard(this.mediaHouse);
-
-
 
   @override
   _SettlementCardState createState() => _SettlementCardState();
 }
 
 class _SettlementCardState extends State<SettlementCard> {
-  TextEditingController searchController = TextEditingController();
-  List<dynamic> filteredSettlements = [];
-
-
+  final TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
@@ -47,8 +40,6 @@ class _SettlementCardState extends State<SettlementCard> {
 
     await Provider.of<SettelementProvider>(context, listen: false)
         .fetchWeeklySettelementDataByMediaHouseId(user.id!);
-
-
   }
 
   @override
@@ -58,47 +49,33 @@ class _SettlementCardState extends State<SettlementCard> {
     super.dispose();
   }
 
-
-
   void _updateFilteredSettlements() {
-    String searchText = searchController.text.toLowerCase();
-
-    /*  setState(() {
-      filteredSettlements = widget.settlementsData["settlementsList"]
-              ?.where((settlement) =>
-                  (settlement["transactionId"]?.toLowerCase() ?? '')
-                      .contains(searchText) ||
-                  (settlement["startDate"]?.toLowerCase() ?? '')
-                      .contains(searchText) ||
-                  (settlement["endDate"]?.toLowerCase() ?? '')
-                      .contains(searchText))
-              .toList() ??
-          [];
-    });*/
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     var selectedThemeData = Provider.of<ThemeProvider>(context).getTheme;
 
-
-    return Consumer<SettelementProvider>(
-        builder: (context, provider, child) {
-          return Column(
-            children: [
-              _buildSearchBar(selectedThemeData),
-              const SizedBox(height: 5),
-              provider.filleterdWeeklySettelement.isEmpty
-                  ? Center(
-                child: Text(
-                  "No settlement data available",
-                  style: TextStyle(color: selectedThemeData.primaryColor),
-                ),
-              )
-                  : _buildSettlementList(provider),
-            ],
-          );}
-    );
+    return Consumer<SettelementProvider>(builder: (context, provider, child) {
+      final settlements = _filteredSettlements(provider);
+      return Column(
+        children: [
+          _buildSearchBar(selectedThemeData),
+          const SizedBox(height: 5),
+          settlements.isEmpty
+              ? Center(
+                  child: Text(
+                    "No settlement data available",
+                    style: TextStyle(color: selectedThemeData.primaryColor),
+                  ),
+                )
+              : _buildSettlementList(settlements),
+        ],
+      );
+    });
   }
 
   Widget _buildSearchBar(ThemeData selectedThemeData) {
@@ -106,126 +83,98 @@ class _SettlementCardState extends State<SettlementCard> {
       padding: const EdgeInsets.symmetric(horizontal: 10.0),
       child: ResponsiveWidget.isMobile(context)
           ? SizedBox(
-        width: 400,
-        child: CustomTextField(
-          controller: searchController,
-          hintText: 'Search by dates, transaction ID ...',
-          textInputType: TextInputType.text,
-        ),
-      )
+              width: 400,
+              child: CustomTextField(
+                controller: searchController,
+                hintText: 'Search by dates, transaction ID ...',
+                textInputType: TextInputType.text,
+              ),
+            )
           : Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Weekly Settlement',
-            style: TextStyle(
-              color: selectedThemeData.primaryColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Weekly Settlement',
+                  style: TextStyle(
+                    color: selectedThemeData.primaryColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                SizedBox(
+                  width: 400,
+                  child: CustomTextField(
+                    controller: searchController,
+                    hintText: 'Search by dates, transaction ID ...',
+                    textInputType: TextInputType.text,
+                  ),
+                ),
+              ],
             ),
-          ),
-          SizedBox(
-            width: 400,
-            child: CustomTextField(
-              controller: searchController,
-              hintText: 'Search by dates, transaction ID ...',
-              textInputType: TextInputType.text,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _buildSettlementList(SettelementProvider provider) {
+  Widget _buildSettlementList(List<WeeklySettelementData> settlements) {
     return SizedBox(
-      height: 220,
+      height: 196,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: provider.filleterdWeeklySettelement.length,
+        itemCount: settlements.length,
         itemBuilder: (context, index) {
-          final data = provider.filleterdWeeklySettelement[index];
+          final data = settlements[index];
           return _buildSettlementCard(context, data);
         },
       ),
     );
   }
 
-  Widget _buildSettlementCard(BuildContext context, WeeklySettelementData data) {
+  Widget _buildSettlementCard(
+      BuildContext context, WeeklySettelementData data) {
     var selectedThemeData = Provider.of<ThemeProvider>(context).getTheme;
-    DateTime date = DateTime.fromMillisecondsSinceEpoch(data.startDate!);
-    String? startDate = DateFormat('dd-MM-yyyy').format(date);
-    DateTime date1 = DateTime.fromMillisecondsSinceEpoch(data.endDate!);
-    String? endDate = DateFormat('dd-MM-yyyy').format(date1);
+    final startDate = _formatDate(data.startDate);
+    final endDate = _formatDate(data.endDate);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: SizedBox(
-        width: 350,
+        width: ResponsiveWidget.isMobile(context) ? 310 : 360,
         child: Card(
           color: selectedThemeData.cardColor,
-          child: Stack(
-            children: [
-              Positioned(
-                top: 5,
-                right: 10,
-                child: InkWell(
-                  onTap: () => _showDetailsDialog(context, data),
-                  child: Text(
-                    'See details',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: selectedThemeData.primaryColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: selectedThemeData.canvasColor.withOpacity(0.12),
+              ),
+            ),
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildHeader(context, data, selectedThemeData),
                     ),
-                  ),
+                    _buildViewButton(
+                      selectedThemeData,
+                      onPressed: () => _showDetailsDialog(context, data),
+                    ),
+                  ],
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(context, data, selectedThemeData),
-                      const SizedBox(height: 5),
-                      Text(
-                        "${startDate ?? 'N/A'} - ${endDate ?? 'N/A'}",
-                        overflow: TextOverflow.visible,
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 5.0),
-                        child: Divider(),
-                      ),
-                      _buildDetailRow(
-                        'Total Revenue',
-                        _parseNumber(data.grossRevenue),
-                      ),
-                      SizedBox(
-                        height: 5,
-                      ),
-                      _buildDetailRow(
-                        'Total Purchases',
-                        _parseNumber(data.totalPurchases),
-                      ),
-                      SizedBox(
-                        height: 5,
-                      ),
-                      _buildDetailRow(
-                        'Total Movies Sold',
-                        _parseNumber(data.totalUniqueMoviesSold),
-                      ),
-                      SizedBox(
-                        height: 5,
-                      ),
-                      _buildDetailRow('Most Purchased Movie',
-                          data.mostPurchasedMovie ?? 'N/A'),
-                      SizedBox(
-                        height: 30,
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 8),
+                _buildDateBand(
+                  selectedThemeData,
+                  startDate: startDate,
+                  endDate: endDate,
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                _buildMetricGrid(selectedThemeData, data),
+              ],
+            ),
           ),
         ),
       ),
@@ -234,26 +183,21 @@ class _SettlementCardState extends State<SettlementCard> {
 
   Widget _buildHeader(BuildContext context, WeeklySettelementData data,
       ThemeData selectedThemeData) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          "Transaction ID: ${data.transactionId ?? 'N/A'}",
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: selectedThemeData.primaryColor,
-          ),
-        ),
-      ],
+    return Text(
+      "Transaction ID: ${data.transactionId ?? 'N/A'}",
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.bold,
+        color: selectedThemeData.primaryColor,
+      ),
     );
   }
 
   void _showDetailsDialog(BuildContext context, WeeklySettelementData data) {
-    DateTime date = DateTime.fromMillisecondsSinceEpoch(data.startDate!);
-    String? startDate = DateFormat('dd-MM-yyyy').format(date);
-    DateTime date1 = DateTime.fromMillisecondsSinceEpoch(data.endDate!);
-    String? endDate = DateFormat('dd-MM-yyyy').format(date1);
+    final startDate = _formatDate(data.startDate);
+    final endDate = _formatDate(data.endDate);
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -277,7 +221,7 @@ class _SettlementCardState extends State<SettlementCard> {
                   height: 5,
                 ),
                 Text(
-                  "From: ${startDate ?? 'N/A'} - To: ${endDate ?? 'N/A'}",
+                  "From: $startDate - To: $endDate",
                 ),
                 Divider(
                   color: selectedThemeData.canvasColor.withOpacity(0.2),
@@ -286,8 +230,7 @@ class _SettlementCardState extends State<SettlementCard> {
                     'Gross Revenue', _parseNumber(data.grossRevenue)),
                 _buildDetailRow(
                     'Tax Deduction', _parseNumber(data.taxDeduction)),
-                _buildDetailRow(
-                    'Net Revenue', _parseNumber(data.netRevenue)),
+                _buildDetailRow('Net Revenue', _parseNumber(data.netRevenue)),
                 Divider(
                   color: selectedThemeData.canvasColor.withOpacity(0.2),
                 ),
@@ -298,9 +241,9 @@ class _SettlementCardState extends State<SettlementCard> {
                 Divider(
                   color: selectedThemeData.canvasColor.withOpacity(0.2),
                 ),
-                _buildDetailRow('Media House Share %',
+                _buildDetailRow('Production House Share %',
                     _parseNumber(data.mediaHouseSharePercentage)),
-                _buildDetailRow('Media House Revenue Share',
+                _buildDetailRow('Production House Revenue Share',
                     _parseNumber(data.mediaHouseRevenueShare)),
                 Divider(
                   color: selectedThemeData.canvasColor.withOpacity(0.2),
@@ -347,7 +290,7 @@ class _SettlementCardState extends State<SettlementCard> {
       return [const Text("No movie data available")];
     }
 
-    return moviesSold!.entries.entries.map((entry) {
+    return moviesSold.entries.entries.map((entry) {
       return _buildDetailRow(entry.key, _parseNumber(entry.value));
     }).toList();
 
@@ -358,15 +301,150 @@ class _SettlementCardState extends State<SettlementCard> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title),
-        Text(value, textAlign: TextAlign.end),
+        Expanded(child: Text(title)),
+        const SizedBox(width: 10),
+        Flexible(child: Text(value, textAlign: TextAlign.end)),
       ],
     );
   }
 
   String _parseNumber(dynamic value) {
-    if (value is int || value is double) return value.toString();
-    if (value is String) return int.tryParse(value)?.toString() ?? 'N/A';
+    if (value is int) return value.toString();
+    if (value is double) {
+      return value == value.roundToDouble()
+          ? value.toStringAsFixed(0)
+          : value.toStringAsFixed(2);
+    }
+    if (value is num) return value.toString();
+    if (value is String) {
+      final parsed = num.tryParse(value);
+      return parsed?.toString() ?? 'N/A';
+    }
     return 'N/A';
+  }
+
+  String _formatDate(int? epoch) {
+    if (epoch == null) return 'N/A';
+    return DateFormat('dd-MM-yyyy')
+        .format(DateTime.fromMillisecondsSinceEpoch(epoch));
+  }
+
+  Widget _buildDateBand(
+    ThemeData theme, {
+    required String startDate,
+    required String endDate,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        '$startDate - $endDate',
+        style: TextStyle(
+          color: theme.canvasColor.withOpacity(0.78),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricGrid(ThemeData theme, WeeklySettelementData data) {
+    final metrics = [
+      MapEntry('Gross', _parseNumber(data.grossRevenue)),
+      MapEntry('Net', _parseNumber(data.netRevenue)),
+      MapEntry('Purchases', _parseNumber(data.totalPurchases)),
+    ];
+
+    return Row(
+      children: metrics
+          .map(
+            (metric) => Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: metric == metrics.last ? 0 : 8,
+                ),
+                child: _buildSummaryMetric(theme, metric),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildSummaryMetric(ThemeData theme, MapEntry<String, String> metric) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 62),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.primaryColor.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: theme.primaryColor.withOpacity(0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            metric.key,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: theme.canvasColor.withOpacity(0.68),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            metric.value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: theme.canvasColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewButton(ThemeData theme, {required VoidCallback onPressed}) {
+    return SizedBox(
+      height: 28,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 28),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          visualDensity: VisualDensity.compact,
+          side: BorderSide(color: theme.primaryColor.withOpacity(0.32)),
+        ),
+        icon: const Icon(Icons.visibility_outlined, size: 13),
+        label: const Text('View', style: TextStyle(fontSize: 11)),
+      ),
+    );
+  }
+
+  List<WeeklySettelementData> _filteredSettlements(
+      SettelementProvider provider) {
+    final query = searchController.text.trim().toLowerCase();
+    final settlements = provider.filleterdWeeklySettelement;
+    if (query.isEmpty) return settlements;
+
+    return settlements.where((settlement) {
+      final searchableText = [
+        settlement.transactionId?.toString(),
+        _formatDate(settlement.startDate),
+        _formatDate(settlement.endDate),
+        settlement.mostPurchasedMovie,
+        ...?settlement.listOfMoviesSold?.entries.keys,
+      ].whereType<String>().join(' ').toLowerCase();
+      return searchableText.contains(query);
+    }).toList();
   }
 }

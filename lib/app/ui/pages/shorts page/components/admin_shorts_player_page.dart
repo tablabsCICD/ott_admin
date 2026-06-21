@@ -1,12 +1,16 @@
-import 'package:admin_ott/data/models/response/shorts_models.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
+import 'package:admin_ott/app/widgets/ott_media_player.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
+import 'package:admin_ott/domain/entities/short_part.dart';
+import 'package:admin_ott/domain/entities/shorts_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:video_player/video_player.dart';
 
 class AdminShortsPlayerPage extends StatefulWidget {
-  final ShortDetailData short;
+  final ShortMaster short;
   final int initialIndex;
 
   const AdminShortsPlayerPage({
@@ -21,12 +25,14 @@ class AdminShortsPlayerPage extends StatefulWidget {
 
 class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
     with WidgetsBindingObserver {
-  VideoPlayerController? _controller;
+  Player? _player;
+  VideoController? _videoController;
   final PageController _pageController = PageController();
 
-  late List<ShortDetailPart> _parts;
+  late List<ShortPartDTO> _parts;
   int _currentIndex = 0;
   bool _isMetaExpanded = false;
+  bool _isVideoLoading = false;
   bool _hasVideoError = false;
   String? _videoErrorMessage;
 
@@ -34,8 +40,9 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _parts = List<ShortDetailPart>.from(widget.short.parts);
-    _currentIndex = widget.initialIndex.clamp(0, (_parts.length - 1).clamp(0, 999999));
+    _parts = List<ShortPartDTO>.from(widget.short.parts);
+    _currentIndex =
+        widget.initialIndex.clamp(0, (_parts.length - 1).clamp(0, 999999));
     if (_parts.isNotEmpty) {
       _loadPart(_currentIndex);
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -50,14 +57,17 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      _controller?.pause();
+      _player?.pause();
     }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _controller?.dispose();
+    if (_player != null) {
+      MediaKitPlaybackCoordinator.release(_player!);
+    }
+    _player?.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -69,27 +79,42 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
     if (url.isEmpty) {
       setState(() {
         _currentIndex = index;
-        _controller = null;
+        _player = null;
+        _videoController = null;
+        _isVideoLoading = false;
         _hasVideoError = true;
         _videoErrorMessage = 'Video unavailable';
       });
       return;
     }
 
-    final old = _controller;
-    _controller = null;
-    await old?.pause();
-    await old?.dispose();
+    final oldPlayer = _player;
+    setState(() {
+      _currentIndex = index;
+      _player = null;
+      _videoController = null;
+      _isVideoLoading = true;
+      _hasVideoError = false;
+      _videoErrorMessage = null;
+    });
+    await oldPlayer?.pause();
+    if (oldPlayer != null) {
+      MediaKitPlaybackCoordinator.release(oldPlayer);
+      await oldPlayer.dispose();
+    }
 
-    final ctrl = VideoPlayerController.networkUrl(Uri.parse(url));
+    // media_kit replaces video_player while preserving the existing shorts UI.
+    final player = Player();
+    final videoController = VideoController(player);
     try {
-      await ctrl.initialize();
-      await ctrl.play();
+      await MediaKitPlaybackCoordinator.setActive(player);
+      await player.open(Media(url), play: true);
     } catch (_) {
-      await ctrl.dispose();
+      await player.dispose();
       if (!mounted) return;
       setState(() {
         _currentIndex = index;
+        _isVideoLoading = false;
         _hasVideoError = true;
         _videoErrorMessage = 'Failed to load video';
       });
@@ -97,21 +122,26 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
     }
 
     if (!mounted) {
-      await ctrl.dispose();
+      await player.dispose();
       return;
     }
     setState(() {
-      _controller = ctrl;
+      _player = player;
+      _videoController = videoController;
       _currentIndex = index;
+      _isVideoLoading = false;
       _hasVideoError = false;
       _videoErrorMessage = null;
     });
   }
 
   void _togglePlayPause() {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) return;
-    controller.value.isPlaying ? controller.pause() : controller.play();
+    final player = _player;
+    if (player == null) return;
+    if (!player.state.playing) {
+      MediaKitPlaybackCoordinator.setActive(player);
+    }
+    player.playOrPause();
   }
 
   @override
@@ -150,7 +180,6 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
   }
 
   Widget _videoBackground() {
-    final controller = _controller;
     if (_hasVideoError) {
       return Positioned.fill(
         child: Container(
@@ -170,40 +199,31 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
         ),
       );
     }
-    if (controller == null || !controller.value.isInitialized) {
+    final videoController = _videoController;
+    if (_isVideoLoading || videoController == null) {
       return const Positioned.fill(
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: AppSpinner()),
       );
     }
-    if (controller.value.hasError ||
-        controller.value.size.width == 0 ||
-        controller.value.size.height == 0) {
-      return const Positioned.fill(
-        child: Center(
-          child: Icon(Icons.play_disabled, color: Colors.white70, size: 32),
-        ),
-      );
-    }
-    final size = controller.value.size;
     return Positioned.fill(
-      child: FittedBox(
+      child: Video(
+        controller: videoController,
         fit: BoxFit.cover,
-        child: SizedBox(
-          width: size.width,
-          height: size.height,
-          child: VideoPlayer(controller),
-        ),
+        controls: NoVideoControls,
+        pauseUponEnteringBackgroundMode: true,
       ),
     );
   }
 
   Widget _overlay(int index) {
     final part = _parts[index];
-    final titleText =
-        (part.title ?? '').trim().isNotEmpty ? part.title!.trim() : (widget.short.title ?? '');
+    final titleText = (part.title ?? '').trim().isNotEmpty
+        ? part.title!.trim()
+        : (widget.short.title ?? '');
     final descriptionText = (widget.short.description ?? '').trim();
     final hasDescription = descriptionText.isNotEmpty;
-    final showSeeMore = !_isMetaExpanded && (titleText.length > 36 || hasDescription);
+    final showSeeMore =
+        !_isMetaExpanded && (titleText.length > 36 || hasDescription);
 
     return Stack(
       children: [
@@ -252,7 +272,8 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
               GestureDetector(
                 onTap: () => setState(() => _isMetaExpanded = !_isMetaExpanded),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -294,7 +315,8 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
                               ),
                             ),
                             SizedBox(width: 4),
-                            Icon(Icons.expand_more, size: 12, color: Colors.white),
+                            Icon(Icons.expand_more,
+                                size: 12, color: Colors.white),
                           ],
                         ),
                       ],
@@ -307,15 +329,28 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
         ),
         _rightButtons(index),
         _bottomEpisodeBar(),
-        if (_controller != null && !_controller!.value.isPlaying)
-          const Center(
-            child: Icon(
-              Icons.play_arrow_sharp,
-              color: Colors.white60,
-              size: 50,
-            ),
-          ),
+        _playPauseIndicator(),
       ],
+    );
+  }
+
+  Widget _playPauseIndicator() {
+    final player = _player;
+    if (player == null) return const SizedBox.shrink();
+
+    return StreamBuilder<bool>(
+      stream: player.stream.playing,
+      initialData: player.state.playing,
+      builder: (context, snapshot) {
+        if (snapshot.data == true) return const SizedBox.shrink();
+        return const Center(
+          child: Icon(
+            Icons.play_arrow_sharp,
+            color: Colors.white60,
+            size: 50,
+          ),
+        );
+      },
     );
   }
 
@@ -343,8 +378,8 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration:
-                const BoxDecoration(shape: BoxShape.circle, color: Colors.black12),
+            decoration: const BoxDecoration(
+                shape: BoxShape.circle, color: Colors.black12),
             child: Icon(icon, size: 26, color: Colors.white),
           ),
           const SizedBox(height: 4),
@@ -357,7 +392,7 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
     );
   }
 
-  Future<void> _shareShort(ShortDetailPart part) async {
+  Future<void> _shareShort(ShortPartDTO part) async {
     final text = '''
 🎬 ${part.title ?? widget.short.title ?? ''}
 Creator: ${widget.short.creatorName ?? ''}
@@ -400,26 +435,54 @@ Creator: ${widget.short.creatorName ?? ''}
   }
 
   Widget _videoProgressBar() {
-    final controller = _controller;
-    if (controller == null) return const SizedBox.shrink();
-    final value = controller.value;
-    if (!value.isInitialized || value.duration == Duration.zero || value.hasError) {
+    final player = _player;
+    if (player == null) return const SizedBox.shrink();
+
+    if (player.state.duration == Duration.zero) {
       return const SizedBox.shrink();
     }
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: VideoProgressIndicator(
-          controller,
-          allowScrubbing: true,
-          colors: const VideoProgressColors(
-            playedColor: Color(0xFFE50914),
-            bufferedColor: Colors.white30,
-            backgroundColor: Colors.white24,
-          ),
-        ),
-      ),
+
+    return StreamBuilder<Duration>(
+      stream: player.stream.position,
+      initialData: player.state.position,
+      builder: (context, positionSnapshot) {
+        return StreamBuilder<Duration>(
+          stream: player.stream.duration,
+          initialData: player.state.duration,
+          builder: (context, durationSnapshot) {
+            final duration = durationSnapshot.data ?? Duration.zero;
+            if (duration == Duration.zero) return const SizedBox.shrink();
+
+            final position = positionSnapshot.data ?? Duration.zero;
+            final max = duration.inMilliseconds.toDouble();
+            final value =
+                position.inMilliseconds.clamp(0, max.toInt()).toDouble();
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 3,
+                  thumbShape:
+                      const RoundSliderThumbShape(enabledThumbRadius: 4),
+                  overlayShape:
+                      const RoundSliderOverlayShape(overlayRadius: 10),
+                  activeTrackColor: const Color(0xFFE50914),
+                  inactiveTrackColor: Colors.white24,
+                  thumbColor: const Color(0xFFE50914),
+                ),
+                child: Slider(
+                  min: 0,
+                  max: max,
+                  value: value,
+                  onChanged: (next) {
+                    player.seek(Duration(milliseconds: next.round()));
+                  },
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -454,7 +517,8 @@ Creator: ${widget.short.creatorName ?? ''}
                   decoration: BoxDecoration(
                     color: active ? theme.primaryColor : theme.cardColor,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: theme.canvasColor.withValues(alpha: .7)),
+                    border: Border.all(
+                        color: theme.canvasColor.withValues(alpha: .7)),
                   ),
                   child: Center(
                     child: Text(
@@ -480,7 +544,7 @@ Creator: ${widget.short.creatorName ?? ''}
       left: 12,
       child: InkWell(
         onTap: () {
-          _controller?.pause();
+          _player?.pause();
           Navigator.pop(context);
         },
         child: const CircleAvatar(

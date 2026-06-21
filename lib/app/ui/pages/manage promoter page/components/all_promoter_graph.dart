@@ -1,5 +1,6 @@
 import 'package:admin_ott/app/provider/promoterGraphProvider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -92,7 +93,7 @@ class _CustomBarGraphState extends State<CustomBarGraph> {
                     future: provider.filteredDataFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                        return const Center(child: AppSpinner());
                       }
                       if (snapshot.hasError) {
                         return Center(

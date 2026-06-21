@@ -1,6 +1,7 @@
 import 'package:admin_ott/app/provider/shortsProvider.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/components/add_short_master.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/components/short_master_page.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:flutter/material.dart';
@@ -104,8 +105,15 @@ class _ShortsPageState extends State<ShortsPage> {
       body: Consumer<ShortsProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading && provider.shorts.isEmpty) {
-            return Center(
-              child: CircularProgressIndicator(color: theme.primaryColor),
+            return AppCardSkeletonList(
+              itemCount: crossAxisCount * 2,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio:
+                    ResponsiveWidget.isDesktop(context) ? 10 / 16 : 9 / 16,
+              ),
             );
           }
 
@@ -163,7 +171,10 @@ class _ShortsPageState extends State<ShortsPage> {
                         controller: _searchCtrl,
                         hintText: "Search shorts...",
                         textInputType: TextInputType.text,
-                        prefixIcon: const Icon(Icons.search),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: theme.canvasColor,
+                        ),
                         onValueChange: (_) => setState(() {}),
                       ),
                     );

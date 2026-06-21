@@ -33,9 +33,12 @@ class Data {
   Data({this.promoters});
 
   Data.fromJson(Map<String, dynamic> json) {
-    promoters = json['Promoters'] != null
-        ? new Promoters.fromJson(json['Promoters'])
-        : null;
+    final promoterJson = json['Promoters'] ?? json['promoters'];
+    if (promoterJson is Map<String, dynamic>) {
+      promoters = Promoters.fromJson(promoterJson);
+    } else if (json['id'] != null || json['promoterName'] != null) {
+      promoters = Promoters.fromJson(json);
+    }
   }
 
   Map<String, dynamic> toJson() {

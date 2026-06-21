@@ -119,7 +119,7 @@ class _MediaHouseProfilePageState extends State<MediaHouseProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Responsive layout for media house details, user info, and admin controls
+                // Responsive layout for Production house details, user info, and admin controls
                 ResponsiveWidget.isDesktop(context)
                     ? Row(
                         crossAxisAlignment: CrossAxisAlignment.start,

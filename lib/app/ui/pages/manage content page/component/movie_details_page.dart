@@ -5,6 +5,7 @@ import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/Display
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:admin_ott/domain/entities/content.dart';
 import 'package:admin_ott/domain/entities/mediaHouse.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../widgets/show_toast.dart';
@@ -24,16 +25,18 @@ class MovieDetailsPage extends StatefulWidget {
 }
 
 class _MovieDetailsPageState extends State<MovieDetailsPage> {
+  late Content _content;
   double _adminPercentage = 50.0;
   bool _isSettingPercentage = false;
 
   @override
   void initState() {
     super.initState();
-    _adminPercentage = _clampPercentage(widget.content.adminIncentivePecentage);
-    if (widget.content.id != null) {
+    _content = widget.content;
+    _adminPercentage = _clampPercentage(_content.adminIncentivePecentage);
+    if (_content.id != null) {
       Provider.of<VideoProvider>(context, listen: false)
-          .contentRevenueGraph(0, widget.content.id!, '', '');
+          .contentRevenueGraph(0, _content.id!, '', '');
     }
     Provider.of<VideoProvider>(context, listen: false).fetchMediaHouse();
   }
@@ -41,14 +44,14 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Provider.of<ThemeProvider>(context, listen: false).getTheme;
-    final content = widget.content;
+    final content = _content;
     final isDesktop = ResponsiveWidget.isDesktop(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(content.title ?? 'Movie Details'),
-        backgroundColor: theme.cardColor,
+        backgroundColor: theme.primaryColor,
         actions: [
           IconButton(
             onPressed: () => _confirmDelete(context, content),
@@ -63,14 +66,17 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
           children: [
             PosterHeader(content: content),
             const SizedBox(height: 12),
-            _SummaryChips(content: content),
+            ContentSummaryChips(content: content),
             const SizedBox(height: 12),
-            _RevenueHighlightCard(content: content),
+            RevenueHighlightCard(content: content),
             const SizedBox(height: 12),
             ActionPanel(
               content: content,
               popOnStatusChange: widget.popOnStatusChange,
+              onStatusChanged: _refreshAfterStatusChange,
             ),
+            /*   const SizedBox(height: 12),
+            _buildSetPercentagePanel(context, content), */
             const SizedBox(height: 12),
             if (isDesktop && content.id != null)
               SizedBox(
@@ -95,6 +101,22 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
         ),
       ),
     );
+  }
+
+  void _refreshAfterStatusChange(String status) {
+    final provider = Provider.of<VideoProvider>(context, listen: false);
+    final updatedContent = provider.content.id == _content.id
+        ? provider.content
+        : Content.fromJson({
+            ..._content.toJson(),
+            'approvalStatus': status,
+          });
+
+    if (!mounted) return;
+    setState(() {
+      _content = updatedContent;
+      _adminPercentage = _clampPercentage(_content.adminIncentivePecentage);
+    });
   }
 
   void _confirmDelete(BuildContext context, Content content) {
@@ -174,14 +196,7 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
                     ? null
                     : () => _openSetPercentageDialog(content),
                 child: _isSettingPercentage
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
+                    ? const AppButtonLoader(label: 'Saving')
                     : const Text('Set Percentage'),
               ),
             ),
@@ -201,7 +216,7 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
       return;
     }
     if (mediaHouse == null || mediaHouse.id == null || mediaHouse.id! <= 0) {
-      CustomToast.show("Unable to set percentage: media house not found.",
+      CustomToast.show("Unable to set percentage: Production house not found.",
           isSuccess: false);
       return;
     }
@@ -473,10 +488,10 @@ class PosterHeader extends StatelessWidget {
   }
 }
 
-class _SummaryChips extends StatelessWidget {
+class ContentSummaryChips extends StatelessWidget {
   final Content content;
 
-  const _SummaryChips({required this.content});
+  const ContentSummaryChips({super.key, required this.content});
 
   @override
   Widget build(BuildContext context) {
@@ -521,11 +536,13 @@ class _SummaryChips extends StatelessWidget {
 class ActionPanel extends StatelessWidget {
   final Content content;
   final bool popOnStatusChange;
+  final ValueChanged<String>? onStatusChanged;
 
   const ActionPanel({
     super.key,
     required this.content,
     this.popOnStatusChange = false,
+    this.onStatusChanged,
   });
 
   @override
@@ -533,6 +550,7 @@ class ActionPanel extends StatelessWidget {
     final theme = Provider.of<ThemeProvider>(context, listen: false).getTheme;
     final status = (content.approvalStatus ?? '').toUpperCase();
     final approved = status == 'APPROVED';
+    final rejected = status == 'REJECTED';
 
     return Card(
       color: theme.cardColor,
@@ -569,14 +587,18 @@ class ActionPanel extends StatelessWidget {
                 ),
                 _actionButton(
                   context: context,
-                  label: 'Reject',
+                  label: rejected ? 'Rejected' : 'Reject',
                   icon: Icons.cancel_outlined,
-                  backgroundColor: theme.cardColor,
-                  textColor: theme.canvasColor,
+                  backgroundColor: rejected
+                      ? theme.primaryColor.withValues(alpha: 0.35)
+                      : theme.cardColor,
+                  textColor: rejected ? Colors.white : theme.canvasColor,
                   borderColor: Colors.red.withValues(alpha: 0.5),
-                  onPressed: () => _showRejectDialog(context, content),
+                  onPressed: rejected
+                      ? null
+                      : () => _showRejectDialog(context, content),
                 ),
-                _actionButton(
+                /*  _actionButton(
                   context: context,
                   label: 'Request Edit',
                   icon: Icons.edit_outlined,
@@ -584,7 +606,7 @@ class ActionPanel extends StatelessWidget {
                   textColor: theme.canvasColor,
                   borderColor: Colors.orange.withValues(alpha: 0.5),
                   onPressed: () => _showEditDialog(context, content),
-                ),
+                ), */
                 _actionButton(
                   context: context,
                   label: 'Watch Trailer',
@@ -645,6 +667,7 @@ class ActionPanel extends StatelessWidget {
                       .changeContentStatus(context, "APPROVED", id);
 
               if (!context.mounted || !success) return;
+              onStatusChanged?.call("APPROVED");
               if (popOnStatusChange) {
                 Navigator.pop(context, true);
               }
@@ -695,11 +718,19 @@ class ActionPanel extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              if (content.id != null) {
-                Provider.of<VideoProvider>(context, listen: false)
-                    .changeContentStatus(context, "REJECTED", content.id!);
+              final id = content.id;
+              if (id == null) return;
+
+              final success =
+                  await Provider.of<VideoProvider>(context, listen: false)
+                      .changeContentStatus(context, "REJECTED", id);
+
+              if (!context.mounted || !success) return;
+              onStatusChanged?.call("REJECTED");
+              if (popOnStatusChange) {
+                Navigator.pop(context, true);
               }
             },
             child: const Text('Reject'),
@@ -805,11 +836,17 @@ class DetailsSection extends StatelessWidget {
             _detail('Runtime', '${content.runtime ?? '-'} min'),
             _detail('Uploaded By', content.mediaHouseName ?? '-'),
             _detail('Price', _formatCurrency(content.price)),
-            _detailRow(
+            _detail('Total Revenue', _formatCurrency(content.totalRevenue)),
+            _detail('Admin Revenue', _formatCurrency(content.adminRevnue)),
+            _detail(
+              'Production House Revenue',
+              _formatCurrency(content.mediaHouseRevenue),
+            ),
+            /*  _detailRow(
               'Revenue',
               _formatCurrency(content.totalRevenue),
               highlight: true,
-            ),
+            ), */
             _detail('Genres', content.genreList?.join(', ') ?? '-'),
             _detail('Languages', content.languageList?.join(', ') ?? '-'),
             _detail('Cast', content.castList?.join(', ') ?? '-'),
@@ -890,8 +927,8 @@ class DetailsSection extends StatelessWidget {
   }
 }
 
-class _RevenueHighlightCard extends StatelessWidget {
-  const _RevenueHighlightCard({required this.content});
+class RevenueHighlightCard extends StatelessWidget {
+  const RevenueHighlightCard({super.key, required this.content});
 
   final Content content;
 
@@ -927,6 +964,16 @@ class _RevenueHighlightCard extends StatelessWidget {
               emphasized: true,
             ),
             _RevenueTile(
+              icon: Icons.admin_panel_settings_outlined,
+              label: 'Admin Revenue',
+              value: _formatCurrency(content.adminRevnue),
+            ),
+            _RevenueTile(
+              icon: Icons.business_outlined,
+              label: 'Production House Revenue',
+              value: _formatCurrency(content.mediaHouseRevenue),
+            ),
+            _RevenueTile(
               icon: Icons.sell_outlined,
               label: 'Content Price',
               value: _formatCurrency(content.price),
@@ -940,7 +987,7 @@ class _RevenueHighlightCard extends StatelessWidget {
               icon: Icons.pie_chart_outline,
               label: 'Share Split',
               value:
-                  'Admin ${_formatPercent(adminShare)} / MH ${_formatPercent(mediaHouseShare)}',
+                  'Admin ${_formatPercent(adminShare)} / PH ${_formatPercent(mediaHouseShare)}',
             ),
           ];
 

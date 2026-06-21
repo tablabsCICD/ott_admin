@@ -10,8 +10,9 @@ void showMovieDetailsDialog(BuildContext context, Content content) {
   Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) =>
-          isSeries ? SeriesDetailsPage(content: content) : MovieDetailsPage(content: content),
+      builder: (_) => isSeries
+          ? SeriesDetailsPage(content: content)
+          : MovieDetailsPage(content: content),
     ),
   );
 }

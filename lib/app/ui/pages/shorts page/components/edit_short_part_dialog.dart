@@ -1,7 +1,9 @@
 import 'dart:io' as io;
 
 import 'package:admin_ott/app/provider/shortsProvider.dart';
-import 'package:admin_ott/data/models/response/shorts_models.dart';
+
+import 'package:admin_ott/app/widgets/app_loaders.dart';
+import 'package:admin_ott/domain/entities/short_part.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,7 +12,7 @@ import 'package:universal_html/html.dart' as html;
 
 class EditShortPartDialog extends StatefulWidget {
   final int shortId;
-  final ShortDetailPart part;
+  final ShortPartDTO part;
 
   const EditShortPartDialog({
     super.key,
@@ -54,7 +56,9 @@ class _EditShortPartDialogState extends State<EditShortPartDialog> {
       if (file == null) return;
       imageFile = io.File(file.path);
     }
-    final url = await context.read<ShortsProvider>().uploadThumbnail(imageFile, webFile);
+    final url = await context
+        .read<ShortsProvider>()
+        .uploadThumbnail(imageFile, webFile);
     if (mounted && url != null) setState(() => uploadedImageUrl = url);
   }
 
@@ -106,11 +110,18 @@ class _EditShortPartDialogState extends State<EditShortPartDialog> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Title')),
+                    TextField(
+                        controller: titleCtrl,
+                        decoration: const InputDecoration(labelText: 'Title')),
                     const SizedBox(height: 10),
-                    TextField(controller: coinsCtrl, decoration: const InputDecoration(labelText: 'Coins')),
+                    TextField(
+                        controller: coinsCtrl,
+                        decoration: const InputDecoration(labelText: 'Coins')),
                     const SizedBox(height: 10),
-                    TextField(controller: videoUrlCtrl, decoration: const InputDecoration(labelText: 'Video URL')),
+                    TextField(
+                        controller: videoUrlCtrl,
+                        decoration:
+                            const InputDecoration(labelText: 'Video URL')),
                     const SizedBox(height: 10),
                     if (uploadedImageUrl != null)
                       ClipRRect(
@@ -119,7 +130,9 @@ class _EditShortPartDialogState extends State<EditShortPartDialog> {
                       ),
                     TextButton(
                       onPressed: pickImage,
-                      child: Text(uploadedImageUrl == null ? 'Upload Thumbnail' : 'Replace Thumbnail'),
+                      child: Text(uploadedImageUrl == null
+                          ? 'Upload Thumbnail'
+                          : 'Replace Thumbnail'),
                     ),
                     SwitchListTile(
                       value: isFreePreview,
@@ -135,11 +148,13 @@ class _EditShortPartDialogState extends State<EditShortPartDialog> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: theme.primaryColor),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.primaryColor),
                   onPressed: provider.isSubmitting ? null : _submit,
                   child: provider.isSubmitting
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Update Part', style: TextStyle(color: Colors.white)),
+                      ? const AppButtonLoader(label: 'Updating')
+                      : const Text('Update Part',
+                          style: TextStyle(color: Colors.white)),
                 ),
               ),
             )

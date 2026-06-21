@@ -5,6 +5,7 @@ import 'package:admin_ott/app/core/constant/image_constant.dart';
 import 'package:admin_ott/app/ui/NavigationPage.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:admin_ott/app/widgets/show_toast.dart';
 import 'package:admin_ott/data/models/response/addUserResponse.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
@@ -120,9 +121,7 @@ class _LoginPageState extends State<LoginPage> {
                 _isLoading ? null : _handleLogin(context);
               },
               child: _isLoading
-                  ? CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    )
+                  ? const AppButtonLoader(label: 'Signing in')
                   : Text(
                       'Login',
                       style: TextStyle(

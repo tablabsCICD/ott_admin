@@ -46,7 +46,7 @@ class _MediaHouseTableState extends State<MediaHouseTable> {
       body: widget.mediaHouseData == null
           ? Center(
               child: Text(
-              "The media house list is empty because no media houses have been added yet.",
+              "The Production house list is empty because no Production houses have been added yet.",
               style: TextStyle(color: selectedThemeData.primaryColor),
             ))
           : SingleChildScrollView(
@@ -70,7 +70,7 @@ class _MediaHouseTableState extends State<MediaHouseTable> {
                     ),
                     DataColumn(
                       label: Text(
-                        'Media House',
+                        'Production House',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: selectedThemeData.primaryColor,
@@ -102,7 +102,7 @@ class _MediaHouseTableState extends State<MediaHouseTable> {
                     ),
                     DataColumn(
                       label: Text(
-                        'Posts',
+                        'Contents',
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: selectedThemeData.primaryColor),
@@ -127,7 +127,7 @@ class _MediaHouseTableState extends State<MediaHouseTable> {
                         style: TextStyle(fontSize: 16),
                       )),
                       DataCell(Text(
-                        data.totalReveneu!,
+                        data.displayTotalRevenue ?? '0',
                         style: TextStyle(fontSize: 16),
                       )),
                       DataCell(Text(

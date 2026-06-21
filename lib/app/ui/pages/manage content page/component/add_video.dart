@@ -1,6 +1,7 @@
 import 'package:admin_ott/app/provider/videoProvider.dart';
 import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/setPercentageDialog.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:admin_ott/domain/entities/content.dart';
 import 'package:admin_ott/domain/entities/mediaHouse.dart';
 import 'package:file_picker/file_picker.dart';
@@ -730,7 +731,7 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                 ),
                 child: Center(
                   child: provider.isUploading
-                      ? CircularProgressIndicator()
+                      ? const AppSpinner()
                       : Text(
                           "Upload $label",
                           style: TextStyle(
@@ -778,7 +779,7 @@ class _AddDataWidgetState extends State<AddDataWidget> {
           onChanged: (MediaHouse? selectedMediaHouse) {
             setState(() {
               _selectedMediaHouse =
-                  selectedMediaHouse; // Update the selected media house
+                  selectedMediaHouse; // Update the selected Production house
             });
           },
           decoration: InputDecoration(

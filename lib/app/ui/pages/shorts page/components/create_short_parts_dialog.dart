@@ -1,6 +1,7 @@
 import 'dart:io' as io;
 
 import 'package:admin_ott/app/provider/shortsProvider.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/DisplayTrailer.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
 import 'package:flutter/foundation.dart';
@@ -269,14 +270,7 @@ class _CreateShortPartsDialogState extends State<CreateShortPartsDialog> {
                 ),
                 onPressed: canSubmit ? () => _submit(provider) : null,
                 child: provider.isSubmitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
+                    ? const AppButtonLoader(label: 'Saving')
                     : const Text("Save & Continue",
                         style: TextStyle(color: Colors.white)),
               ),

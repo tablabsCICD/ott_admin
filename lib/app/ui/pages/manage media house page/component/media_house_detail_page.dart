@@ -1,6 +1,7 @@
 import 'package:admin_ott/app/core/constant/prefrense_constant.dart';
 import 'package:admin_ott/app/core/utils/sharepreferences.dart';
 import 'package:admin_ott/app/provider/mediaHouseProvider.dart';
+import 'package:admin_ott/app/provider/settelementProvider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/component/mediaHouse_profile_page.dart';
 import 'package:admin_ott/app/ui/pages/manage%20media%20house%20page/component/mediaHouse_content_approval.dart';
@@ -37,6 +38,8 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
     final id = widget.mediaHouse.id;
     if (id == null) return;
     final provider = Provider.of<MediaHouseProvider>(context, listen: false);
+    final settelementProvider =
+        Provider.of<SettelementProvider>(context, listen: false);
     final localSharePreferences = LocalSharePreferences();
     await localSharePreferences.setString(
       SharedPreferencesConstant.currentMediaHouseId,
@@ -46,6 +49,8 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
     await provider.fetchMoviesByStatusAndMediaHouseId("PENDING", id);
     await provider.fetchMediaHouseDashboardData(id);
     await provider.fetchShortsByMediaHouse(id);
+    await settelementProvider
+        .fetchWeeklySettelementDataByMediaHouseId(widget.mediaHouse.id!);
   }
 
   @override
@@ -53,27 +58,20 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
     final theme = Provider.of<ThemeProvider>(context, listen: false).getTheme;
     return Consumer<MediaHouseProvider>(builder: (context, provider, child) {
       return Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
+        // backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: theme.scaffoldBackgroundColor,
-          forceMaterialTransparency: true,
+          backgroundColor: theme.primaryColor,
+          // forceMaterialTransparency: true,
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(widget.mediaHouse.mediaHouseName ?? 'Media House'),
-              Text(
-                'Media House Overview',
-                style: TextStyle(
-                  color: theme.canvasColor.withValues(alpha: 0.62),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              Text(widget.mediaHouse.mediaHouseName ??
+                  'Production House Overview'),
             ],
           ),
           actions: [
             IconButton(
-              icon: Icon(Icons.refresh, color: theme.canvasColor),
+              icon: Icon(Icons.refresh, color: Colors.white),
               onPressed: _loadData,
             ),
           ],
@@ -120,7 +118,7 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: 380, child: profileCard),
+        SizedBox(width: 450, child: profileCard),
         const SizedBox(width: 16),
         Expanded(child: dashboardCard),
       ],
@@ -217,16 +215,16 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
 
   Widget _buildProfileCard(BuildContext context, ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: theme.canvasColor.withValues(alpha: 0.10)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.canvasColor.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -234,54 +232,68 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
             decoration: BoxDecoration(
-              color: theme.scaffoldBackgroundColor.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(16),
+              color: theme.scaffoldBackgroundColor.withValues(alpha: 0.34),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: theme.canvasColor.withValues(alpha: 0.08),
               ),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                CircleAvatar(
-                  radius: 48,
-                  backgroundColor: theme.primaryColor.withValues(alpha: 0.18),
-                  backgroundImage: (widget.mediaHouse.logo ?? '').isNotEmpty
-                      ? NetworkImage(widget.mediaHouse.logo!)
-                      : null,
-                  child: (widget.mediaHouse.logo ?? '').isEmpty
-                      ? Icon(Icons.business,
-                          size: 34, color: theme.primaryColor)
-                      : null,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 31,
+                      backgroundColor:
+                          theme.primaryColor.withValues(alpha: 0.16),
+                      backgroundImage: (widget.mediaHouse.logo ?? '').isNotEmpty
+                          ? NetworkImage(widget.mediaHouse.logo!)
+                          : null,
+                      child: (widget.mediaHouse.logo ?? '').isEmpty
+                          ? Icon(Icons.business,
+                              size: 23, color: theme.primaryColor)
+                          : null,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.mediaHouse.mediaHouseName ?? 'Unknown Name',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: theme.canvasColor,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            widget.mediaHouse.discription ??
+                                'No description available.',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              height: 1.3,
+                              color: theme.canvasColor.withValues(alpha: 0.68),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.mediaHouse.mediaHouseName ?? 'Unknown Name',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: theme.canvasColor,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  widget.mediaHouse.discription ?? 'No description available.',
-                  textAlign: TextAlign.center,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.35,
-                    color: theme.canvasColor.withValues(alpha: 0.72),
-                  ),
-                ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 6,
+                  runSpacing: 6,
                   children: [
                     _buildProfilePill(
                       theme,
@@ -295,26 +307,33 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MediaHouseProfilePage(
-                            mediaHouse: widget.mediaHouse),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('View Full Detail'),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 34),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MediaHouseProfilePage(
+                              mediaHouse: widget.mediaHouse),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.open_in_new, size: 15),
+                    label: const Text('View Full Detail'),
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           SizedBox(
-            height: ResponsiveWidget.isMobile(context) ? 330 : 360,
+            height: ResponsiveWidget.isMobile(context) ? 244 : 450,
             child: SingleChildScrollView(
               child: _buildCardContainer(
                 theme: theme,
@@ -334,34 +353,51 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
     MediaHouseProvider provider,
     ThemeData theme,
   ) {
+    final adminRevenue = widget.mediaHouse.adminRevnue;
+    final mediaHouseRevenue = widget.mediaHouse.mediaHouseRevenue;
+    final totalRevenue = widget.mediaHouse.displayTotalRevenue;
+
     return Column(
       children: [
         LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
             final columns = width > 900
-                ? 5
+                ? 7
                 : width > 640
-                    ? 3
+                    ? 4
                     : width > 420
                         ? 2
-                        : 1;
+                        : 2;
             return GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: columns,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: columns == 1 ? 3.8 : 1.55,
+              childAspectRatio: columns == 1 ? 3.8 : 1.9,
               children: [
                 _buildMetricTile(
                   theme: theme,
                   icon: Icons.currency_rupee_sharp,
-                  title: "Revenue",
-                  value:
-                      provider.mediaHouseDashboardData.viewRevenue.toString(),
+                  title: "Total Revenue",
+                  value: _formatRevenue(totalRevenue),
                   onTap: () =>
                       _openGraphDialog(context, 'Revenue Graph', 'sales', 0),
+                ),
+                _buildMetricTile(
+                  theme: theme,
+                  icon: Icons.admin_panel_settings_outlined,
+                  title: "Admin Revenue",
+                  value: _formatRevenue(adminRevenue),
+                  onTap: () {},
+                ),
+                _buildMetricTile(
+                  theme: theme,
+                  icon: Icons.business_outlined,
+                  title: "Production House Revenue",
+                  value: _formatRevenue(mediaHouseRevenue),
+                  onTap: () {},
                 ),
                 _buildMetricTile(
                   theme: theme,
@@ -403,7 +439,7 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
         const SizedBox(height: 14),
         _buildCardContainer(
           theme: theme,
-          title: 'Top Revenue Content',
+          title: '',
           child: SizedBox(
             height: 270,
             child: TopMoviesLineGraph(
@@ -420,11 +456,11 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
 
   Widget _buildProfilePill(ThemeData theme, IconData icon, String text) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 310),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      constraints: const BoxConstraints(maxWidth: 292),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(9),
         border: Border.all(color: theme.canvasColor.withValues(alpha: 0.08)),
       ),
       child: Row(
@@ -458,33 +494,33 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: theme.cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.canvasColor.withValues(alpha: 0.09)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.canvasColor.withValues(alpha: 0.08)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 14,
-              offset: const Offset(0, 8),
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Row(
           children: [
             Container(
-              height: 48,
-              width: 48,
+              height: 25,
+              width: 25,
               decoration: BoxDecoration(
                 color: theme.primaryColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(icon, color: theme.primaryColor, size: 26),
+              child: Icon(icon, color: theme.primaryColor, size: 23),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -500,17 +536,8 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: theme.primaryColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+                  const SizedBox(height: 4),
+                  _MetricAmountHover(value: value, theme: theme),
                 ],
               ),
             ),
@@ -585,15 +612,17 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: theme.primaryColor,
+          if (title.isNotEmpty) ...[
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: theme.primaryColor,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 10),
+          ],
           child,
         ],
       ),
@@ -617,7 +646,7 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
-        childAspectRatio: 16 / 9,
+        childAspectRatio: crossAxisCount == 1 ? 1.95 : 1.35,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) {
@@ -632,6 +661,14 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
           subtitle: content.type ?? 'Movie',
           imageUrl: poster,
           viewsText: '${content.views ?? 0}',
+          revenueStats: [
+            _PosterRevenueStat('Total Revenue', content.totalRevenue),
+            _PosterRevenueStat('Admin Revenue', content.adminRevnue),
+            _PosterRevenueStat(
+              'Production House Revenue',
+              content.mediaHouseRevenue,
+            ),
+          ],
           onTap: () => showMovieDetailsDialog(context, content),
           aspectRatio: 16 / 9,
         );
@@ -667,6 +704,14 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
           subtitle: short.category ?? 'Shorts',
           imageUrl: short.posterUrl ?? '',
           viewsText: '${short.viewCount ?? 0}',
+          revenueStats: [
+            _PosterRevenueStat('Total Revenue', short.totalRevenue),
+            _PosterRevenueStat('Admin Revenue', short.adminRevenue),
+            _PosterRevenueStat(
+              'Production House Revenue',
+              short.mediaHouseRevenue,
+            ),
+          ],
           onTap: () => _openShortMasterPage(short),
           aspectRatio: 9 / 16,
         );
@@ -697,6 +742,7 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
     required String viewsText,
     required VoidCallback onTap,
     required double aspectRatio,
+    List<_PosterRevenueStat> revenueStats = const [],
   }) {
     return InkWell(
       onTap: onTap,
@@ -774,6 +820,16 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    if (revenueStats.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 5,
+                        runSpacing: 5,
+                        children: revenueStats
+                            .map((stat) => _buildRevenueBadge(stat))
+                            .toList(),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -808,6 +864,107 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
       child: Icon(Icons.movie_creation_outlined, color: theme.primaryColor),
     );
   }
+
+  Widget _buildRevenueBadge(_PosterRevenueStat stat) {
+    final text = '${stat.label}: ${_formatRevenue(stat.value)}';
+    return Tooltip(
+      message: text,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 190),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.52),
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatRevenue(dynamic value) {
+    if (value == null) return 'Rs. -';
+
+    final amount = value is num ? value : num.tryParse(value.toString());
+    if (amount == null) return 'Rs. -';
+
+    return 'Rs. ${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 2)}';
+  }
 }
 
 enum _ContentMode { movie, series, shorts }
+
+class _MetricAmountHover extends StatefulWidget {
+  const _MetricAmountHover({
+    required this.value,
+    required this.theme,
+  });
+
+  final String value;
+  final ThemeData theme;
+
+  @override
+  State<_MetricAmountHover> createState() => _MetricAmountHoverState();
+}
+
+class _MetricAmountHoverState extends State<_MetricAmountHover> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Tooltip(
+        message: widget.value,
+        waitDuration: const Duration(milliseconds: 250),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.symmetric(
+            horizontal: _hovered ? 7 : 0,
+            vertical: _hovered ? 3 : 0,
+          ),
+          decoration: BoxDecoration(
+            color: _hovered
+                ? widget.theme.primaryColor.withValues(alpha: 0.10)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(
+              color: _hovered
+                  ? widget.theme.primaryColor.withValues(alpha: 0.28)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Text(
+            widget.value,
+            maxLines: _hovered ? 2 : 1,
+            overflow: _hovered ? TextOverflow.visible : TextOverflow.ellipsis,
+            softWrap: _hovered,
+            style: TextStyle(
+              color: widget.theme.primaryColor,
+              fontSize: _hovered ? 14 : 17,
+              height: 1.12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PosterRevenueStat {
+  const _PosterRevenueStat(this.label, this.value);
+
+  final String label;
+  final num? value;
+}

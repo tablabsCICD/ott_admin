@@ -1,6 +1,7 @@
 import 'package:admin_ott/app/provider/ticketProvider.dart';
 import 'package:admin_ott/data/models/response/getRaisedTicketListResponse.dart';
 import 'package:flutter/material.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 
 import 'package:provider/provider.dart';
 
@@ -63,7 +64,7 @@ class _HelpDeskPageState extends State<HelpDeskPage> {
       body: Consumer<TicketProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: AppSpinner());
           }
           if (provider.error != null) {
             return Center(child: Text("Error: ${provider.error}"));

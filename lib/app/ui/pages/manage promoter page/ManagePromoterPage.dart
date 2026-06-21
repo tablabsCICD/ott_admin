@@ -233,7 +233,10 @@ class _ManagePromoterPageState extends State<ManagePromoterPage> {
         controller: provider.searchController,
         hintText: 'Search by name, email, or level...',
         textInputType: TextInputType.text,
-        prefixIcon: const Icon(Icons.search),
+        prefixIcon: Icon(
+          Icons.search,
+          color: theme.canvasColor,
+        ),
         onValueChange: provider.onSearchValueChange,
       ),
     );

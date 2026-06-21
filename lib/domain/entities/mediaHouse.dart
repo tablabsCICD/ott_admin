@@ -10,108 +10,174 @@ class MediaHouse {
   String? registrationCertificate;
   String? gstCertificates;
   String? adharCard;
-  String? shopAct;
+  dynamic shopAct;
   String? panCard;
   int? createdDate;
-  int? updatedDate;
-  String? profileImage;
-  String? otp;
+  dynamic updatedDate;
+  dynamic profileImage;
+  dynamic otp;
   String? password;
   String? status;
-  String? joinDate;
-  String? logo;
+  dynamic joinDate;
+  dynamic logo;
   String? totalReveneu;
   String? postCount;
-  String? discription;
+  dynamic discription;
+  String? bankAccountNumber;
+  String? bankIfscNumber;
+  String? bankProof;
+  String? identityProof;
+  String? addressProof;
+  dynamic bankName;
+  dynamic accountHolderName;
+  dynamic firmType;
+  String? designation;
   User? user;
+  int? directorId;
+  int? ceoId;
   Location? location;
   String? totalViews;
+  String? mediaHouseRevenue;
+  String? totalRevenue;
+  bool? active;
+  String? adminRevnue;
 
-  MediaHouse(
-      {this.id,
-        this.mediaHouseName,
-        this.address,
-        this.contactNumber,
-        this.email,
-        this.registrationCertificate,
-        this.gstCertificates,
-        this.adharCard,
-        this.shopAct,
-        this.panCard,
-        this.createdDate,
-        this.updatedDate,
-        this.profileImage,
-        this.otp,
-        this.password,
-        this.status,
-        this.joinDate,
-        this.logo,
-        this.totalReveneu,
-        this.postCount,
-        this.discription,
-        this.user,
-        this.location,
-        this.totalViews});
+  String? get displayTotalRevenue => totalRevenue ?? totalReveneu;
 
-  MediaHouse.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    mediaHouseName = json['mediaHouseName']??'';
-    address = json['address']??'';
-    contactNumber = json['contactNumber']??'';
-    email = json['email']??'';
-    registrationCertificate = json['registrationCertificate']??'';
-    gstCertificates = json['gstCertificates']??'';
-    adharCard = json['adharCard']??'';
-    shopAct = json['shopAct']??'';
-    panCard = json['panCard']??'';
-    createdDate = json['createdDate'];
-    updatedDate = json['updatedDate'];
-    profileImage = json['profileImage']??'';
-    otp = json['otp']??'';
-    password = json['password']??'';
-    status = json['status']??'';
-    joinDate = json['joinDate']??'';
-    logo = json['logo']??'';
-    totalReveneu = json['totalReveneu']??'';
-    postCount = json['postCount']??'';
-    discription = json['discription']??'';
-    user = json['user'] != null ? new User.fromJson(json['user']) : null;
-    location = json['location'] != null
-        ? new Location.fromJson(json['location'])
-        : null;
-    totalViews = json['totalViews']??'';
-  }
+  MediaHouse({
+    this.id,
+    this.mediaHouseName,
+    this.address,
+    this.contactNumber,
+    this.email,
+    this.registrationCertificate,
+    this.gstCertificates,
+    this.adharCard,
+    this.shopAct,
+    this.panCard,
+    this.createdDate,
+    this.updatedDate,
+    this.profileImage,
+    this.otp,
+    this.password,
+    this.status,
+    this.joinDate,
+    this.logo,
+    this.totalReveneu,
+    this.postCount,
+    this.discription,
+    this.bankAccountNumber,
+    this.bankIfscNumber,
+    this.bankProof,
+    this.identityProof,
+    this.addressProof,
+    this.bankName,
+    this.accountHolderName,
+    this.firmType,
+    this.designation,
+    this.user,
+    this.directorId,
+    this.ceoId,
+    this.location,
+    this.totalViews,
+    this.mediaHouseRevenue,
+    this.totalRevenue,
+    this.active,
+    this.adminRevnue,
+  });
 
-  Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['mediaHouseName'] = this.mediaHouseName;
-    data['address'] = this.address;
-    data['contactNumber'] = this.contactNumber;
-    data['email'] = this.email;
-    data['registrationCertificate'] = this.registrationCertificate;
-    data['gstCertificates'] = this.gstCertificates;
-    data['adharCard'] = this.adharCard;
-    data['shopAct'] = this.shopAct;
-    data['panCard'] = this.panCard;
-    data['createdDate'] = this.createdDate;
-    data['updatedDate'] = this.updatedDate;
-    data['profileImage'] = this.profileImage;
-    data['otp'] = this.otp;
-    data['password'] = this.password;
-    data['status'] = this.status;
-    data['joinDate'] = this.joinDate;
-    data['logo'] = this.logo;
-    data['totalReveneu'] = this.totalReveneu;
-    data['postCount'] = this.postCount;
-    data['discription'] = this.discription;
-    if (this.user != null) {
-      data['user'] = this.user!.toJson();
-    }
-    if (this.location != null) {
-      data['location'] = this.location!.toJson();
-    }
-    data['totalViews'] = this.totalViews;
-    return data;
+  factory MediaHouse.fromJson(Map<String, dynamic> json) => MediaHouse(
+        id: json["id"],
+        mediaHouseName: json["mediaHouseName"],
+        address: json["address"],
+        contactNumber: json["contactNumber"],
+        email: json["email"],
+        registrationCertificate: json["registrationCertificate"],
+        gstCertificates: json["gstCertificates"],
+        adharCard: json["adharCard"],
+        shopAct: json["shopAct"],
+        panCard: json["panCard"],
+        createdDate: json["createdDate"],
+        updatedDate: json["updatedDate"],
+        profileImage: json["profileImage"],
+        otp: json["otp"],
+        password: json["password"],
+        status: json["status"],
+        joinDate: json["joinDate"],
+        logo: json["logo"],
+        totalReveneu: _readString(json["totalReveneu"]),
+        postCount: json["postCount"],
+        discription: json["discription"],
+        bankAccountNumber: json["bankAccountNumber"],
+        bankIfscNumber: json["bankIFSCNumber"],
+        bankProof: json["bankProof"],
+        identityProof: json["identityProof"],
+        addressProof: json["addressProof"],
+        bankName: json["bankName"],
+        accountHolderName: json["accountHolderName"],
+        firmType: json["firmType"],
+        designation: json["designation"],
+        user: json["user"] == null ? null : User.fromJson(json["user"]),
+        directorId: json["directorId"],
+        ceoId: json["ceoId"],
+        location: json["location"] == null
+            ? null
+            : Location.fromJson(json["location"]),
+        totalViews: _readString(json["totalViews"]),
+        mediaHouseRevenue: _readString(
+          json["mediaHouseRevenue"] ?? json["productionHouseRevenue"],
+        ),
+        totalRevenue: _readString(json["totalRevenue"]),
+        active: json["active"],
+        adminRevnue: _readString(
+          json["AdminRevnue"] ?? json["adminRevenue"] ?? json["adminRevnue"],
+        ),
+      );
+
+  Map<String, dynamic> toJson() => {
+        "id": id,
+        "mediaHouseName": mediaHouseName,
+        "address": address,
+        "contactNumber": contactNumber,
+        "email": email,
+        "registrationCertificate": registrationCertificate,
+        "gstCertificates": gstCertificates,
+        "adharCard": adharCard,
+        "shopAct": shopAct,
+        "panCard": panCard,
+        "createdDate": createdDate,
+        "updatedDate": updatedDate,
+        "profileImage": profileImage,
+        "otp": otp,
+        "password": password,
+        "status": status,
+        "joinDate": joinDate,
+        "logo": logo,
+        "totalReveneu": totalReveneu,
+        "postCount": postCount,
+        "discription": discription,
+        "bankAccountNumber": bankAccountNumber,
+        "bankIFSCNumber": bankIfscNumber,
+        "bankProof": bankProof,
+        "identityProof": identityProof,
+        "addressProof": addressProof,
+        "bankName": bankName,
+        "accountHolderName": accountHolderName,
+        "firmType": firmType,
+        "designation": designation,
+        "user": user?.toJson(),
+        "directorId": directorId,
+        "ceoId": ceoId,
+        "location": location?.toJson(),
+        "totalViews": totalViews,
+        "mediaHouseRevenue": mediaHouseRevenue,
+        "totalRevenue": totalRevenue,
+        "active": active,
+        "AdminRevnue": adminRevnue,
+      };
+
+  static String? _readString(dynamic value) {
+    if (value == null) return null;
+    return value.toString();
   }
 }

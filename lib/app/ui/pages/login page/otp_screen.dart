@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:admin_ott/app/ui/pages/login%20page/new_password.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -191,9 +192,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   } else {}
                 },
                 child: _isLoading
-                    ? CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      )
+                    ? const AppButtonLoader(label: 'Verifying')
                     : Text(
                         'Verify Otp',
                         style: TextStyle(

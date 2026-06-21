@@ -82,7 +82,10 @@ class _ManageUserPageState extends State<ManageUserPage> {
                   onChanged: provider.applySearch,
                   decoration: InputDecoration(
                     hintText: 'Search users...',
-                    prefixIcon: const Icon(Icons.search),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: selectedThemeData.canvasColor,
+                    ),
                     suffixIcon: provider.searchController.text.isNotEmpty
                         ? IconButton(
                             onPressed: provider.clearUserSearch,

@@ -3,6 +3,7 @@ import 'package:admin_ott/app/ui/pages/analytics_page/analyticsPage.dart';
 import 'package:admin_ott/app/ui/pages/access%20control%20page/AccessControlPage.dart';
 import 'package:admin_ott/app/ui/pages/admin%20settings%20page/AdminSettingsPage.dart';
 import 'package:admin_ott/app/ui/pages/help_desk_page/help2.dart';
+import 'package:admin_ott/app/ui/pages/notification_page/NotificationScreen.dart';
 import 'package:admin_ott/app/ui/pages/profile%20page/ProfilePage.dart';
 import 'package:admin_ott/app/ui/pages/manage%20user%20page/ManageUserPage.dart';
 import 'package:admin_ott/app/ui/pages/dashboard%20page/DashboardPage.dart';
@@ -32,12 +33,14 @@ class _NavigationPageState extends State<NavigationPage> {
 
   final List<PageData> _pages = [
     PageData(title: 'Dashboard', page: const DashboardPage()),
-    PageData(title: 'Manage Media House', page: const ManageMediaHousePage()),
+    PageData(
+        title: 'Manage Production House', page: const ManageMediaHousePage()),
     PageData(title: 'Manage Promoters', page: const ManagePromoterPage()),
     PageData(title: 'Manage Content', page: MovieListScreen()),
     PageData(title: 'Manage Mini Series', page: ShortsPage()),
     PageData(title: 'Manage User', page: ManageUserPage()),
     PageData(title: 'Transaction', page: const TransactionPage()),
+    PageData(title: 'Notifications', page: const NotificationScreen()),
     PageData(title: 'Access Control', page: const AccessControlPage()),
     PageData(title: 'Admin Settings', page: const AdminSettingsPage()),
     PageData(
@@ -57,6 +60,7 @@ class _NavigationPageState extends State<NavigationPage> {
     Icons.smart_display_rounded,
     Icons.people_alt_rounded,
     Icons.currency_rupee_sharp,
+    Icons.notifications_active_outlined,
     Icons.admin_panel_settings_rounded,
     Icons.settings_suggest_rounded,
     Icons.percent,

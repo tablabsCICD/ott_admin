@@ -12,7 +12,6 @@ class MediaHouseSearch extends StatefulWidget {
 }
 
 class _MediaHouseSearchState extends State<MediaHouseSearch> {
-
   OverlayEntry? _dropdownOverlay;
 
   @override
@@ -34,6 +33,11 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
   void _showDropdown(BuildContext context) {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
+    final mediaHouseProvider =
+        Provider.of<MediaHouseProvider>(context, listen: false);
+    if (mediaHouseProvider.mediaHouseList.isEmpty) {
+      mediaHouseProvider.fetchMediaHouse();
+    }
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
     final Offset offset = renderBox.localToGlobal(Offset.zero);
 
@@ -46,9 +50,9 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
           color: selectedThemeData.cardColor,
           elevation: 4.0,
           borderRadius: BorderRadius.circular(8),
-          child: Consumer<MediaHouseProvider>(
-              builder: (context, provider, child) {
-                return Column(
+          child:
+              Consumer<MediaHouseProvider>(builder: (context, provider, child) {
+            return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
@@ -56,7 +60,7 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
                     Expanded(
                       child: CustomTextField(
                         controller: provider.searchMediaHouseController,
-                        hintText: 'Search media house...',
+                        hintText: 'Search Production house...',
                         textInputType: TextInputType.text,
                       ),
                     ),
@@ -89,9 +93,9 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
                         final house = provider.filteredMediaHouseList[index];
                         return ListTile(
                           tileColor: selectedThemeData.cardColor,
-                          title: Text(house.mediaHouseName??''),
+                          title: Text(house.mediaHouseName ?? ''),
                           onTap: () {
-                           provider.setSelectedMediaHouse(house);
+                            provider.setSelectedMediaHouse(house);
                             _removeDropdown();
                           },
                         );
@@ -99,8 +103,8 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
                     ),
                   ),
               ],
-            );}
-          ),
+            );
+          }),
         ),
       ),
     );
@@ -129,8 +133,7 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
 
-    return Consumer<MediaHouseProvider>(
-        builder: (context, provider, child) {
+    return Consumer<MediaHouseProvider>(builder: (context, provider, child) {
       return Card(
         color: selectedThemeData.cardColor,
         child: Padding(
@@ -139,7 +142,7 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Search Media House ',
+                'Search Production House ',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -168,7 +171,8 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        provider.selectedMediaHouse!.mediaHouseName ?? 'Select a Media House',
+                        provider.selectedMediaHouse!.mediaHouseName ??
+                            'Select a Production House',
                         style: TextStyle(color: selectedThemeData.canvasColor),
                       ),
                       Icon(
@@ -185,7 +189,7 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
               Padding(
                 padding: const EdgeInsets.only(left: 10, right: 10),
                 child: Text(
-                  "(Enter the Media house's name to view their profile details, content, and performance statistics.)",
+                  "(Enter the Production house's name to view their profile details, content, and performance statistics.)",
                   style: TextStyle(
                     color: selectedThemeData.canvasColor.withOpacity(0.5),
                     fontSize: 12,
@@ -197,10 +201,12 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   ElevatedButton(
-                    onPressed: provider.selectedMediaHouse!.mediaHouseName == null || provider.selectedMediaHouse!.mediaHouseName == ''
+                    onPressed: provider.selectedMediaHouse!.mediaHouseName ==
+                                null ||
+                            provider.selectedMediaHouse!.mediaHouseName == ''
                         ? null
                         : () {
-                           Navigator.push(
+                            Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => MediaHouseDetailPage(
@@ -219,7 +225,8 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                     ),
                     child: Text('Show Profile'),
                   ),
@@ -228,7 +235,7 @@ class _MediaHouseSearchState extends State<MediaHouseSearch> {
             ],
           ),
         ),
-      );}
-    );
+      );
+    });
   }
 }

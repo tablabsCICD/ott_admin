@@ -26,8 +26,9 @@ class _ManageMediaHousePageState extends State<ManageMediaHousePage> {
   @override
   void initState() {
     super.initState();
-    Provider.of<MediaHouseProvider>(context, listen: false)
-        .fetchMediaHouseCountGraph(0);
+    final provider = Provider.of<MediaHouseProvider>(context, listen: false);
+    provider.fetchMediaHouse();
+    provider.fetchMediaHouseCountGraph(0);
   }
 
   @override
@@ -124,14 +125,14 @@ class _ManageMediaHousePageState extends State<ManageMediaHousePage> {
               ? Column(
                   children: [
                     // _buildStatisticCard(
-                    //   title: 'Total Media Houses',
+                    //   title: 'Total Production Houses',
                     //   value: provider.mediaHouseList.length.toString(),
                     //   icon: Icons.shopping_cart,
                     //   index: 1,
                     // ),
                     CustomTextField(
                       controller: provider.searchMediaHouseController,
-                      hintText: 'Search Media Houses',
+                      hintText: 'Search Production Houses',
                       textInputType: TextInputType.text,
                       prefixIcon: Icon(Icons.search_sharp),
                     ),
@@ -141,7 +142,7 @@ class _ManageMediaHousePageState extends State<ManageMediaHousePage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                "The media house list is empty because no media houses have been added yet.",
+                                "The Production house list is empty because no Production houses have been added yet.",
                                 style: TextStyle(
                                     color: selectedThemeData.primaryColor),
                               ),
@@ -172,7 +173,7 @@ class _ManageMediaHousePageState extends State<ManageMediaHousePage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           _buildStatisticCard(
-                            title: 'Total Media Houses',
+                            title: 'Total Production Houses',
                             value: provider.mediaHouseList.length.toString(),
                             icon: Icons.shopping_cart,
                             index: 1,
@@ -181,9 +182,12 @@ class _ManageMediaHousePageState extends State<ManageMediaHousePage> {
                             width: 500,
                             child: CustomTextField(
                               controller: provider.searchMediaHouseController,
-                              hintText: 'Search Media Houses',
+                              hintText: 'Search Production Houses',
                               textInputType: TextInputType.text,
-                              prefixIcon: Icon(Icons.search_sharp),
+                              prefixIcon: Icon(
+                                Icons.search_sharp,
+                                color: selectedThemeData.canvasColor,
+                              ),
                             ),
                           ),
                         ],
@@ -194,7 +198,7 @@ class _ManageMediaHousePageState extends State<ManageMediaHousePage> {
                       child: provider.filteredMediaHouseList.isEmpty
                           ? Center(
                               child: Text(
-                              "The media house list is empty because no media houses have been added yet..",
+                              "The Production house list is empty because no Production houses have been added yet..",
                               style: TextStyle(
                                   color: selectedThemeData.primaryColor),
                             ))
@@ -275,7 +279,7 @@ class _ManageMediaHousePageState extends State<ManageMediaHousePage> {
                                         child: SfCartesianChart(
                                           title: ChartTitle(
                                             text:
-                                                'Media Houses Onboarded ($_selectedPeriod View)',
+                                                'Production Houses Onboarded ($_selectedPeriod View)',
                                           ),
                                           tooltipBehavior:
                                               TooltipBehavior(enable: true),
@@ -309,7 +313,8 @@ class _ManageMediaHousePageState extends State<ManageMediaHousePage> {
                                           primaryYAxis: NumericAxis(
                                             labelFormat: '{value}',
                                             title: AxisTitle(
-                                                text: 'Total Media Houses'),
+                                                text:
+                                                    'Total Production Houses'),
                                           ),
                                         ),
                                       ),
@@ -357,7 +362,7 @@ class _ManageMediaHousePageState extends State<ManageMediaHousePage> {
                 const Icon(Icons.add, color: Colors.white),
                 const SizedBox(width: 8),
                 const Text(
-                  'Add media house',
+                  'Add Production house',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

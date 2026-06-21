@@ -16,6 +16,7 @@ import '../core/utils/sharepreferences.dart';
 import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../core/loading/app_loading_controller.dart';
 import 'package:universal_html/html.dart' as html;
 
 class TicketProvider extends ChangeNotifier {
@@ -266,6 +267,7 @@ class TicketProvider extends ChangeNotifier {
       if (kIsWeb && _webFile != null) {
         // Web upload logic
         final request = http.MultipartRequest('POST', url);
+        request.headers.addAll(await ApiHelper().multipartHeaders());
         final reader = html.FileReader();
         reader.readAsArrayBuffer(_webFile!);
         await reader.onLoad.first;
@@ -278,7 +280,8 @@ class TicketProvider extends ChangeNotifier {
         );
 
         request.files.add(multipartFile);
-        final response = await request.send();
+        final response =
+            await AppLoadingController.trackFuture(() => request.send());
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
@@ -289,12 +292,14 @@ class TicketProvider extends ChangeNotifier {
       } else if (!kIsWeb && _imageFile != null) {
         // Mobile/desktop upload logic
         final request = http.MultipartRequest('POST', url);
+        request.headers.addAll(await ApiHelper().multipartHeaders());
         request.files.add(await http.MultipartFile.fromPath(
           'profilePicture',
           _imageFile!.path,
           //  contentType: MediaType('image', 'jpeg'),
         ));
-        final response = await request.send();
+        final response =
+            await AppLoadingController.trackFuture(() => request.send());
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();

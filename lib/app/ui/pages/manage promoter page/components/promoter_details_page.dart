@@ -129,6 +129,8 @@ class _PromoterDetailsPageState extends State<PromoterDetailsPage> {
                   ],
                 );
               }),
+              const SizedBox(height: 20),
+              _buildBankDetailsCard(selectedThemeData, promoter),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10.0),
                 child: Divider(
@@ -144,6 +146,72 @@ class _PromoterDetailsPageState extends State<PromoterDetailsPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBankDetailsCard(ThemeData theme, Promoters promoter) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Bank & Documents',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 16,
+            runSpacing: 12,
+            children: [
+              _buildDetailItem('Bank Name', promoter.bankName),
+              _buildDetailItem('Branch Name', promoter.branchName),
+              _buildDetailItem('Account Number', promoter.accountNumber),
+              _buildDetailItem('IFSC Code', promoter.ifscCode),
+              _buildDetailItem('PAN Card', promoter.panCard),
+              _buildDetailItem('Aadhaar Card', promoter.aadharCard),
+              _buildDetailItem('GST Number', promoter.gst),
+              _buildDetailItem('Website', promoter.website),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(String label, String? value) {
+    final displayValue =
+        value == null || value.trim().isEmpty ? 'N/A' : value.trim();
+
+    return SizedBox(
+      width: 240,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            displayValue,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

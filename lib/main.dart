@@ -8,6 +8,7 @@ import 'package:admin_ott/app/provider/fullscreenProvider.dart';
 import 'package:admin_ott/app/provider/graphProvider.dart';
 import 'package:admin_ott/app/provider/language_provider.dart';
 import 'package:admin_ott/app/provider/mediaHouseProvider.dart';
+import 'package:admin_ott/app/provider/notification_provider.dart';
 import 'package:admin_ott/app/provider/promoterGraphProvider.dart';
 import 'package:admin_ott/app/provider/promoterProvider.dart';
 import 'package:admin_ott/app/provider/promoter_percentage_provider.dart';
@@ -19,12 +20,17 @@ import 'package:admin_ott/app/provider/userGraphProvider.dart';
 import 'package:admin_ott/app/provider/userProvider.dart';
 import 'package:admin_ott/app/provider/videoProvider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
+import 'package:admin_ott/app/widgets/app_loaders.dart';
+import 'package:admin_ott/app/ui/pages/network%20handler/NetworkHandler.dart';
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // media_kit replaces the previous video_player/Chewie playback engine.
+  MediaKit.ensureInitialized();
 
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
@@ -91,10 +97,13 @@ Future<void> main() async {
           create: (_) => AdminSettingsProvider(),
         ),
         ChangeNotifierProvider(
+          create: (_) => NotificationProvider(),
+        ),
+        ChangeNotifierProvider(
           create: (_) => ShortsProvider(),
         ),
       ],
-      child: MyApp(),
+      child: const MyApp(),
     ),
   );
 }
@@ -102,6 +111,8 @@ Future<void> main() async {
 GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     // final themeProvider = Provider.of<ThemeProvider>(context);
@@ -113,6 +124,11 @@ class MyApp extends StatelessWidget {
         theme: themeNotifier.getTheme,
         navigatorKey: navigatorKey, // Pass the navigatorKey here
         debugShowCheckedModeBanner: false,
+        builder: (context, child) => AppLoaderOverlay(
+          child: NetworkHandler(
+            mainPage: child ?? const SizedBox.shrink(),
+          ),
+        ),
         initialRoute: AppRoutes.entry,
         // Use initialRoute to specify starting route
         onGenerateRoute:

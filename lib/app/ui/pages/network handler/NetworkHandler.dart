@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:admin_ott/app/ui/pages/network%20handler/LowNetworkPage.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -13,18 +15,28 @@ class NetworkHandler extends StatefulWidget {
 
 class _NetworkHandlerState extends State<NetworkHandler> {
   bool isConnected = true;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
-    Connectivity()
-        .onConnectivityChanged
-        .listen((List<ConnectivityResult> results) {
-      setState(() {
-        isConnected =
-            results.isNotEmpty && results.first != ConnectivityResult.none;
-      });
+    Connectivity().checkConnectivity().then(_updateConnectionState);
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen(_updateConnectionState);
+  }
+
+  void _updateConnectionState(List<ConnectivityResult> results) {
+    if (!mounted) return;
+    setState(() {
+      isConnected =
+          results.isNotEmpty && results.first != ConnectivityResult.none;
     });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
   }
 
   @override

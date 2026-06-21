@@ -6,11 +6,10 @@ import 'package:provider/provider.dart';
 import '../../../../provider/themeProvider.dart';
 import 'media_house_detail_page.dart';
 
-
 class ProfilePageCard extends StatelessWidget {
-  MediaHouse mediaHouse;
-  MediaHouseProvider provider;
-  ProfilePageCard(this.mediaHouse,  this.provider, {super.key});
+  final MediaHouse mediaHouse;
+  final MediaHouseProvider provider;
+  const ProfilePageCard(this.mediaHouse, this.provider, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +17,6 @@ class ProfilePageCard extends StatelessWidget {
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
     return InkWell(
       onTap: () async {
-
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -27,109 +25,218 @@ class ProfilePageCard extends StatelessWidget {
         );
       },
       child: Card(
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        margin: const EdgeInsets.all(6),
         color: selectedThemeData.cardColor,
-        child: Container(
-          width : 250,
-          height: 250,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12.0),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: selectedThemeData.canvasColor.withValues(alpha: 0.10),
           ),
-          child: Stack(
+        ),
+        child: Container(
+          width: 250,
+          height: 250,
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Align(
-                alignment: Alignment.topCenter,
-                child: Container(
-                  height: 130,
-                  width: MediaQuery.of(context).size.width,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.only(topLeft: Radius.circular(12.0),topRight:Radius.circular(12.0) ),
-                    color: selectedThemeData.focusColor,
-                    /*image: const DecorationImage(
-                      image: NetworkImage("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTONvusf0zDT91WJPM7D6rR8ZV0S5gVwCb0XQ&s"), // Add your background image here
-                      fit: BoxFit.cover, // Adjust how the image fits the container
-                    ),*/
-                  ),
-                  child: Column(
-                    children: [
-                      SizedBox(height: 10,),
-                      Text(
-                        mediaHouse.mediaHouseName??'',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        mediaHouse.contactNumber??'',
-                        style: TextStyle(
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: selectedThemeData.focusColor.withValues(alpha: 0.42),
+                  borderRadius: BorderRadius.circular(11),
                 ),
-              ),
-              Align(
-                alignment: Alignment.center,
-                child: Center(
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundImage: NetworkImage(mediaHouse.logo??''),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 10,
-                left: 16,
-                right: 16,
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    ProfileStat(title: mediaHouse.postCount??'', subtitle: 'Total Movie'),
-                    ProfileStat(title: mediaHouse.totalViews??'', subtitle: 'Views'),
-                    ProfileStat(title: mediaHouse.totalReveneu??'', subtitle: 'Revenue'),
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: selectedThemeData.primaryColor
+                          .withValues(alpha: 0.14),
+                      backgroundImage: (mediaHouse.logo ?? '').isNotEmpty
+                          ? NetworkImage(mediaHouse.logo!)
+                          : null,
+                      child: (mediaHouse.logo ?? '').isEmpty
+                          ? Icon(
+                              Icons.business_outlined,
+                              color: selectedThemeData.primaryColor,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            mediaHouse.mediaHouseName ?? '',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: selectedThemeData.canvasColor,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.phone_outlined,
+                                size: 13,
+                                color: selectedThemeData.canvasColor
+                                    .withValues(alpha: 0.65),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  mediaHouse.contactNumber ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: selectedThemeData.canvasColor
+                                        .withValues(alpha: 0.72),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 9),
+              Row(
+                children: [
+                  Expanded(
+                    child: ProfileStat(
+                      title: mediaHouse.postCount ?? '',
+                      subtitle: 'Total Movie',
+                      emphasized: true,
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: ProfileStat(
+                      title: mediaHouse.totalViews ?? '',
+                      subtitle: 'Views',
+                      emphasized: true,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 9),
+              Text(
+                'Revenue',
+                style: TextStyle(
+                  color: selectedThemeData.canvasColor.withValues(alpha: 0.62),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ProfileStat(
+                        title: _formatRevenue(mediaHouse.displayTotalRevenue),
+                        subtitle: 'Total',
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: ProfileStat(
+                        title: _formatRevenue(mediaHouse.adminRevnue),
+                        subtitle: 'Admin',
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: ProfileStat(
+                        title: _formatRevenue(mediaHouse.mediaHouseRevenue),
+                        subtitle: 'Production House',
+                      ),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-
-            ),
+        ),
       ),
     );
+  }
+
+  static String _formatRevenue(String? value) {
+    final amount = num.tryParse(value ?? '');
+    if (amount == null) return 'Rs. -';
+    return 'Rs. ${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 2)}';
   }
 }
 
 class ProfileStat extends StatelessWidget {
   final String title;
   final String subtitle;
+  final bool emphasized;
 
   const ProfileStat({
     required this.title,
     required this.subtitle,
+    this.emphasized = false,
     super.key,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
+    final theme = Theme.of(context);
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: emphasized ? 8 : 4,
+        vertical: emphasized ? 7 : 6,
+      ),
+      decoration: BoxDecoration(
+        color: emphasized
+            ? theme.primaryColor.withValues(alpha: 0.08)
+            : theme.scaffoldBackgroundColor.withValues(alpha: 0.52),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(
+          color: theme.canvasColor.withValues(alpha: 0.07),
         ),
-        Text(
-          subtitle,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.grey,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            title.isEmpty ? '-' : title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: emphasized ? theme.primaryColor : theme.canvasColor,
+              fontSize: emphasized ? 13 : 11,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: emphasized ? 10 : 9,
+              color: theme.canvasColor.withValues(alpha: 0.62),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

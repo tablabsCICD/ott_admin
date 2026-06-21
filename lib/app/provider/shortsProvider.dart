@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'package:admin_ott/app/core/constant/api_constant.dart';
 import 'package:admin_ott/app/core/network/api_helper.dart';
+import 'package:admin_ott/app/core/loading/app_loading_controller.dart';
 import 'package:admin_ott/app/widgets/show_toast.dart';
-import 'package:admin_ott/data/models/response/shorts_models.dart';
+import 'package:admin_ott/data/models/response/short_by_status_response.dart';
+import 'package:admin_ott/domain/entities/shorts_models.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -199,10 +202,10 @@ class ShortsProvider extends ChangeNotifier {
         final data = jsonDecode(response.body);
         final mapped = ShortsByStatusPageResponse.fromJson(data);
         if (mapped.success == true && mapped.data != null) {
-          _shortsByStatus = mapped.data!.shorts;
-          statusListTotalItems = mapped.data!.totalItems;
-          statusListTotalPages = mapped.data!.totalPages;
-          statusListCurrentPage = mapped.data!.currentPage;
+          _shortsByStatus = mapped.data!.miniSeries ?? [];
+          statusListTotalItems = mapped.data!.totalItems ?? 0;
+          statusListTotalPages = mapped.data!.totalPages ?? 0;
+          statusListCurrentPage = mapped.data!.currentPage ?? page;
         } else {
           _shortsByStatus = [];
           statusListTotalItems = 0;
@@ -351,7 +354,7 @@ class ShortsProvider extends ChangeNotifier {
     uploadInput.accept = 'video/*';
     uploadInput.click();
 
-    uploadInput.onChange.listen((event) {
+    uploadInput.onChange.listen((event) async {
       final file = uploadInput.files?.first;
       if (file == null) return;
 
@@ -391,6 +394,7 @@ class ShortsProvider extends ChangeNotifier {
             CustomToast.show('Video upload failed', isSuccess: false);
           }
         } finally {
+          AppLoadingController.end();
           _isMovieUploading = false;
           isUploading = false;
           notifyListeners();
@@ -398,6 +402,7 @@ class ShortsProvider extends ChangeNotifier {
       });
 
       xhr.onError.listen((_) {
+        AppLoadingController.end();
         movieUploadProgress = 0.0;
         _isMovieUploading = false;
         isUploading = false;
@@ -406,6 +411,9 @@ class ShortsProvider extends ChangeNotifier {
       });
 
       xhr.open('POST', ApiConstant.uploadVideo);
+      final headers = await _apiHelper.multipartHeaders();
+      headers.forEach(xhr.setRequestHeader);
+      AppLoadingController.begin();
       xhr.send(formData);
 
       _isMovieUploading = true;
@@ -454,6 +462,7 @@ class ShortsProvider extends ChangeNotifier {
       );
 
       final request = http.MultipartRequest('POST', uploadUri);
+      request.headers.addAll(await _apiHelper.multipartHeaders());
       request.files.add(
         http.MultipartFile(
           'video',
@@ -463,7 +472,8 @@ class ShortsProvider extends ChangeNotifier {
         ),
       );
 
-      final response = await request.send();
+      final response =
+          await AppLoadingController.trackFuture(() => request.send());
       final responseBody = await response.stream.bytesToString();
       if (response.statusCode == 200) {
         final responseJson = json.decode(responseBody);
@@ -502,6 +512,7 @@ class ShortsProvider extends ChangeNotifier {
     try {
       final uri = Uri.parse(ApiConstant.uploadImg);
       final request = http.MultipartRequest('POST', uri);
+      request.headers.addAll(await _apiHelper.multipartHeaders());
 
       if (kIsWeb && webFile != null) {
         final reader = html.FileReader();
@@ -524,7 +535,8 @@ class ShortsProvider extends ChangeNotifier {
         return null;
       }
 
-      final response = await request.send();
+      final response =
+          await AppLoadingController.trackFuture(() => request.send());
       final responseBody = await response.stream.bytesToString();
       if (response.statusCode != 200) return null;
 

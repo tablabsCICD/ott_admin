@@ -27,6 +27,11 @@ class _PromoterSearchState extends State<PromoterSearch> {
   void _showDropdown(BuildContext context) {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
+    final promoterProvider =
+        Provider.of<PromoterProvider>(context, listen: false);
+    if (promoterProvider.promoterList.isEmpty) {
+      promoterProvider.fetchPromoters();
+    }
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
     final Offset offset = renderBox.localToGlobal(Offset.zero);
 

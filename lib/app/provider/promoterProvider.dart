@@ -20,7 +20,6 @@ import '../core/network/api_helper.dart';
 
 class PromoterProvider extends ChangeNotifier {
   PromoterProvider() : super() {
-    fetchPromoters();
     searchController.addListener(onSearchChanged);
   }
 
@@ -96,30 +95,36 @@ class PromoterProvider extends ChangeNotifier {
 
     try {
       var response = await apiHelper.postApiWithBody(apiUrl, promoter.toJson());
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         Map<String, dynamic> responseBody = json.decode(response.body);
         AddPromoterResponse addUserResponse =
             AddPromoterResponse.fromJson(responseBody);
         if (addUserResponse.success == true) {
           if (addUserResponse.data != null) {
-            _promoters.add(addUserResponse.data!.promoters!);
+            if (addUserResponse.data!.promoters != null) {
+              _promoters.add(addUserResponse.data!.promoters!);
+            }
             _filteredPromoters = _promoters;
-            CustomToast.show(addUserResponse.message!);
+            CustomToast.show(
+                addUserResponse.message ?? 'Promoter added successfully');
             await fetchPromoters();
             notifyListeners();
           } else {
             debugPrint("empty data: ${addUserResponse.message}");
-            CustomToast.show(addUserResponse.message!);
+            CustomToast.show(
+                addUserResponse.message ?? 'Promoter added successfully');
+            await fetchPromoters();
+            notifyListeners();
           }
         } else {
           debugPrint("Error: ${addUserResponse.message}");
-          CustomToast.show(addUserResponse.message!);
+          CustomToast.show(addUserResponse.message ?? 'Failed to add promoter');
         }
       } else if (response.statusCode == 400) {
         Map<String, dynamic> responseBody = json.decode(response.body);
         AddPromoterResponse addUserResponse =
             AddPromoterResponse.fromJson(responseBody);
-        CustomToast.show(addUserResponse.message!);
+        CustomToast.show(addUserResponse.message ?? 'Failed to add promoter');
       } else {
         throw Exception(
             'Failed to add promoter. Status code: ${response.statusCode}');
@@ -480,18 +485,22 @@ class PromoterProvider extends ChangeNotifier {
 
   List<PromotersList> _reportingPromoters = [];
   List<PromotersList> get reportingPromoters => _reportingPromoters;
+  String? _activeReportingPromoterRequest;
+
   Future<void> getReportingPromoters(String level, String location) async {
-    String PromoterLevel = level;
-    if (level == "State") {
-      PromoterLevel = "National";
-    } else if (level == "District") {
-      PromoterLevel = "State";
-    } else if (level == "Taluka") {
-      PromoterLevel = "District";
-    } else {
-      PromoterLevel = level;
+    final promoterLevel = level.trim();
+    final promoterLocation = location.trim();
+    if (promoterLevel.isEmpty || promoterLocation.isEmpty) {
+      return;
     }
-    String myUrl = ApiConstant.reportingPromoterApi(PromoterLevel, location);
+    final requestKey = '$promoterLevel|$promoterLocation';
+    if (_activeReportingPromoterRequest == requestKey) {
+      return;
+    }
+
+    _activeReportingPromoterRequest = requestKey;
+    String myUrl =
+        ApiConstant.reportingPromoterApi(promoterLevel, promoterLocation);
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.getApi(myUrl);
@@ -518,6 +527,10 @@ class PromoterProvider extends ChangeNotifier {
     } catch (error) {
       debugPrint("Error: $error");
       throw Exception('An error occurred while fetching users status.');
+    } finally {
+      if (_activeReportingPromoterRequest == requestKey) {
+        _activeReportingPromoterRequest = null;
+      }
     }
   }
 }
