@@ -144,7 +144,7 @@ class ApiConstant {
   //ManageAccessPage
   static String savePromoterAccess = "${baseUrl}AccessControl/save";
   static String getPromoterAccess = "${baseUrl}AccessControl/getAll";
-  static String editPromoterAccess = "${baseUrl}access-control/update";
+  static String editPromoterAccess = "${baseUrl}AccessControl/update";
 
   static String uploadImg = "${baseUrl}api/other/upload-file";
   static String uploadVideo = "${baseUrl}api/video/upload-raw?videoId=20";
@@ -252,6 +252,10 @@ class ApiConstant {
   }
 
   static String setPercentage = "${baseUrl}api/admin/saveMoviePercentAndRate";
+
+  // Promoter settlement
+  static String promoterSettlementExcel =
+      "${baseUrl}api/admin/promoter-wallet/payment-excel";
 
   // Admin Settings
   static String saveRevenueShareRule =

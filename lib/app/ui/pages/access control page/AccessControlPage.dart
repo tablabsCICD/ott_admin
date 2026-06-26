@@ -143,9 +143,12 @@ class _AccessControlPageState extends State<AccessControlPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               ),
-              onPressed: _saveAccess,
+              onPressed: provider.isSaving ? null : _saveAccess,
               icon: const Icon(Icons.save, color: Colors.white),
-              label: const Text('Save', style: TextStyle(color: Colors.white)),
+              label: Text(
+                provider.isSaving ? 'Saving...' : 'Save',
+                style: const TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -321,6 +324,7 @@ class _AccessControlPageState extends State<AccessControlPage> {
         );
       }
 
+      if (!mounted) return;
       _syncAccessMapWithProvider(provider); // Refresh access table
 
       // ✅ Show confirmation
@@ -331,6 +335,7 @@ class _AccessControlPageState extends State<AccessControlPage> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       // 🛑 Show error if needed
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

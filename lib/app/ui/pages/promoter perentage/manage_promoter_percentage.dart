@@ -1,7 +1,8 @@
 import 'package:admin_ott/app/provider/promoter_percentage_provider.dart';
+import 'package:admin_ott/data/models/response/getPromoterPercentage.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart'; // Make sure this is at the top
+import 'package:intl/intl.dart';
 import '../../../provider/themeProvider.dart';
 
 class ManagePromoterPercentagePage extends StatefulWidget {
@@ -14,14 +15,42 @@ class ManagePromoterPercentagePage extends StatefulWidget {
 
 class _ManagePromoterPercentagePageState
     extends State<ManagePromoterPercentagePage> {
-  // Add‑form controllers
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   String _selectedLevel = 'National';
-  final TextEditingController _viewsCtrl = TextEditingController();
-  final TextEditingController _newUserCtrl = TextEditingController();
+  final TextEditingController _movieCtrl = TextEditingController();
+  final TextEditingController _seriesCtrl = TextEditingController();
+  final TextEditingController _shortCtrl = TextEditingController();
+  final TextEditingController _musicCtrl = TextEditingController();
 
   final List<String> _levels = ['National', 'State', 'District', 'Taluka'];
   final Set<String> _expandedLevels = {};
+
+  final Map<String, Map<String, double>> _defaultPercentages = {
+    'Taluka': {
+      'movie': 3,
+      'series': 5,
+      'short': 5,
+      'music': 8,
+    },
+    'District': {
+      'movie': 0.7,
+      'series': 1.5,
+      'short': 1.5,
+      'music': 2,
+    },
+    'State': {
+      'movie': 0.3,
+      'series': 0.5,
+      'short': 0.5,
+      'music': 1,
+    },
+    'National': {
+      'movie': 1,
+      'series': 1,
+      'short': 1,
+      'music': 1,
+    },
+  };
 
   @override
   void initState() {
@@ -29,12 +58,15 @@ class _ManagePromoterPercentagePageState
     Provider.of<PromoterPercentageProvider>(context, listen: false)
         .getAllPromoterPercentageData();
     _expandedLevels.add("National");
+    _setDefaultPercentageValues();
   }
 
   @override
   void dispose() {
-    _viewsCtrl.dispose();
-    _newUserCtrl.dispose();
+    _movieCtrl.dispose();
+    _seriesCtrl.dispose();
+    _shortCtrl.dispose();
+    _musicCtrl.dispose();
     super.dispose();
   }
 
@@ -85,12 +117,11 @@ class _ManagePromoterPercentagePageState
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth: isMobile ? double.infinity : 800,
+            maxWidth: isMobile ? double.infinity : 1000,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// Latest Promoter Percentage Table
               Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(
@@ -113,31 +144,47 @@ class _ManagePromoterPercentagePageState
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
-                          columnSpacing:
-                              isMobile ? 20 : 100, // already increased
+                          columnSpacing: isMobile ? 20 : 100,
                           headingRowColor: MaterialStateProperty.all(
                               theme.primaryColor.withOpacity(0.1)),
                           border: TableBorder.all(color: theme.dividerColor),
                           columns: [
                             DataColumn(label: _tableHeader('Level', theme)),
                             DataColumn(
-                                label: _tableHeader('Views %', theme),
+                                label: _tableHeader('Movie %', theme),
                                 numeric: true),
                             DataColumn(
-                                label: _tableHeader('New User %', theme),
+                                label: _tableHeader('Series %', theme),
+                                numeric: true),
+                            DataColumn(
+                                label: _tableHeader('Short %', theme),
+                                numeric: true),
+                            DataColumn(
+                                label: _tableHeader('Music %', theme),
                                 numeric: true),
                             DataColumn(label: _tableHeader('Date', theme)),
                           ],
-                          rows: provider.latestByLevel.values.map((entry) {
+                          rows: _levels
+                              .map((level) => provider.latestByLevel[level])
+                              .whereType<PromoterPercentage>()
+                              .map((entry) {
                             final date = DateTime.fromMillisecondsSinceEpoch(
                                 entry.date ?? 0);
                             return DataRow(cells: [
                               DataCell(_tableCell(
                                   entry.typeOfPromoters ?? '', theme)),
                               DataCell(_tableCell(
-                                  '${entry.viewsPercentage}', theme)),
+                                  _percentageText(entry.moviePercentage),
+                                  theme)),
                               DataCell(_tableCell(
-                                  '${entry.newUserPercentage}', theme)),
+                                  _percentageText(entry.seriesPercentage),
+                                  theme)),
+                              DataCell(_tableCell(
+                                  _percentageText(entry.shortPercentage),
+                                  theme)),
+                              DataCell(_tableCell(
+                                  _percentageText(entry.musicPercentage),
+                                  theme)),
                               DataCell(_tableCell(
                                   DateFormat('dd MMM yyyy').format(date),
                                   theme)),
@@ -149,10 +196,7 @@ class _ManagePromoterPercentagePageState
                   ),
                 ),
               ),
-
               const SizedBox(height: 24),
-
-              /// Promoter Percentage History by Level
               Text(
                 'Promoter Percentage History',
                 style: TextStyle(
@@ -162,10 +206,8 @@ class _ManagePromoterPercentagePageState
                 ),
               ),
               const SizedBox(height: 12),
-
-              ...provider.historyByLevel.entries.map((entry) {
-                final level = entry.key;
-                final entries = entry.value;
+              ..._levels.map((level) {
+                final entries = provider.historyByLevel[level] ?? [];
                 final isExpanded = _expandedLevels.contains(level);
 
                 return Padding(
@@ -180,7 +222,6 @@ class _ManagePromoterPercentagePageState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          /// Header with expandable toggle
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -211,8 +252,6 @@ class _ManagePromoterPercentagePageState
                               ),
                             ],
                           ),
-
-                          /// Expandable section
                           AnimatedCrossFade(
                             duration: const Duration(milliseconds: 200),
                             crossFadeState: isExpanded
@@ -221,36 +260,57 @@ class _ManagePromoterPercentagePageState
                             firstChild: Column(
                               children: [
                                 const SizedBox(height: 10),
-                                DataTable(
-                                  columnSpacing: isMobile ? 20 : 100,
-                                  headingRowColor: MaterialStateProperty.all(
-                                      theme.primaryColor.withOpacity(0.05)),
-                                  border: TableBorder.all(
-                                      color: theme.dividerColor),
-                                  columns: [
-                                    DataColumn(
-                                        label: _tableHeader('Views %', theme),
-                                        numeric: true),
-                                    DataColumn(
-                                        label:
-                                            _tableHeader('New User %', theme),
-                                        numeric: true),
-                                    DataColumn(
-                                        label: _tableHeader('Date', theme)),
-                                  ],
-                                  rows: entries.map((entry) {
-                                    final date =
-                                        DateTime.fromMillisecondsSinceEpoch(
-                                            entry.date ?? 0);
-                                    return DataRow(cells: [
-                                      DataCell(_tableCell(
-                                          '${entry.viewsPercentage}', theme)),
-                                      DataCell(_tableCell(
-                                          '${entry.newUserPercentage}', theme)),
-                                      DataCell(_tableCell(
-                                          dateFormat.format(date), theme)),
-                                    ]);
-                                  }).toList(),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: DataTable(
+                                    columnSpacing: isMobile ? 20 : 100,
+                                    headingRowColor: MaterialStateProperty.all(
+                                        theme.primaryColor.withOpacity(0.05)),
+                                    border: TableBorder.all(
+                                        color: theme.dividerColor),
+                                    columns: [
+                                      DataColumn(
+                                          label: _tableHeader('Movie %', theme),
+                                          numeric: true),
+                                      DataColumn(
+                                          label:
+                                              _tableHeader('Series %', theme),
+                                          numeric: true),
+                                      DataColumn(
+                                          label: _tableHeader('Short %', theme),
+                                          numeric: true),
+                                      DataColumn(
+                                          label: _tableHeader('Music %', theme),
+                                          numeric: true),
+                                      DataColumn(
+                                          label: _tableHeader('Date', theme)),
+                                    ],
+                                    rows: entries.map((entry) {
+                                      final date =
+                                          DateTime.fromMillisecondsSinceEpoch(
+                                              entry.date ?? 0);
+                                      return DataRow(cells: [
+                                        DataCell(_tableCell(
+                                            _percentageText(
+                                                entry.moviePercentage),
+                                            theme)),
+                                        DataCell(_tableCell(
+                                            _percentageText(
+                                                entry.seriesPercentage),
+                                            theme)),
+                                        DataCell(_tableCell(
+                                            _percentageText(
+                                                entry.shortPercentage),
+                                            theme)),
+                                        DataCell(_tableCell(
+                                            _percentageText(
+                                                entry.musicPercentage),
+                                            theme)),
+                                        DataCell(_tableCell(
+                                            dateFormat.format(date), theme)),
+                                      ]);
+                                    }).toList(),
+                                  ),
                                 ),
                               ],
                             ),
@@ -279,9 +339,14 @@ class _ManagePromoterPercentagePageState
 
   Future<bool> _onSavePressed() async {
     if (_formKey.currentState?.validate() ?? false) {
-      final parsedNewUser = double.tryParse(_newUserCtrl.text.trim());
-      final parsedViews = double.tryParse(_viewsCtrl.text.trim());
-      if (parsedNewUser == null || parsedViews == null) {
+      final parsedMovie = double.tryParse(_movieCtrl.text.trim());
+      final parsedSeries = double.tryParse(_seriesCtrl.text.trim());
+      final parsedShort = double.tryParse(_shortCtrl.text.trim());
+      final parsedMusic = double.tryParse(_musicCtrl.text.trim());
+      if (parsedMovie == null ||
+          parsedSeries == null ||
+          parsedShort == null ||
+          parsedMusic == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please enter valid numeric values')),
@@ -291,15 +356,20 @@ class _ManagePromoterPercentagePageState
       }
       await Provider.of<PromoterPercentageProvider>(context, listen: false)
           .setPromoterPercentageData(
-              _selectedLevel, parsedNewUser, parsedViews);
-      _viewsCtrl.clear();
-      _newUserCtrl.clear();
+        _selectedLevel,
+        parsedMovie,
+        parsedSeries,
+        parsedShort,
+        parsedMusic,
+      );
+      _setDefaultPercentageValues();
       return true;
     }
     return false;
   }
 
   Future<void> _openAddPercentageDialog(ThemeData theme) async {
+    _setDefaultPercentageValues();
     await showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -348,25 +418,46 @@ class _ManagePromoterPercentagePageState
                                   ),
                                 ))
                             .toList(),
-                        onChanged: (val) => setState(
-                            () => _selectedLevel = val ?? _selectedLevel),
+                        onChanged: (val) {
+                          setState(
+                              () => _selectedLevel = val ?? _selectedLevel);
+                          _setDefaultPercentageValues();
+                        },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
-                        controller: _viewsCtrl,
+                        controller: _movieCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        decoration: const InputDecoration(labelText: 'Views %'),
+                        decoration: const InputDecoration(labelText: 'Movie %'),
                         validator: (val) =>
                             val == null || val.isEmpty ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
-                        controller: _newUserCtrl,
+                        controller: _seriesCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
                         decoration:
-                            const InputDecoration(labelText: 'New User %'),
+                            const InputDecoration(labelText: 'Series %'),
+                        validator: (val) =>
+                            val == null || val.isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _shortCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: const InputDecoration(labelText: 'Short %'),
+                        validator: (val) =>
+                            val == null || val.isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _musicCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: const InputDecoration(labelText: 'Music %'),
                         validator: (val) =>
                             val == null || val.isEmpty ? 'Required' : null,
                       ),
@@ -421,5 +512,26 @@ class _ManagePromoterPercentagePageState
         );
       },
     );
+  }
+
+  void _setDefaultPercentageValues() {
+    final defaults = _defaultPercentages[_selectedLevel] ?? const {};
+    _movieCtrl.text = _formatNumber(defaults['movie']);
+    _seriesCtrl.text = _formatNumber(defaults['series']);
+    _shortCtrl.text = _formatNumber(defaults['short']);
+    _musicCtrl.text = _formatNumber(defaults['music']);
+  }
+
+  String _percentageText(double? value) => _formatNumber(value);
+
+  String _formatNumber(double? value) {
+    if (value == null) return '';
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value
+        .toStringAsFixed(2)
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
   }
 }

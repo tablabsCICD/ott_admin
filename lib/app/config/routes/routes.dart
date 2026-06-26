@@ -10,6 +10,7 @@ import 'package:admin_ott/app/ui/pages/manage%20user%20page/ManageUserPage.dart'
 import 'package:admin_ott/app/ui/pages/manage%20content%20page/ManageContentPage.dart';
 import 'package:admin_ott/app/ui/pages/notification_page/NotificationScreen.dart';
 import 'package:admin_ott/app/ui/pages/profile%20page/ProfilePage.dart';
+import 'package:admin_ott/app/ui/pages/promoter%20settlement%20page/PromoterSettlementPage.dart';
 import 'package:flutter/material.dart';
 
 import 'app_routes.dart';
@@ -55,6 +56,9 @@ class RouteGenerator {
 
       case AppRoutes.notifications:
         return buildRoute(NotificationScreen(), settings: settings);
+
+      case AppRoutes.promoterSettlement:
+        return buildRoute(const PromoterSettlementPage(), settings: settings);
       default:
         return _errorRoute();
     }

@@ -13,21 +13,22 @@ class PercentagePromoterResponse {
     this.success,
   });
 
-  factory PercentagePromoterResponse.fromJson(Map<String, dynamic> json) => PercentagePromoterResponse(
-    message: json["message"],
-    data: json["data"] == null ? null : Data.fromJson(json["data"]),
-    statusCode: json["statusCode"],
-    total: json["total"],
-    success: json["success"],
-  );
+  factory PercentagePromoterResponse.fromJson(Map<String, dynamic> json) =>
+      PercentagePromoterResponse(
+        message: json["message"],
+        data: json["data"] == null ? null : Data.fromJson(json["data"]),
+        statusCode: json["statusCode"],
+        total: json["total"],
+        success: json["success"],
+      );
 
   Map<String, dynamic> toJson() => {
-    "message": message,
-    "data": data?.toJson(),
-    "statusCode": statusCode,
-    "total": total,
-    "success": success,
-  };
+        "message": message,
+        "data": data?.toJson(),
+        "statusCode": statusCode,
+        "total": total,
+        "success": success,
+      };
 }
 
 class Data {
@@ -38,12 +39,12 @@ class Data {
   });
 
   factory Data.fromJson(Map<String, dynamic> json) => Data(
-    genres: json["Genres"] == null ? null : Genres.fromJson(json["Genres"]),
-  );
+        genres: json["Genres"] == null ? null : Genres.fromJson(json["Genres"]),
+      );
 
   Map<String, dynamic> toJson() => {
-    "Genres": genres?.toJson(),
-  };
+        "Genres": genres?.toJson(),
+      };
 }
 
 class Genres {
@@ -74,37 +75,48 @@ class Genres {
   });
 
   factory Genres.fromJson(Map<String, dynamic> json) => Genres(
-    content: json["content"] == null ? [] : List<PromoterPercentage>.from(json["content"]!.map((x) => PromoterPercentage.fromJson(x))),
-    pageable: json["pageable"] == null ? null : Pageable.fromJson(json["pageable"]),
-    last: json["last"],
-    totalElements: json["totalElements"],
-    totalPages: json["totalPages"],
-    numberOfElements: json["numberOfElements"],
-    first: json["first"],
-    sort: json["sort"] == null ? null : Sort.fromJson(json["sort"]),
-    size: json["size"],
-    number: json["number"],
-    empty: json["empty"],
-  );
+        content: json["content"] == null
+            ? []
+            : List<PromoterPercentage>.from(
+                json["content"]!.map((x) => PromoterPercentage.fromJson(x))),
+        pageable: json["pageable"] == null
+            ? null
+            : Pageable.fromJson(json["pageable"]),
+        last: json["last"],
+        totalElements: json["totalElements"],
+        totalPages: json["totalPages"],
+        numberOfElements: json["numberOfElements"],
+        first: json["first"],
+        sort: json["sort"] == null ? null : Sort.fromJson(json["sort"]),
+        size: json["size"],
+        number: json["number"],
+        empty: json["empty"],
+      );
 
   Map<String, dynamic> toJson() => {
-    "content": content == null ? [] : List<dynamic>.from(content!.map((x) => x.toJson())),
-    "pageable": pageable?.toJson(),
-    "last": last,
-    "totalElements": totalElements,
-    "totalPages": totalPages,
-    "numberOfElements": numberOfElements,
-    "first": first,
-    "sort": sort?.toJson(),
-    "size": size,
-    "number": number,
-    "empty": empty,
-  };
+        "content": content == null
+            ? []
+            : List<dynamic>.from(content!.map((x) => x.toJson())),
+        "pageable": pageable?.toJson(),
+        "last": last,
+        "totalElements": totalElements,
+        "totalPages": totalPages,
+        "numberOfElements": numberOfElements,
+        "first": first,
+        "sort": sort?.toJson(),
+        "size": size,
+        "number": number,
+        "empty": empty,
+      };
 }
 
 class PromoterPercentage {
   int? id;
   String? typeOfPromoters;
+  double? moviePercentage;
+  double? seriesPercentage;
+  double? shortPercentage;
+  double? musicPercentage;
   double? viewsPercentage;
   double? newUserPercentage;
   int? date;
@@ -113,29 +125,55 @@ class PromoterPercentage {
   PromoterPercentage({
     this.id,
     this.typeOfPromoters,
+    this.moviePercentage,
+    this.seriesPercentage,
+    this.shortPercentage,
+    this.musicPercentage,
     this.viewsPercentage,
     this.newUserPercentage,
     this.date,
     this.active,
   });
 
-  factory PromoterPercentage.fromJson(Map<String, dynamic> json) => PromoterPercentage(
-    id: json["id"],
-    typeOfPromoters: json["typeOfPromoters"],
-    viewsPercentage: json["viewsPercentage"]?.toDouble(),
-    newUserPercentage: json["newUserPercentage"]?.toDouble(),
-    date: json["date"],
-    active: json["active"],
-  );
+  factory PromoterPercentage.fromJson(Map<String, dynamic> json) =>
+      PromoterPercentage(
+        id: json["id"],
+        typeOfPromoters: json["typeOfPromoters"],
+        moviePercentage: _toDouble(json["moviePercentage"]),
+        seriesPercentage: _toDouble(json["seriesPercentage"]),
+        shortPercentage: _toDouble(json["shortPercentage"]),
+        musicPercentage: _toDouble(json["musicPercentage"]),
+        viewsPercentage: _toDouble(json["viewsPercentage"]),
+        newUserPercentage: _toDouble(json["newUserPercentage"]),
+        date: _toDateMillis(json["date"]),
+        active: json["active"],
+      );
 
   Map<String, dynamic> toJson() => {
-    "id": id,
-    "typeOfPromoters": typeOfPromoters,
-    "viewsPercentage": viewsPercentage,
-    "newUserPercentage": newUserPercentage,
-    "date": date,
-    "active": active,
-  };
+        "id": id,
+        "typeOfPromoters": typeOfPromoters,
+        "moviePercentage": moviePercentage,
+        "seriesPercentage": seriesPercentage,
+        "shortPercentage": shortPercentage,
+        "musicPercentage": musicPercentage,
+        "viewsPercentage": viewsPercentage,
+        "newUserPercentage": newUserPercentage,
+        "date": date,
+        "active": active,
+      };
+
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
+  static int? _toDateMillis(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return DateTime.tryParse(value.toString())?.millisecondsSinceEpoch;
+  }
 }
 
 class Pageable {
@@ -156,22 +194,22 @@ class Pageable {
   });
 
   factory Pageable.fromJson(Map<String, dynamic> json) => Pageable(
-    sort: json["sort"] == null ? null : Sort.fromJson(json["sort"]),
-    pageNumber: json["pageNumber"],
-    pageSize: json["pageSize"],
-    offset: json["offset"],
-    paged: json["paged"],
-    unpaged: json["unpaged"],
-  );
+        sort: json["sort"] == null ? null : Sort.fromJson(json["sort"]),
+        pageNumber: json["pageNumber"],
+        pageSize: json["pageSize"],
+        offset: json["offset"],
+        paged: json["paged"],
+        unpaged: json["unpaged"],
+      );
 
   Map<String, dynamic> toJson() => {
-    "sort": sort?.toJson(),
-    "pageNumber": pageNumber,
-    "pageSize": pageSize,
-    "offset": offset,
-    "paged": paged,
-    "unpaged": unpaged,
-  };
+        "sort": sort?.toJson(),
+        "pageNumber": pageNumber,
+        "pageSize": pageSize,
+        "offset": offset,
+        "paged": paged,
+        "unpaged": unpaged,
+      };
 }
 
 class Sort {
@@ -186,14 +224,14 @@ class Sort {
   });
 
   factory Sort.fromJson(Map<String, dynamic> json) => Sort(
-    sorted: json["sorted"],
-    unsorted: json["unsorted"],
-    empty: json["empty"],
-  );
+        sorted: json["sorted"],
+        unsorted: json["unsorted"],
+        empty: json["empty"],
+      );
 
   Map<String, dynamic> toJson() => {
-    "sorted": sorted,
-    "unsorted": unsorted,
-    "empty": empty,
-  };
+        "sorted": sorted,
+        "unsorted": unsorted,
+        "empty": empty,
+      };
 }

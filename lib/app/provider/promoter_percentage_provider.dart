@@ -6,7 +6,6 @@ import '../core/constant/api_constant.dart';
 import '../core/network/api_helper.dart';
 
 class PromoterPercentageProvider extends ChangeNotifier {
-  // Properly initialized (not nullable)
   final List<PromoterPercentage> allEntries = [];
   final Map<String, PromoterPercentage> latestByLevel = {};
   final Map<String, List<PromoterPercentage>> historyByLevel = {};
@@ -16,38 +15,35 @@ class PromoterPercentageProvider extends ChangeNotifier {
     final ApiHelper apiHelper = ApiHelper();
     try {
       final response = await apiHelper.getApi(apiUrl);
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         final Map<String, dynamic> responseBody = json.decode(response.body);
         final PercentagePromoterResponse parsed =
-        PercentagePromoterResponse.fromJson(responseBody);
-        if (parsed.success == true && parsed.data?.genres?.content != null) {
-          // 1. Update master list
+            PercentagePromoterResponse.fromJson(responseBody);
+        final content = parsed.data?.genres?.content ?? <PromoterPercentage>[];
+
+        if (parsed.success == true) {
           allEntries
             ..clear()
-            ..addAll(parsed.data!.genres!.content!);
+            ..addAll(content);
 
-          // 2. Latest entry per level
-          latestByLevel
-            ..clear()
-            ..addAll({
-              for (final entry in allEntries)
-                entry.typeOfPromoters!: entry,
-            });
+          allEntries.sort((a, b) {
+            final dateA = DateTime.fromMillisecondsSinceEpoch(a.date ?? 0);
+            final dateB = DateTime.fromMillisecondsSinceEpoch(b.date ?? 0);
+            return dateB.compareTo(dateA);
+          });
 
-          // 3. History per level
+          latestByLevel.clear();
+          for (final entry in allEntries) {
+            final level = entry.typeOfPromoters;
+            if (level != null && level.isNotEmpty) {
+              latestByLevel.putIfAbsent(level, () => entry);
+            }
+          }
+
           historyByLevel.clear();
           for (final entry in allEntries) {
             final level = entry.typeOfPromoters ?? 'Unknown';
             historyByLevel.putIfAbsent(level, () => []).add(entry);
-          }
-
-          // 4. Sort each history list by date (descending)
-          for (final list in historyByLevel.values) {
-            list.sort((a, b) {
-              final dateA = DateTime.fromMillisecondsSinceEpoch(a.date ?? 0);
-              final dateB = DateTime.fromMillisecondsSinceEpoch(b.date ?? 0);
-              return dateB.compareTo(dateA);
-            });
           }
 
           notifyListeners();
@@ -64,7 +60,12 @@ class PromoterPercentageProvider extends ChangeNotifier {
   }
 
   Future<void> setPromoterPercentageData(
-      String level, double userPer, double viewPer) async {
+    String level,
+    double moviePercentage,
+    double seriesPercentage,
+    double shortPercentage,
+    double musicPercentage,
+  ) async {
     final String apiUrl = ApiConstant.setPromoterPercentage;
     final ApiHelper apiHelper = ApiHelper();
 
@@ -72,18 +73,23 @@ class PromoterPercentageProvider extends ChangeNotifier {
       final Map<String, dynamic> data = {
         "active": true,
         "date": DateTime.now().toIso8601String(),
-        "id": 0,
-        "newUserPercentage": userPer,
+        "id": latestByLevel[level]?.id ?? 0,
         "typeOfPromoters": level,
-        "viewsPercentage": viewPer,
+        "moviePercentage": moviePercentage,
+        "seriesPercentage": seriesPercentage,
+        "shortPercentage": shortPercentage,
+        "musicPercentage": musicPercentage,
       };
 
       final response = await apiHelper.postApiWithBody(apiUrl, data);
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseBody = json.decode(response.body);
-        if (responseBody["success"] == true) {
-          await getAllPromoterPercentageData(); // refresh with new data
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final Map<String, dynamic> responseBody =
+            response.body.toString().trim().isEmpty
+                ? <String, dynamic>{"success": true}
+                : json.decode(response.body) as Map<String, dynamic>;
+        if (responseBody["success"] != false) {
+          await getAllPromoterPercentageData();
         } else {
           debugPrint("Save failed: ${responseBody["message"]}");
         }
