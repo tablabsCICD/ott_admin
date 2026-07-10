@@ -136,10 +136,13 @@ class UserProvider extends ChangeNotifier {
 
   List<User> _users = [];
   List<User> _filteredUsers = [];
+  final Set<String> _updatingUserStatusMobiles = {};
   User user = User();
 
   List<User> get users => _users;
   List<User> get filteredUsers => _filteredUsers;
+  bool isUpdatingUserStatus(String? mobileNumber) =>
+      mobileNumber != null && _updatingUserStatusMobiles.contains(mobileNumber);
   User get userObj => user;
 
   // Update user data
@@ -252,6 +255,79 @@ class UserProvider extends ChangeNotifier {
       CustomToast.show("An error occurred while delete user.",
           isSuccess: false);
       throw Exception('An error occurred while delete user.');
+    }
+  }
+
+  Future<void> changeUserActiveStatus(User selectedUser, bool active) async {
+    final mobileNumber = selectedUser.mobileNumber?.trim();
+
+    if (mobileNumber == null || mobileNumber.trim().isEmpty) {
+      CustomToast.show("Mobile number not found for this user.",
+          isSuccess: false);
+      return;
+    }
+
+    if (_updatingUserStatusMobiles.contains(mobileNumber)) {
+      return;
+    }
+
+    final previousStatus = selectedUser.active ?? false;
+    final apiUrl = ApiConstant.changeUserActiveStatus(mobileNumber);
+    final apiHelper = ApiHelper();
+
+    _updatingUserStatusMobiles.add(mobileNumber);
+    _setUserActiveStatus(mobileNumber, active);
+    notifyListeners();
+
+    try {
+      final response = await apiHelper.putApiWithBody(
+        apiUrl,
+        {"active": active},
+      );
+
+      final Map<String, dynamic> responseBody = response.body.isNotEmpty
+          ? json.decode(response.body)
+          : <String, dynamic>{};
+
+      if (response.statusCode == 200) {
+        final updatedStatus =
+            responseBody["isActive"] ?? responseBody["active"] ?? active;
+        _setUserActiveStatus(mobileNumber, updatedStatus == true);
+        CustomToast.show(
+          responseBody["message"] ??
+              "User ${active ? "activated" : "deactivated"} successfully.",
+          isSuccess: true,
+        );
+      } else {
+        _setUserActiveStatus(mobileNumber, previousStatus);
+        CustomToast.show(
+          responseBody["message"] ??
+              "Failed to update user status. Status code: ${response.statusCode}",
+          isSuccess: false,
+        );
+      }
+    } catch (error) {
+      _setUserActiveStatus(mobileNumber, previousStatus);
+      debugPrint("Error: $error");
+      CustomToast.show("An error occurred while updating user status.",
+          isSuccess: false);
+    } finally {
+      _updatingUserStatusMobiles.remove(mobileNumber);
+      applySearch();
+    }
+  }
+
+  void _setUserActiveStatus(String mobileNumber, bool active) {
+    for (final user in _users) {
+      if (user.mobileNumber?.trim() == mobileNumber) {
+        user.active = active;
+      }
+    }
+
+    for (final user in _filteredUsers) {
+      if (user.mobileNumber?.trim() == mobileNumber) {
+        user.active = active;
+      }
     }
   }
 

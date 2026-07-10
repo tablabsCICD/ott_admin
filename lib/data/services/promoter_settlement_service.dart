@@ -24,18 +24,39 @@ class PromoterSettlementService {
     DateTime? fromDate,
     DateTime? toDate,
   }) async {
+    return _downloadFile(
+      uri: Uri.parse(ApiConstant.promoterSettlementExcel).replace(
+        queryParameters: _dateQuery(fromDate: fromDate, toDate: toDate),
+      ),
+      fallbackFilename:
+          'promoter-payment-settlement-${_apiDate(DateTime.now())}.xlsx',
+      mimeType:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      failureMessage: 'Failed to download settlement Excel.',
+    );
+  }
+
+  Future<String> downloadMonthlyIosSettlementCsv(dynamic settlementId) async {
+    return _downloadFile(
+      uri: Uri.parse(ApiConstant.monthlyIosSettlementDownload(settlementId)),
+      fallbackFilename:
+          'monthly-ios-settlement-$settlementId-${_apiDate(DateTime.now())}.csv',
+      mimeType: 'text/csv',
+      failureMessage: 'Failed to download settlement CSV.',
+    );
+  }
+
+  Future<String> _downloadFile({
+    required Uri uri,
+    required String fallbackFilename,
+    required String mimeType,
+    required String failureMessage,
+  }) async {
     final preferences = await SharedPreferences.getInstance();
     final token = preferences.getString(SharedPreferencesConstant.authToken);
     final tokenType = preferences
             .getString(SharedPreferencesConstant.authTokenType) ??
         'Bearer';
-
-    final queryParameters = <String, String>{};
-    if (fromDate != null) queryParameters['fromDate'] = _apiDate(fromDate);
-    if (toDate != null) queryParameters['toDate'] = _apiDate(toDate);
-
-    final uri = Uri.parse(ApiConstant.promoterSettlementExcel)
-        .replace(queryParameters: queryParameters.isEmpty ? null : queryParameters);
     final headers = <String, String>{'accept': '*/*'};
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = '$tokenType $token';
@@ -43,13 +64,12 @@ class PromoterSettlementService {
 
     final response = await http.get(uri, headers: headers);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw PromoterSettlementException(_errorMessage(response));
+      throw PromoterSettlementException(_errorMessage(response, failureMessage));
     }
 
     final filename = _filenameFrom(response.headers['content-disposition']) ??
-        'promoter-payment-settlement-${_apiDate(DateTime.now())}.xlsx';
-    final blob = html.Blob([response.bodyBytes],
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        fallbackFilename;
+    final blob = html.Blob([response.bodyBytes], mimeType);
     final url = html.Url.createObjectUrlFromBlob(blob);
     final link = html.AnchorElement(href: url)..download = filename;
     html.document.body?.children.add(link);
@@ -59,13 +79,23 @@ class PromoterSettlementService {
     return filename;
   }
 
+  Map<String, String>? _dateQuery({
+    DateTime? fromDate,
+    DateTime? toDate,
+  }) {
+    final queryParameters = <String, String>{};
+    if (fromDate != null) queryParameters['fromDate'] = _apiDate(fromDate);
+    if (toDate != null) queryParameters['toDate'] = _apiDate(toDate);
+    return queryParameters.isEmpty ? null : queryParameters;
+  }
+
   String _apiDate(DateTime value) {
     return '${value.year.toString().padLeft(4, '0')}-'
         '${value.month.toString().padLeft(2, '0')}-'
         '${value.day.toString().padLeft(2, '0')}';
   }
 
-  String _errorMessage(http.Response response) {
+  String _errorMessage(http.Response response, String fallback) {
     try {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
       if (body is Map<String, dynamic> && body['message'] is String) {
@@ -74,7 +104,7 @@ class PromoterSettlementService {
     } catch (_) {
       // A non-JSON error body falls back to the standard failure message.
     }
-    return 'Failed to download settlement Excel.';
+    return fallback;
   }
 
   String? _filenameFrom(String? contentDisposition) {

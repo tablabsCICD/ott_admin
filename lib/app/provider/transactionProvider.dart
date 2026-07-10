@@ -4,6 +4,8 @@ import 'package:admin_ott/data/models/response/graphResponse.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/models/response/userTransactionResponse.dart';
+import '../../data/models/response/transaction_settlement_report.dart';
+import '../../data/repositories/transaction_settlement_report_repository.dart';
 import '../core/constant/api_constant.dart';
 import '../core/network/api_helper.dart';
 import '../ui/pages/transaction page/TransactionPage.dart';
@@ -14,6 +16,8 @@ class TransactionProvider extends ChangeNotifier {
   TransactionProvider() : super() {
     searchController.addListener(filterData);
   }
+  final TransactionSettlementReportRepository _settlementReportRepository =
+      const TransactionSettlementReportRepository();
   TextEditingController startDateController = TextEditingController();
   TextEditingController searchController = TextEditingController();
   TextEditingController endDateNameController = TextEditingController();
@@ -123,6 +127,13 @@ class TransactionProvider extends ChangeNotifier {
       debugPrint("Error: $error");
       throw Exception('An error occurred while fetching Content.');
     }
+  }
+
+  Future<TransactionSettlementReportData> fetchTransactionSettlementReport(
+      dynamic transactionId) {
+    return _settlementReportRepository.fetchTransactionSettlementReport(
+      transactionId,
+    );
   }
 
 

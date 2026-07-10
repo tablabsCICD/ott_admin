@@ -11,6 +11,7 @@ import 'package:admin_ott/app/ui/pages/manage%20content%20page/ManageContentPage
 import 'package:admin_ott/app/ui/pages/notification_page/NotificationScreen.dart';
 import 'package:admin_ott/app/ui/pages/profile%20page/ProfilePage.dart';
 import 'package:admin_ott/app/ui/pages/promoter%20settlement%20page/PromoterSettlementPage.dart';
+import 'package:admin_ott/app/ui/pages/revenue%20settlement%20analytics/RevenueSettlementAnalyticsPage.dart';
 import 'package:flutter/material.dart';
 
 import 'app_routes.dart';
@@ -59,6 +60,10 @@ class RouteGenerator {
 
       case AppRoutes.promoterSettlement:
         return buildRoute(const PromoterSettlementPage(), settings: settings);
+
+      case AppRoutes.revenueSettlementAnalytics:
+        return buildRoute(const RevenueSettlementAnalyticsPage(),
+            settings: settings);
       default:
         return _errorRoute();
     }

@@ -36,7 +36,7 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
 
   // Check theme preference
-  final themeBool = prefs.getBool("isDark") ?? true;
+  final themeBool = prefs.getBool("isDark") ?? false;
 
   // Initialize Firebase
   runApp(

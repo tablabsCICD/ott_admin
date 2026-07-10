@@ -155,6 +155,8 @@ class _ManageUserPageState extends State<ManageUserPage> {
                       List.generate(provider.filteredUsers.length, (index) {
                     final user = provider.filteredUsers[index];
                     final tileSpan = (canGrowWide && index % 3 == 0) ? 2 : 1;
+                    final isUpdating =
+                        provider.isUpdatingUserStatus(user.mobileNumber);
 
                     return StaggeredGridTile.fit(
                       crossAxisCellCount:
@@ -163,6 +165,18 @@ class _ManageUserPageState extends State<ManageUserPage> {
                         user: user,
                         theme: selectedThemeData,
                         avatarRadius: avatarRadius,
+                        isUpdatingStatus: isUpdating,
+                        onStatusChanged: (active) async {
+                          final confirmed = await _confirmChangeUserStatus(
+                            user: user,
+                            active: active,
+                            theme: selectedThemeData,
+                          );
+
+                          if (confirmed && context.mounted) {
+                            provider.changeUserActiveStatus(user, active);
+                          }
+                        },
                         onTap: () {
                           Navigator.push(
                             context,
@@ -196,12 +210,61 @@ class _ManageUserPageState extends State<ManageUserPage> {
     return 1;
   }
 
+  Future<bool> _confirmChangeUserStatus({
+    required User user,
+    required bool active,
+    required ThemeData theme,
+  }) async {
+    final userName = '${user.firstName ?? ''} ${user.lastName ?? ''}'.trim();
+    final displayName =
+        userName.isEmpty ? user.mobileNumber ?? 'this user' : userName;
+    final action = active ? 'activate' : 'deactivate';
+
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              backgroundColor: theme.cardColor,
+              title: Text(
+                '${active ? 'Activate' : 'Deactivate'} user?',
+                style: TextStyle(color: theme.canvasColor),
+              ),
+              content: Text(
+                'Are you sure you want to $action $displayName?',
+                style: TextStyle(
+                  color: theme.canvasColor.withValues(alpha: 0.8),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: active ? Colors.green : Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(active ? 'Activate' : 'Deactivate'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
   Widget _buildUserCard({
     required User user,
     required ThemeData theme,
     required double avatarRadius,
+    required bool isUpdatingStatus,
+    required ValueChanged<bool> onStatusChanged,
     required VoidCallback onTap,
   }) {
+    final isActive = user.active ?? false;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -290,6 +353,44 @@ class _ManageUserPageState extends State<ManageUserPage> {
                 theme: theme,
                 icon: Icons.person_add_alt_1_outlined,
                 text: user.refferedBy ?? 'N/A',
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (isActive ? Colors.green : Colors.red)
+                          .withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      isActive ? 'Active' : 'Inactive',
+                      style: TextStyle(
+                        color: isActive ? Colors.green : Colors.red,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  if (isUpdatingStatus)
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: theme.primaryColor,
+                      ),
+                    )
+                  else
+                    Switch(
+                      value: isActive,
+                      activeColor: theme.primaryColor,
+                      onChanged: onStatusChanged,
+                    ),
+                ],
               ),
             ],
           ),

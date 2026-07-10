@@ -8,10 +8,13 @@ import 'package:intl/intl.dart';
 
 import '../../../provider/settelementProvider.dart';
 import '../../../provider/themeProvider.dart';
+import 'settlement_report_detail_page.dart';
 
 class AdminSettlementCard extends StatefulWidget {
+  const AdminSettlementCard({super.key});
+
   @override
-  _AdminSettlementCardState createState() => _AdminSettlementCardState();
+  State<AdminSettlementCard> createState() => _AdminSettlementCardState();
 }
 
 class _AdminSettlementCardState extends State<AdminSettlementCard> {
@@ -39,56 +42,78 @@ class _AdminSettlementCardState extends State<AdminSettlementCard> {
     var selectedThemeData = Provider.of<ThemeProvider>(context).getTheme;
 
     return Consumer<SettelementProvider>(builder: (context, provider, child) {
-      return Column(
-        children: [
-          _buildSearchBar(selectedThemeData),
-          const SizedBox(height: 5),
-          provider.filleterdWeeklySettelement.isEmpty
-              ? Center(
-                  child: Text(
-                    "No settlement data available",
-                    style: TextStyle(color: selectedThemeData.primaryColor),
-                  ),
-                )
-              : _buildSettlementList(provider),
-        ],
+      return Card(
+        elevation: 2,
+        color: selectedThemeData.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildSearchBar(selectedThemeData),
+              const SizedBox(height: 12),
+              provider.filleterdWeeklySettelement.isEmpty
+                  ? Center(
+                      child: Text(
+                        "No settlement data available",
+                        style: TextStyle(color: selectedThemeData.primaryColor),
+                      ),
+                    )
+                  : _buildSettlementList(provider),
+            ],
+          ),
+        ),
       );
     });
   }
 
   Widget _buildSearchBar(ThemeData selectedThemeData) {
+    final searchField = CustomTextField(
+      controller: searchController,
+      hintText: 'Search by dates, transaction ID ...',
+      textInputType: TextInputType.text,
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10.0),
-      child: ResponsiveWidget.isMobile(context)
-          ? SizedBox(
-              width: 400,
-              child: CustomTextField(
-                controller: searchController,
-                hintText: 'Search by dates, transaction ID ...',
-                textInputType: TextInputType.text,
-              ),
-            )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Weekly Settlement',
-                  style: TextStyle(
-                    color: selectedThemeData.primaryColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                SizedBox(
-                  width: 400,
-                  child: CustomTextField(
-                    controller: searchController,
-                    hintText: 'Search by dates, transaction ID ...',
-                    textInputType: TextInputType.text,
-                  ),
-                ),
-              ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final stack =
+              ResponsiveWidget.isMobile(context) || constraints.maxWidth < 680;
+
+          final title = Text(
+            'Weekly Settlement',
+            style: TextStyle(
+              color: selectedThemeData.primaryColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
             ),
+          );
+
+          if (stack) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                title,
+                const SizedBox(height: 10),
+                searchField,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: title),
+              const SizedBox(width: 16),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400, minWidth: 260),
+                child: searchField,
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -109,10 +134,8 @@ class _AdminSettlementCardState extends State<AdminSettlementCard> {
   Widget _buildSettlementCard(
       BuildContext context, WeeklySettelementData data) {
     var selectedThemeData = Provider.of<ThemeProvider>(context).getTheme;
-    DateTime date = DateTime.fromMillisecondsSinceEpoch(data.startDate!);
-    String startDate = DateFormat('dd-MM-yyyy').format(date);
-    DateTime date1 = DateTime.fromMillisecondsSinceEpoch(data.endDate!);
-    String endDate = DateFormat('dd-MM-yyyy').format(date1);
+    final startDate = _formatEpochDate(data.startDate);
+    final endDate = _formatEpochDate(data.endDate);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: SizedBox(
@@ -127,7 +150,7 @@ class _AdminSettlementCardState extends State<AdminSettlementCard> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: selectedThemeData.canvasColor.withOpacity(0.12),
+                color: selectedThemeData.canvasColor.withValues(alpha: 0.12),
               ),
             ),
             child: Column(
@@ -140,7 +163,7 @@ class _AdminSettlementCardState extends State<AdminSettlementCard> {
                     ),
                     _buildViewButton(
                       selectedThemeData,
-                      onPressed: () => _showDetailsDialog(context, data),
+                      onPressed: () => _openSettlementReport(context, data),
                     ),
                   ],
                 ),
@@ -208,7 +231,7 @@ class _AdminSettlementCardState extends State<AdminSettlementCard> {
           minimumSize: const Size(0, 28),
           padding: const EdgeInsets.symmetric(horizontal: 8),
           visualDensity: VisualDensity.compact,
-          side: BorderSide(color: theme.primaryColor.withOpacity(0.32)),
+          side: BorderSide(color: theme.primaryColor.withValues(alpha: 0.32)),
         ),
         icon: const Icon(Icons.visibility_outlined, size: 13),
         label: const Text('View', style: TextStyle(fontSize: 11)),
@@ -216,12 +239,42 @@ class _AdminSettlementCardState extends State<AdminSettlementCard> {
     );
   }
 
+  void _openSettlementReport(BuildContext context, WeeklySettelementData data) {
+    final transactionLabel = data.id?.toString();
+    final reportId = _settlementReportId(transactionLabel);
+
+    if (reportId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Settlement transaction id is missing.")),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SettlementReportDetailPage(
+          reportId: reportId,
+          transactionLabel: transactionLabel,
+        ),
+      ),
+    );
+  }
+
+  String _settlementReportId(String? transactionId) {
+    final text = transactionId?.trim() ?? "";
+    if (text.isEmpty) return "";
+    final digits =
+        RegExp(r"\d+").allMatches(text).map((m) => m.group(0)).join();
+    return digits.isNotEmpty ? digits : text;
+  }
+
   Widget _buildDateBand(ThemeData theme, String text) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor.withOpacity(0.4),
+        color: theme.scaffoldBackgroundColor.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -229,7 +282,7 @@ class _AdminSettlementCardState extends State<AdminSettlementCard> {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: theme.canvasColor.withOpacity(0.76),
+          color: theme.canvasColor.withValues(alpha: 0.76),
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
@@ -242,7 +295,7 @@ class _AdminSettlementCardState extends State<AdminSettlementCard> {
       constraints: const BoxConstraints(minHeight: 55),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       decoration: BoxDecoration(
-        color: theme.primaryColor.withOpacity(0.08),
+        color: theme.primaryColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -254,7 +307,7 @@ class _AdminSettlementCardState extends State<AdminSettlementCard> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: theme.canvasColor.withOpacity(0.65),
+              color: theme.canvasColor.withValues(alpha: 0.65),
               fontSize: 10,
               fontWeight: FontWeight.w600,
             ),
@@ -275,123 +328,16 @@ class _AdminSettlementCardState extends State<AdminSettlementCard> {
     );
   }
 
-  void _showDetailsDialog(BuildContext context, WeeklySettelementData data) {
-    DateTime date = DateTime.fromMillisecondsSinceEpoch(data.startDate!);
-    String startDate = DateFormat('dd-MM-yyyy').format(date);
-    DateTime date1 = DateTime.fromMillisecondsSinceEpoch(data.endDate!);
-    String endDate = DateFormat('dd-MM-yyyy').format(date1);
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        var selectedThemeData = Provider.of<ThemeProvider>(context).getTheme;
-        return AlertDialog(
-          backgroundColor: selectedThemeData.cardColor,
-          title: const Text("Detailed Transaction"),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Transaction ID: ${data.transactionId ?? 'N/A'}",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: selectedThemeData.primaryColor,
-                  ),
-                ),
-                SizedBox(
-                  height: 5,
-                ),
-                Text(
-                  "From: $startDate - To: $endDate",
-                ),
-                Divider(
-                  color: selectedThemeData.canvasColor.withOpacity(0.2),
-                ),
-                _buildDetailRow(
-                    'Gross Revenue', _parseNumber(data.grossRevenue)),
-                _buildDetailRow(
-                    'Tax Deduction', _parseNumber(data.taxDeduction)),
-                _buildDetailRow('Net Revenue', _parseNumber(data.netRevenue)),
-                Divider(
-                  color: selectedThemeData.canvasColor.withOpacity(0.2),
-                ),
-                _buildDetailRow('OTT Platform Share %',
-                    _parseNumber(data.ottPlatformSharePercentage)),
-                _buildDetailRow('OTT Platform Revenue Share',
-                    _parseNumber(data.ottPlatformRevenueShare)),
-                Divider(
-                  color: selectedThemeData.canvasColor.withOpacity(0.2),
-                ),
-                _buildDetailRow('Production House Share %',
-                    _parseNumber(data.mediaHouseSharePercentage)),
-                _buildDetailRow('Production House Revenue Share',
-                    _parseNumber(data.mediaHouseRevenueShare)),
-                Divider(
-                  color: selectedThemeData.canvasColor.withOpacity(0.2),
-                ),
-                SizedBox(
-                  height: 150,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        const Text("Movies Sold",
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        ..._getMoviesSoldList(data),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {},
-              child: Text(
-                "PDF",
-                style: TextStyle(color: selectedThemeData.primaryColor),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                "Close",
-                style: TextStyle(color: selectedThemeData.primaryColor),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  List<Widget> _getMoviesSoldList(WeeklySettelementData data) {
-    ListOfMoviesSold? moviesSold = data.listOfMoviesSold;
-    if (moviesSold == null) {
-      return [const Text("No movie data available")];
-    }
-
-    return moviesSold.entries.entries.map((entry) {
-      return _buildDetailRow(entry.key, _parseNumber(entry.value));
-    }).toList();
-
-    // return [];
-  }
-
-  Widget _buildDetailRow(String title, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(title),
-        Text(value, textAlign: TextAlign.end),
-      ],
-    );
-  }
-
   String _parseNumber(dynamic value) {
     if (value is int || value is double) return value.toString();
     if (value is String) return int.tryParse(value)?.toString() ?? 'N/A';
     return 'N/A';
+  }
+
+  String _formatEpochDate(int? value) {
+    if (value == null || value <= 0) return 'N/A';
+    return DateFormat('dd-MM-yyyy').format(
+      DateTime.fromMillisecondsSinceEpoch(value),
+    );
   }
 }

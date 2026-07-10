@@ -12,10 +12,10 @@ import 'package:admin_ott/app/ui/pages/manage%20promoter%20page/ManagePromoterPa
 import 'package:admin_ott/app/ui/pages/manage%20media%20house%20page/ManageMediaHousePage.dart';
 import 'package:admin_ott/app/ui/pages/manage%20content%20page/ManageContentPage.dart';
 import 'package:admin_ott/app/ui/pages/promoter%20perentage/manage_promoter_percentage.dart';
+import 'package:admin_ott/app/ui/pages/revenue%20settlement%20analytics/RevenueSettlementAnalyticsPage.dart';
 import 'package:admin_ott/app/ui/pages/settlemet_page/SettlementPage.dart';
 import 'package:admin_ott/app/ui/pages/shorts%20page/ShortsPage.dart';
 import 'package:admin_ott/app/ui/pages/transaction%20page/TransactionPage.dart';
-import 'package:admin_ott/app/ui/pages/promoter%20settlement%20page/PromoterSettlementPage.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -49,7 +49,8 @@ class _NavigationPageState extends State<NavigationPage> {
         title: 'Promoter Percentage',
         page: const ManagePromoterPercentagePage()),
     PageData(
-        title: 'Promoter Settlement', page: const PromoterSettlementPage()),
+        title: 'Revenue Analytics',
+        page: const RevenueSettlementAnalyticsPage()),
     PageData(title: 'Transaction', page: const TransactionPage()),
     PageData(title: 'Settlement', page: SettlementPage()),
     PageData(title: 'Analytics', page: AnalyticsPage()),
@@ -68,7 +69,7 @@ class _NavigationPageState extends State<NavigationPage> {
     Icons.admin_panel_settings_rounded,
     Icons.settings_suggest_rounded,
     Icons.percent,
-    Icons.account_balance_wallet_outlined,
+    Icons.insights_outlined,
     Icons.currency_rupee_sharp,
     Icons.transform_sharp,
     Icons.bar_chart_sharp,

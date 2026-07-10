@@ -9,6 +9,8 @@ import '../help support page/HelpSupportPage.dart';
 import 'package:intl/intl.dart';
 
 import 'adminSettelmentCard.dart';
+import 'monthly_ios_settlement_section.dart';
+import 'promoter_settlement_download_section.dart';
 
 class SettlementPage extends StatefulWidget {
   @override
@@ -16,7 +18,9 @@ class SettlementPage extends StatefulWidget {
 }
 
 class _SettlementPageState extends State<SettlementPage> {
+  final ScrollController _tableHorizontalController = ScrollController();
   SettlementDataSource? _settlementDataSource;
+  int _selectedSettlementTab = 0;
   int _rowsPerPage = 10;
   int? _sortColumnIndex;
   bool _sortAscending = true;
@@ -59,6 +63,12 @@ class _SettlementPageState extends State<SettlementPage> {
   }
 
   @override
+  void dispose() {
+    _tableHorizontalController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final selectedThemeData = Provider.of<ThemeProvider>(context).getTheme;
 
@@ -66,60 +76,29 @@ class _SettlementPageState extends State<SettlementPage> {
       body: Consumer<SettelementProvider>(
         builder: (context, provider, child) {
           final settlements = provider.weeklySettelement;
-          if (_isLoading) {
-            return const Center(child: AppSpinner());
+          if (settlements.isNotEmpty) {
+            _settlementDataSource = SettlementDataSource(settlements);
           }
 
-          if (_loadError != null) {
-            return Center(child: Text(_loadError!));
-          }
-
-          if (settlements.isEmpty) {
-            return Center(child: Text("No settlement data available."));
-          }
-
-          _settlementDataSource ??= SettlementDataSource(settlements);
-
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
+          return RefreshIndicator(
+            onRefresh: () => _selectedSettlementTab == 0
+                ? _initData()
+                : provider.fetchMonthlySettlements(refresh: true),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16.0),
               children: [
-                AdminSettlementCard(),
-                SizedBox(height: 10),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: SingleChildScrollView(
-                      child: DataTableTheme(
-                        data: DataTableThemeData(
-                          headingRowColor: WidgetStateProperty.all(
-                            selectedThemeData.cardColor,
-                          ),
-                          dataRowColor: WidgetStateProperty.all(
-                            selectedThemeData.cardColor,
-                          ),
-                        ),
-                        child: PaginatedDataTable(
-                          header: Text(
-                            'Settlement Records',
-                            style: TextStyle(
-                              color: selectedThemeData.primaryColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          columns:
-                              _buildColumns(selectedThemeData, settlements),
-                          source: _settlementDataSource!,
-                          rowsPerPage: _rowsPerPage,
-                          sortColumnIndex: _sortColumnIndex,
-                          sortAscending: _sortAscending,
-                          showCheckboxColumn: false,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                _buildHeader(selectedThemeData),
+                const SizedBox(height: 16),
+                _buildSettlementSwitch(selectedThemeData),
+                const SizedBox(height: 24),
+                if (_selectedSettlementTab == 0)
+                  _buildWeeklySettlementContent(
+                    selectedThemeData,
+                    settlements,
+                  )
+                else
+                  const MonthlyIosSettlementSection(),
               ],
             ),
           );
@@ -134,11 +113,168 @@ class _SettlementPageState extends State<SettlementPage> {
     );
   }
 
+  Widget _buildHeader(ThemeData selectedThemeData) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Settlement",
+          style: TextStyle(
+            color: selectedThemeData.canvasColor,
+            fontSize: 26,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "Manage weekly settlements and monthly iOS settlements.",
+          style: TextStyle(
+            color: selectedThemeData.canvasColor.withValues(alpha: 0.62),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettlementSwitch(ThemeData selectedThemeData) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SegmentedButton<int>(
+          segments: const [
+            ButtonSegment<int>(
+              value: 0,
+              icon: Icon(Icons.calendar_view_week_outlined),
+              label: Text("Weekly Settlement"),
+            ),
+            ButtonSegment<int>(
+              value: 1,
+              icon: Icon(Icons.phone_iphone_outlined),
+              label: Text("Monthly iOS Settlement"),
+            ),
+          ],
+          selected: {_selectedSettlementTab},
+          onSelectionChanged: (selection) {
+            setState(() => _selectedSettlementTab = selection.first);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeeklySettlementContent(
+    ThemeData selectedThemeData,
+    List<WeeklySettelementData> settlements,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const RepaintBoundary(
+          child: PromoterSettlementDownloadSection(),
+        ),
+        const SizedBox(height: 16),
+        if (_isLoading)
+          const SizedBox(
+            height: 260,
+            child: Center(child: AppSpinner()),
+          )
+        else if (_loadError != null)
+          SizedBox(
+            height: 260,
+            child: Center(child: Text(_loadError!)),
+          )
+        else if (settlements.isEmpty)
+          const SizedBox(
+            height: 260,
+            child: Center(child: Text("No settlement data available.")),
+          )
+        else ...[
+          const RepaintBoundary(
+            child: AdminSettlementCard(),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            color: selectedThemeData.cardColor,
+            elevation: 2,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: _buildSettlementRecordsTable(
+                selectedThemeData,
+                settlements,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSettlementRecordsTable(
+    ThemeData selectedThemeData,
+    List<WeeklySettelementData> settlements,
+  ) {
+    if (_settlementDataSource == null) {
+      _settlementDataSource = SettlementDataSource(settlements);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tableWidth =
+            constraints.maxWidth < 1280 ? 1280.0 : constraints.maxWidth;
+
+        return Scrollbar(
+          controller: _tableHorizontalController,
+          thumbVisibility: true,
+          child: SingleChildScrollView(
+            controller: _tableHorizontalController,
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: tableWidth,
+              child: DataTableTheme(
+                data: DataTableThemeData(
+                  headingRowColor: WidgetStateProperty.all(
+                    selectedThemeData.cardColor,
+                  ),
+                  dataRowColor: WidgetStateProperty.all(
+                    selectedThemeData.cardColor,
+                  ),
+                ),
+                child: PaginatedDataTable(
+                  header: Text(
+                    'Settlement Records',
+                    style: TextStyle(
+                      color: selectedThemeData.primaryColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  columns: _buildColumns(selectedThemeData, settlements),
+                  source: _settlementDataSource!,
+                  rowsPerPage: _rowsPerPage,
+                  sortColumnIndex: _sortColumnIndex,
+                  sortAscending: _sortAscending,
+                  showCheckboxColumn: false,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   List<DataColumn> _buildColumns(ThemeData selectedThemeData,
       List<WeeklySettelementData> weeklySettelement) {
     return [
       _buildSortableColumn(
-        'Transaction ID',
+        'Settelment ID',
         (d) => d['transactionId'] ?? 'N/A',
         0,
         selectedThemeData,
@@ -159,12 +295,9 @@ class _SettlementPageState extends State<SettlementPage> {
           'Gross Revenue', (d) => d['GrossRevenue'] ?? 0, 3, selectedThemeData,
           numeric: true),
       _buildSortableColumn(
-          'Tax Deduction', (d) => d['TaxDeduction'] ?? 0, 4, selectedThemeData,
-          numeric: true),
-      _buildSortableColumn(
           'Net Revenue', (d) => d['NetRevenue'] ?? 0, 5, selectedThemeData,
           numeric: true),
-      _buildSortableColumn('OTT Share',
+      _buildSortableColumn('Platform Share',
           (d) => d['OTTPlatformRevenueShare'] ?? 0, 6, selectedThemeData,
           numeric: true),
       _buildSortableColumn('Production House Share',
@@ -173,12 +306,6 @@ class _SettlementPageState extends State<SettlementPage> {
       _buildSortableColumn('Total Purchases', (d) => d['TotalPurchases'] ?? 0,
           8, selectedThemeData,
           numeric: true),
-      _buildSortableColumn(
-        'Most Purchased Movie',
-        (d) => d['MostPurchasedMovie'] ?? 'N/A',
-        9,
-        selectedThemeData,
-      ),
     ];
   }
 
@@ -229,8 +356,6 @@ class SettlementDataSource extends DataTableSource {
         DataCell(Text('N/A')),
         DataCell(Text('N/A')),
         DataCell(Text('N/A')),
-        DataCell(Text('N/A')),
-        DataCell(Text('N/A')),
       ]);
     }
 
@@ -243,12 +368,10 @@ class SettlementDataSource extends DataTableSource {
       DataCell(Text(DateFormat('dd-MM-yyyy').format(
           DateTime.fromMillisecondsSinceEpoch(settlement.endDate ?? 0)))),
       DataCell(Text('\$${settlement.grossRevenue ?? 'N/A'}')),
-      DataCell(Text('\$${settlement.taxDeduction ?? 'N/A'}')),
       DataCell(Text('\$${settlement.netRevenue ?? 'N/A'}')),
       DataCell(Text('\$${settlement.ottPlatformRevenueShare ?? 'N/A'}')),
-      DataCell(Text('\$${settlement.mediaHouseSharePercentage ?? 'N/A'}')),
+      DataCell(Text('\$${settlement.mediaHouseRevenueShare ?? 'N/A'}')),
       DataCell(Text('${settlement.totalPurchases ?? 'N/A'}')),
-      DataCell(Text(settlement.mostPurchasedMovie ?? 'N/A')),
     ]);
   }
 

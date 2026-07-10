@@ -72,6 +72,10 @@ class ApiConstant {
   static String getUserById(id) => "${baseUrl}user/getUser/$id";
   static String deleteUserById(id) => "${baseUrl}user/deleteUserBy/$id";
   static String searchUser(char) => "${baseUrl}user/search?search=$char";
+  static String changeUserActiveStatus(mobileNumber) {
+    final encodedMobileNumber = Uri.encodeComponent(mobileNumber.toString());
+    return "${baseUrl}userNew/user/change-active-status/$encodedMobileNumber";
+  }
 
   //ManageMediaHouse
   static String getAllMediaHouseForAdmin =
@@ -217,6 +221,10 @@ class ApiConstant {
   static String weeklySettelementData = "${baseUrl}api/settelment/admin";
   static String weeklySettelementDataForMediaHouse(mediaHouseId) =>
       "${baseUrl}api/settelment/mediaHouse/$mediaHouseId";
+  static String weeklySettlementReport(settelementId) =>
+      "${baseUrl}api/admin/weekly-settlement-report/$settelementId";
+  static String transactionSettlementReport(transactionId) =>
+      "${baseUrl}api/admin/transaction-settlement-report/$transactionId";
   static String reportAndData =
       "${baseUrl}api/adminLineCharts/getDetailsOfMovie";
   static String reportAndDataMediaHouseBase =
@@ -256,6 +264,16 @@ class ApiConstant {
   // Promoter settlement
   static String promoterSettlementExcel =
       "${baseUrl}api/admin/promoter-wallet/payment-excel";
+  static String revenueSettlementAnalytics =
+      "${baseUrl}api/admin/revenue-settlement-analytics";
+  static String generateMonthlyIosSettlement =
+      "${baseUrl}api/admin/monthly-ios-settlement/generate";
+  static String monthlyIosSettlementList =
+      "${baseUrl}api/admin/monthly-ios-settlement/list";
+  static String monthlyIosSettlementDetail(settlementId) =>
+      "${baseUrl}api/admin/monthly-ios-settlement/$settlementId";
+  static String monthlyIosSettlementDownload(settlementId) =>
+      "${baseUrl}api/admin/monthly-ios-settlement/$settlementId/download";
 
   // Admin Settings
   static String saveRevenueShareRule =

@@ -130,11 +130,18 @@ class _PromoterDetailsPageState extends State<PromoterDetailsPage> {
                 );
               }),
               const SizedBox(height: 20),
+              Consumer<PromoterProvider>(builder: (context, provider, child) {
+                return _buildRevenueCalculationCard(
+                  selectedThemeData,
+                  provider.revenue ?? '0',
+                );
+              }),
+              const SizedBox(height: 20),
               _buildBankDetailsCard(selectedThemeData, promoter),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10.0),
                 child: Divider(
-                  color: Colors.grey.withOpacity(0.4),
+                  color: Colors.grey.withValues(alpha: 0.4),
                   thickness: 1,
                 ),
               ),
@@ -157,7 +164,7 @@ class _PromoterDetailsPageState extends State<PromoterDetailsPage> {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,6 +191,411 @@ class _PromoterDetailsPageState extends State<PromoterDetailsPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildRevenueCalculationCard(ThemeData theme, String revenue) {
+    final calculation = _promoterRevenueCalculation(revenue);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Icon(Icons.calculate_outlined,
+                  color: theme.primaryColor, size: 22),
+              const Text(
+                'Revenue Calculation',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              _calculationBadge(theme, 'Promoter Settlement'),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Detailed flow for promoter payout from customer payment to final wallet credit.',
+            style: TextStyle(
+              color: theme.canvasColor.withValues(alpha: 0.62),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _calculationStep(
+            theme,
+            'Step 1',
+            'Calculate base revenue',
+            [
+              _CalculationLine(
+                  'Customer Payment', '-', _formatMoney(calculation.gross)),
+              _CalculationLine('GST Amount', 'Customer Payment - Base',
+                  _formatMoney(calculation.gst)),
+              _CalculationLine('Base Revenue', 'Customer Payment - GST',
+                  _formatMoney(calculation.base)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final twoColumns = constraints.maxWidth >= 920;
+              final steps = [
+                _calculationStep(
+                  theme,
+                  'Step 2',
+                  'Promoter share',
+                  [
+                    const _CalculationLine(
+                        'Promoter %', 'Selected level percentage', '1%'),
+                    _CalculationLine(
+                        'Promoter Share',
+                        'Base Revenue x Promoter %',
+                        _formatMoney(calculation.share)),
+                  ],
+                ),
+                _calculationStep(
+                  theme,
+                  'Step 3',
+                  'Deductions and wallet credit',
+                  [
+                    _CalculationLine('TDS', 'Promoter Share x 10%',
+                        _formatMoney(calculation.tds)),
+                    _CalculationLine('Settlement Charges', 'Transfer charge',
+                        _formatMoney(calculation.charges)),
+                    _CalculationLine('Wallet Credit', 'Share - TDS - Charges',
+                        _formatMoney(calculation.wallet)),
+                  ],
+                ),
+              ];
+              if (!twoColumns) {
+                return Column(
+                  children: [
+                    steps[0],
+                    const SizedBox(height: 12),
+                    steps[1],
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: steps[0]),
+                  const SizedBox(width: 12),
+                  Expanded(child: steps[1]),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _calculationTable(
+            theme,
+            'Promoter Settlement Summary',
+            const ['Description', 'Formula', 'Amount'],
+            [
+              ['Customer Payment', '-', _formatMoney(calculation.gross)],
+              [
+                'GST Amount',
+                'Customer Payment - Base Revenue',
+                _formatMoney(calculation.gst)
+              ],
+              [
+                'Base Revenue',
+                'Customer Payment - GST',
+                _formatMoney(calculation.base)
+              ],
+              [
+                'Promoter Share',
+                'Base Revenue x 1%',
+                _formatMoney(calculation.share)
+              ],
+              ['TDS', 'Promoter Share x 10%', _formatMoney(calculation.tds)],
+              [
+                'Settlement Charges',
+                'Transfer charge',
+                _formatMoney(calculation.charges)
+              ],
+              [
+                'Wallet Credit',
+                'Share - TDS - Charges',
+                _formatMoney(calculation.wallet)
+              ],
+            ],
+            highlightLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _calculationStep(
+    ThemeData theme,
+    String step,
+    String title,
+    List<_CalculationLine> rows,
+  ) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor.withValues(
+          alpha: theme.brightness == Brightness.dark ? 0.56 : 0.92,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.canvasColor.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withValues(alpha: 0.1),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(8)),
+            ),
+            child: Row(
+              children: [
+                _calculationBadge(theme, step),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: theme.canvasColor,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...rows.map((row) => _calculationLine(theme, row)),
+        ],
+      ),
+    );
+  }
+
+  Widget _calculationLine(ThemeData theme, _CalculationLine row) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 620;
+        final label = Text(
+          row.label,
+          style: TextStyle(
+            color: theme.canvasColor,
+            fontWeight: FontWeight.w800,
+          ),
+        );
+        final formula = Text(
+          row.formula,
+          textAlign: compact ? TextAlign.start : TextAlign.center,
+          style: TextStyle(
+            color: theme.canvasColor.withValues(alpha: 0.62),
+            fontWeight: FontWeight.w700,
+          ),
+        );
+        final amount = Text(
+          row.amount,
+          textAlign: compact ? TextAlign.start : TextAlign.end,
+          style: TextStyle(
+            color: theme.canvasColor,
+            fontWeight: FontWeight.w900,
+          ),
+        );
+
+        if (compact) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                label,
+                const SizedBox(height: 4),
+                formula,
+                const SizedBox(height: 4),
+                amount,
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: Row(
+            children: [
+              Expanded(flex: 3, child: label),
+              Expanded(flex: 3, child: formula),
+              Expanded(flex: 2, child: amount),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _calculationTable(
+    ThemeData theme,
+    String title,
+    List<String> columns,
+    List<List<String>> rows, {
+    bool highlightLast = false,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor.withValues(
+          alpha: theme.brightness == Brightness.dark ? 0.56 : 0.92,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.canvasColor.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: theme.canvasColor,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final tableWidth =
+                  constraints.maxWidth < 760 ? 760.0 : constraints.maxWidth;
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: tableWidth,
+                  child: Column(
+                    children: [
+                      _calculationTableRow(
+                        theme,
+                        columns,
+                        isHeader: true,
+                        isHighlighted: false,
+                      ),
+                      ...rows.asMap().entries.map((entry) {
+                        return _calculationTableRow(
+                          theme,
+                          entry.value,
+                          isHeader: false,
+                          isHighlighted:
+                              highlightLast && entry.key == rows.length - 1,
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _calculationTableRow(
+    ThemeData theme,
+    List<String> cells, {
+    required bool isHeader,
+    required bool isHighlighted,
+  }) {
+    final background = isHeader
+        ? theme.primaryColor.withValues(alpha: 0.1)
+        : isHighlighted
+            ? theme.primaryColor.withValues(alpha: 0.08)
+            : Colors.transparent;
+
+    return Container(
+      color: background,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: List.generate(cells.length, (index) {
+          return Expanded(
+            flex: index == 0 ? 2 : 1,
+            child: Padding(
+              padding:
+                  EdgeInsets.only(right: index == cells.length - 1 ? 0 : 12),
+              child: Text(
+                cells[index],
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: index == 0 ? TextAlign.start : TextAlign.end,
+                style: TextStyle(
+                  color: isHeader ? theme.primaryColor : theme.canvasColor,
+                  fontWeight: isHeader || isHighlighted
+                      ? FontWeight.w900
+                      : FontWeight.w700,
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _calculationBadge(ThemeData theme, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: theme.primaryColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  _PromoterRevenueCalculation _promoterRevenueCalculation(String revenue) {
+    final gross = _parseMoney(revenue);
+    final base = gross == 0 ? 0.0 : gross / 1.18;
+    final gst = gross - base;
+    final share = base * 0.01;
+    final tds = share * 0.10;
+    final afterTds = share - tds;
+    final charges = afterTds * 0.02;
+    final wallet = afterTds - charges;
+
+    return _PromoterRevenueCalculation(
+      gross: gross,
+      base: base,
+      gst: gst,
+      share: share,
+      tds: tds,
+      charges: charges,
+      wallet: wallet,
+    );
+  }
+
+  double _parseMoney(String value) {
+    final cleaned = value.replaceAll(RegExp(r'[^0-9.]'), '');
+    return double.tryParse(cleaned) ?? 0;
+  }
+
+  String _formatMoney(double value) {
+    if (value == 0) return 'Rs. 0';
+    final rounded = value.round();
+    final text = rounded.toString().replaceAllMapped(
+          RegExp(r'(\d)(?=(\d\d)+\d$)'),
+          (match) => '${match[1]},',
+        );
+    return 'Rs. $text';
   }
 
   Widget _buildDetailItem(String label, String? value) {
@@ -222,7 +634,7 @@ class GraphPage extends StatefulWidget {
   const GraphPage({super.key, required this.promoters});
 
   @override
-  _GraphPageState createState() => _GraphPageState();
+  State<GraphPage> createState() => _GraphPageState();
 }
 
 class _GraphPageState extends State<GraphPage> {
@@ -386,4 +798,32 @@ class ChartData {
   final int usersOnboarded;
 
   ChartData(this.date, this.revenue, this.usersOnboarded);
+}
+
+class _PromoterRevenueCalculation {
+  const _PromoterRevenueCalculation({
+    required this.gross,
+    required this.base,
+    required this.gst,
+    required this.share,
+    required this.tds,
+    required this.charges,
+    required this.wallet,
+  });
+
+  final double gross;
+  final double base;
+  final double gst;
+  final double share;
+  final double tds;
+  final double charges;
+  final double wallet;
+}
+
+class _CalculationLine {
+  const _CalculationLine(this.label, this.formula, this.amount);
+
+  final String label;
+  final String formula;
+  final String amount;
 }
