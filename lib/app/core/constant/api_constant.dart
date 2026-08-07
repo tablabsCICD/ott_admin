@@ -1,5 +1,5 @@
 class ApiConstant {
-  static const String baseUrl = "https://filmytell.in/ott/";
+  static const String baseUrl = "https://filmytell.com/ott/";
 
   /* static const String baseUrl =
       "http://ec2-43-205-217-79.ap-south-1.compute.amazonaws.com:8080/ott/"; */
@@ -33,9 +33,10 @@ class ApiConstant {
   static String approvedContentCountGraph(
           startDate, endDate, isYear, isMonth, isWeek) =>
       "${baseUrl}api/adminLineCharts/contentApprovalCountChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
-  static String movieTypeChartData = "${baseUrl}api/admin/contentTypePieChart";
+  static String movieTypeChartData =
+      "${baseUrl}api/adminLineCharts/totalContentChart";
   static String revenueChartData =
-      "${baseUrl}api/adminLineCharts/revenueSummary";
+      "${baseUrl}api/adminLineCharts/revenueByContentCategory";
   static String analyticsSummary = "${baseUrl}api/admin/analytics/summary";
   static String locationWiseAnalytics =
       "${baseUrl}ott/admin/analytics/location-wise";

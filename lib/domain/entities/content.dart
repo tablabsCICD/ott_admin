@@ -95,7 +95,7 @@ class Content {
         trailerUrl: _asString(json["trailerUrl"]),
         contentUrl: _asString(json["contentUrl"]),
         approvalStatus: _asString(json["approvalStatus"]),
-        type: _asString(json["type"]),
+        type: _asString(json["type"] ?? json["contentType"] ?? json["content_type"]),
         sensorCertificate: _asString(json["sensorCertificate"]),
         isFeatured: _asBool(json["isFeatured"]),
         availability: json["availability"] == null
@@ -238,4 +238,26 @@ class Availability {
             ? []
             : List<dynamic>.from(platforms!.map((x) => x)),
       };
+}
+
+bool isMovieLike(String? contentType) {
+  final upper = contentType?.trim().toUpperCase();
+  return upper == 'MOVIE' || upper == 'SHORT_FILM';
+}
+
+String formatContentTypeLabel(String? contentType) {
+  switch (contentType?.trim().toUpperCase()) {
+    case 'SHORT_FILM':
+      return 'Short Film';
+    case 'MOVIE':
+      return 'Movie';
+    case 'SERIES':
+      return 'Series';
+    case 'MINI_SERIES':
+    case 'MINI SERIES':
+    case 'SHORTS':
+      return 'Mini Series';
+    default:
+      return contentType ?? '-';
+  }
 }

@@ -31,7 +31,7 @@ class _AdminRuleFormDialogState extends State<AdminRuleFormDialog> {
   final _remarksCtrl = TextEditingController();
 
   RevenueAudienceScope _audienceScope = RevenueAudienceScope.india;
-  RevenueContentType _contentType = RevenueContentType.movies;
+  RevenueContentType _contentType = RevenueContentType.movie;
   DateTime? _effectiveFrom;
   bool _isActive = true;
 
@@ -208,7 +208,7 @@ class _AdminRuleFormDialogState extends State<AdminRuleFormDialog> {
             label: 'Content Type',
             value: _contentType,
             items: RevenueContentType.values,
-            itemLabel: (item) => item.apiValue,
+            itemLabel: (item) => item.label,
             onChanged: (value) => setState(() {
               if (value != null) _contentType = value;
             }),

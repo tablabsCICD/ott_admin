@@ -41,7 +41,7 @@ class ShortPartDTO {
   });
 
   factory ShortPartDTO.fromJson(Map<String, dynamic> json) => ShortPartDTO(
-        partId: json["partId"],
+        partId: (json["partId"] ?? json["id"] ?? json["contentId"])?.toString(),
         partNumber: json["partNumber"],
         title: json["title"],
         coins: json["coins"],

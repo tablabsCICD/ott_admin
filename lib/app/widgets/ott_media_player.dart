@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:admin_ott/app/widgets/app_loaders.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -40,6 +41,10 @@ class OttMediaPlayer extends StatefulWidget {
     this.onReadyChanged,
     this.onError,
     this.errorBuilder,
+    this.httpHeaders = const {},
+    this.initialPosition = Duration.zero,
+    this.audioTrackUrl,
+    this.subtitleTrackUrl,
   });
 
   final String url;
@@ -53,6 +58,10 @@ class OttMediaPlayer extends StatefulWidget {
   final ValueChanged<bool>? onReadyChanged;
   final ValueChanged<String>? onError;
   final Widget Function(BuildContext context, String message)? errorBuilder;
+  final Map<String, String> httpHeaders;
+  final Duration initialPosition;
+  final String? audioTrackUrl;
+  final String? subtitleTrackUrl;
 
   @override
   State<OttMediaPlayer> createState() => _OttMediaPlayerState();
@@ -87,7 +96,9 @@ class _OttMediaPlayerState extends State<OttMediaPlayer>
   @override
   void didUpdateWidget(covariant OttMediaPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.url != widget.url || oldWidget.autoPlay != widget.autoPlay) {
+    if (oldWidget.url != widget.url ||
+        oldWidget.autoPlay != widget.autoPlay ||
+        !mapEquals(oldWidget.httpHeaders, widget.httpHeaders)) {
       _open();
     }
   }
@@ -118,11 +129,48 @@ class _OttMediaPlayerState extends State<OttMediaPlayer>
       if (widget.autoPlay) {
         await MediaKitPlaybackCoordinator.setActive(_player);
       }
-      await _player.open(Media(url), play: widget.autoPlay);
+      await _player.open(
+        Media(url, httpHeaders: widget.httpHeaders),
+        play: false,
+      );
+      if (widget.initialPosition > Duration.zero) {
+        await _player.seek(widget.initialPosition);
+      }
+      try {
+        final audioTrackUrl = widget.audioTrackUrl?.trim();
+        if (audioTrackUrl?.isNotEmpty == true) {
+          await _player.setAudioTrack(AudioTrack.uri(audioTrackUrl!));
+        }
+      } catch (e) {
+        debugPrint('[ADMIN_PLAYBACK] audioTrackError: $e');
+      }
+      try {
+        final subtitleTrackUrl = widget.subtitleTrackUrl?.trim();
+        if (subtitleTrackUrl?.isNotEmpty == true) {
+          await _player.setSubtitleTrack(SubtitleTrack.uri(subtitleTrackUrl!));
+        }
+      } catch (e) {
+        debugPrint('[ADMIN_PLAYBACK] subtitleTrackError: $e');
+      }
       if (!mounted) return;
+      debugPrint('[ADMIN_PLAYBACK] controllerInitialized=true');
       setState(() => _isReady = true);
       widget.onReadyChanged?.call(true);
-    } catch (_) {
+      if (widget.autoPlay) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!mounted) return;
+          try {
+            await MediaKitPlaybackCoordinator.setActive(_player);
+            await _player.play();
+            debugPrint('[ADMIN_PLAYBACK] playbackStarted=true');
+          } catch (e) {
+            debugPrint('[ADMIN_PLAYBACK] autoPlayError: $e');
+            _handlePlayerError('Failed to load media');
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('[ADMIN_PLAYBACK] mediaOpenError: $e');
       _handlePlayerError('Failed to load media');
     }
   }
@@ -184,7 +232,8 @@ class _OttMediaPlayerState extends State<OttMediaPlayer>
       child: Video(
         controller: _videoController,
         fit: widget.fit,
-        controls: widget.showDefaultControls ? widget.controls : NoVideoControls,
+        controls:
+            widget.showDefaultControls ? widget.controls : NoVideoControls,
         pauseUponEnteringBackgroundMode: true,
         onEnterFullscreen: _enterFullscreen,
         onExitFullscreen: _exitFullscreen,

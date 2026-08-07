@@ -4,7 +4,6 @@ import 'package:admin_ott/app/core/constant/api_constant.dart';
 import 'package:admin_ott/app/core/network/api_helper.dart';
 
 import 'package:admin_ott/data/models/response/dashboardResponse.dart';
-import 'package:admin_ott/data/models/response/getMovieTypeChart.dart';
 import 'package:admin_ott/data/models/response/graphResponse.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
@@ -17,7 +16,7 @@ class DashboardProvider extends ChangeNotifier {
 
   DashboardData get dashboardData => _dashboardData;
 
-  // Fetch all users
+  // Fetch the revenue summary used by the dashboard revenue split card.
   Future<void> getDashboradData() async {
     String apiUrl = ApiConstant.dashboardCount;
     ApiHelper apiHelper = ApiHelper();
@@ -50,7 +49,7 @@ class DashboardProvider extends ChangeNotifier {
   List<Map<String, dynamic>>? chartDataList;
   int contentTypeTotal = 0;
 
-  // Fetch all users
+  // Fetch the content category summary used by the dashboard pie chart.
   Future<void> getMovieTypeChartData() async {
     String apiUrl = ApiConstant.movieTypeChartData;
     ApiHelper apiHelper = ApiHelper();
@@ -63,35 +62,21 @@ class DashboardProvider extends ChangeNotifier {
         if (success) {
           final dynamic data = responseBody['data'];
           if (data is Map<String, dynamic>) {
-            final movieCount = (data['movieCount'] as num?)?.toInt() ?? 0;
-            final seriesCount = (data['seriesCount'] as num?)?.toInt() ?? 0;
-            final shortCount = (data['shortCount'] as num?)?.toInt() ?? 0;
-            contentTypeTotal = (data['total'] as num?)?.toInt() ??
-                (movieCount + seriesCount + shortCount);
-
-            chartDataList = [
-              {
-                "title": "Movies",
-                "value": (data['moviePercent'] as num?)?.toDouble() ?? 0.0,
-                "count": movieCount,
-                "percentText":
-                    "${((data['moviePercent'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(1)}%",
-              },
-              {
-                "title": "Series",
-                "value": (data['seriesPercent'] as num?)?.toDouble() ?? 0.0,
-                "count": seriesCount,
-                "percentText":
-                    "${((data['seriesPercent'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(1)}%",
-              },
-              {
-                "title": "Mini Series",
-                "value": (data['shortPercent'] as num?)?.toDouble() ?? 0.0,
-                "count": shortCount,
-                "percentText":
-                    "${((data['shortPercent'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(1)}%",
-              },
-            ];
+            final rawBreakdown = data['breakdown'];
+            final breakdown = rawBreakdown is List ? rawBreakdown : const [];
+            chartDataList = breakdown.whereType<Map>().map((item) {
+              final map = Map<String, dynamic>.from(item);
+              final percentage =
+                  (map['percentage'] as num?)?.toDouble() ?? 0.0;
+              return {
+                'title': _contentCategoryTitle(map['contentType']),
+                'value': percentage,
+                'count': (map['totalCount'] as num?)?.toInt() ?? 0,
+                'percentText': '${percentage.toStringAsFixed(1)}%',
+              };
+            }).toList();
+            contentTypeTotal = chartDataList!.fold<int>(0,
+                (sum, item) => sum + ((item['count'] as num?)?.toInt() ?? 0));
             notifyListeners();
           } else if (data is List) {
             // Backward compatibility for older API list format.
@@ -124,31 +109,52 @@ class DashboardProvider extends ChangeNotifier {
   }
 
   List<Map<String, dynamic>>? revenueChartDataList;
+  double revenueSummaryTotal = 0;
+  bool isRevenueSummaryLoading = false;
+  String? revenueSummaryError;
 
   // Fetch all users
   Future<void> getRevenueChartData() async {
     String apiUrl = ApiConstant.revenueChartData;
     ApiHelper apiHelper = ApiHelper();
+    isRevenueSummaryLoading = true;
+    revenueSummaryError = null;
+    notifyListeners();
     try {
       var response = await apiHelper.getApi(apiUrl);
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        MovieTypeChartResponse movieTypeChartResponse =
-            MovieTypeChartResponse.fromJson(responseBody);
-        if (movieTypeChartResponse.success == true) {
-          if (movieTypeChartResponse.data != null) {
-            revenueChartDataList = movieTypeChartResponse.data!.map((item) {
-              return {
-                "title": item.label,
-                "value": item.value,
-              };
-            }).toList();
-            notifyListeners();
-          } else {
-            debugPrint("data not found: ${movieTypeChartResponse.message}");
+        final success = responseBody['success'] == true ||
+            responseBody['isSuccess'] == true;
+        if (success) {
+          final rawData = responseBody['data'];
+          final rawItems = rawData is Map<String, dynamic>
+              ? rawData['breakdown'] ?? rawData['items']
+              : rawData;
+
+          revenueSummaryTotal = rawData is Map<String, dynamic>
+              ? (rawData['totalRevenue'] as num?)?.toDouble() ?? 0
+              : 0;
+
+          final items = rawItems is List ? rawItems : const [];
+          revenueChartDataList = items.whereType<Map>().map((item) {
+            final map = Map<String, dynamic>.from(item);
+            final revenue = map['revenue'] ?? map['amount'] ?? map['value'];
+            return {
+              'title': _revenueCategoryTitle(
+                  map['contentType'] ?? map['category'] ?? map['label']),
+              'revenue': (revenue as num?)?.toDouble() ?? 0,
+              'percentage': (map['percentage'] as num?)?.toDouble(),
+            };
+          }).toList();
+
+          if (revenueSummaryTotal <= 0) {
+            revenueSummaryTotal = revenueChartDataList!.fold<double>(
+                0, (sum, item) => sum + (item['revenue'] as double));
           }
         } else {
-          debugPrint("Error: ${movieTypeChartResponse.message}");
+          throw Exception(responseBody['message'] ??
+              'Unable to load the revenue summary.');
         }
       } else {
         throw Exception(
@@ -156,7 +162,51 @@ class DashboardProvider extends ChangeNotifier {
       }
     } catch (error) {
       debugPrint("Error: $error");
-      throw Exception('An error occurred while fetching data.');
+      revenueChartDataList = [];
+      revenueSummaryTotal = 0;
+      revenueSummaryError = 'Unable to load revenue summary.';
+    } finally {
+      isRevenueSummaryLoading = false;
+      notifyListeners();
+    }
+  }
+
+  String _contentCategoryTitle(dynamic value) {
+    switch (value?.toString().trim().toUpperCase()) {
+      case 'MOVIE':
+      case 'MOVIES':
+        return 'Movies';
+      case 'SHORT_FILM':
+      case 'SHORT FILM':
+        return 'Short Film';
+      case 'SERIES':
+        return 'Series';
+      case 'MINI_SERIES':
+      case 'MINI SERIES':
+      case 'SHORT':
+      case 'SHORTS':
+        return 'Mini Series';
+      default:
+        return value?.toString() ?? 'Other';
+    }
+  }
+
+  String _revenueCategoryTitle(dynamic value) {
+    switch (value?.toString().trim().toUpperCase()) {
+      case 'MOVIE':
+      case 'MOVIES':
+        return 'Movie Revenue';
+      case 'SHORT_FILM':
+      case 'SHORT FILM':
+        return 'Short Film Revenue';
+      case 'SERIES':
+        return 'Series Revenue';
+      case 'SHORT':
+      case 'SHORTS':
+      case 'MINI_SERIES':
+        return 'Mini Series Revenue';
+      default:
+        return '${value ?? 'Other'} Revenue';
     }
   }
 

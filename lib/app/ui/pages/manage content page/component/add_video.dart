@@ -249,7 +249,7 @@ class _AddDataWidgetState extends State<AddDataWidget> {
               provider,
               themeData),
           _buildDropdownField(
-              'Type', ['MOVIE', 'SERIES'], context, provider, themeData),
+              'Type', ['MOVIE', 'SERIES', 'SHORT_FILM'], context, provider, themeData),
           _buildDropdownField(
               'Rental Duration',
               [

@@ -64,7 +64,7 @@ class MediahouseContentApprovalWidget extends StatelessWidget {
     final genre = content.genreList?.isNotEmpty == true
         ? content.genreList!.first
         : "Unknown Genre";
-    final type = content.type ?? "Unknown Type";
+    final type = formatContentTypeLabel(content.type);
 
     return InkWell(
       onTap: () => _openContentDetailsPage(context, content),

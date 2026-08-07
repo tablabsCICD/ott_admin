@@ -120,7 +120,7 @@ class MyApp extends StatelessWidget {
     return Consumer<ThemeProvider>(
         builder: (context, ThemeProvider themeNotifier, child) {
       return MaterialApp(
-        title: 'OTT Admin',
+        title: 'Filmytell Admin',
         theme: themeNotifier.getTheme,
         navigatorKey: navigatorKey, // Pass the navigatorKey here
         debugShowCheckedModeBanner: false,

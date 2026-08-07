@@ -137,59 +137,53 @@ class _DashboardPageState extends State<DashboardPage> {
                           // Statistic Cards to display
                           ResponsiveWidget.isMobile(context)
                               ? _buildMobileStatsBento(provider)
-                              : SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      _buildStatisticCard(
-                                        title: 'Total Users',
-                                        value: provider
-                                                .dashboardData.totalUserCount
-                                                ?.toString() ??
-                                            '0',
-                                        icon: Icons.people,
-                                        index: 0,
-                                      ),
-                                      _buildStatisticCard(
-                                        title: 'Total Purchases',
-                                        value: provider
-                                                .dashboardData.userContent
-                                                ?.toString() ??
-                                            '0',
-                                        icon: Icons.shopping_cart,
-                                        index: 1,
-                                      ),
-                                      _buildStatisticCard(
-                                        title: 'Total Production Houses',
-                                        value: provider
-                                                .dashboardData.totalMediaHouses
-                                                ?.toString() ??
-                                            '0',
-                                        icon: Icons.shopping_cart,
-                                        index: 4,
-                                      ),
-                                      _buildStatisticCard(
-                                        title: 'Total Promoters',
-                                        value: provider
-                                                .dashboardData.totalPromoter
-                                                ?.toString() ??
-                                            '0',
-                                        icon: Icons.supervisor_account,
-                                        index: 2,
-                                      ),
-                                      _buildStatisticCard(
-                                        title: 'Content Approved',
-                                        value: provider
-                                                .dashboardData.totalContent
-                                                ?.toString() ??
-                                            '0',
-                                        icon: Icons.check_circle,
-                                        index: 3,
-                                      ),
-                                    ],
-                                  ),
+                              : Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildStatisticCard(
+                                      title: 'Total Users',
+                                      value: provider
+                                              .dashboardData.totalUserCount
+                                              ?.toString() ??
+                                          '0',
+                                      icon: Icons.people,
+                                      index: 0,
+                                    ),
+                                    _buildStatisticCard(
+                                      title: 'Total Purchases',
+                                      value: provider.dashboardData.userContent
+                                              ?.toString() ??
+                                          '0',
+                                      icon: Icons.shopping_cart_rounded,
+                                      index: 1,
+                                    ),
+                                    _buildStatisticCard(
+                                      title: 'Total Production Houses',
+                                      value: provider
+                                              .dashboardData.totalMediaHouses
+                                              ?.toString() ??
+                                          '0',
+                                      icon: Icons.home_work_rounded,
+                                      index: 4,
+                                    ),
+                                    _buildStatisticCard(
+                                      title: 'Total Promoters',
+                                      value: provider
+                                              .dashboardData.totalPromoter
+                                              ?.toString() ??
+                                          '0',
+                                      icon: Icons.supervisor_account,
+                                      index: 2,
+                                    ),
+                                    _buildStatisticCard(
+                                      title: 'Content Approved',
+                                      value: provider.dashboardData.totalContent
+                                              ?.toString() ??
+                                          '0',
+                                      icon: Icons.check_circle,
+                                      index: 3,
+                                    ),
+                                  ],
                                 ),
                         ],
                       );
@@ -396,8 +390,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                           height: 450,
                                           child: _buildRequestCard(
                                             context,
-                                            title:
-                                                'Short/Mini Series Approvals',
+                                            title: 'Mini Series Approvals',
                                             child:
                                                 const ShortsApprovalsWidget(),
                                           ),
@@ -461,44 +454,64 @@ class _DashboardPageState extends State<DashboardPage> {
     var selectedThemeData =
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
 
-    return SizedBox(
-      // height: 90,
-      width: ResponsiveWidget.isMobile(context) ? double.infinity : 250,
-      child: Card(
-        color: selectedThemeData.cardColor,
-        child: ListTile(
-          // leading: Icon(
-          //   icon,
-          //   color: selectedThemeData.primaryColor,
-          // ),
-          title: Center(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: selectedThemeData.canvasColor,
+    final primary = selectedThemeData.primaryColor;
+
+    return Expanded(
+      child: SizedBox(
+        height: 112,
+        child: Card(
+          margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+          elevation: 0,
+          color: selectedThemeData.cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: primary.withValues(alpha: 0.14)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _showGraphPopup(index),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.2,
+                            fontWeight: FontWeight.w600,
+                            color: selectedThemeData.canvasColor
+                                .withValues(alpha: 0.72),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 24,
+                            height: 1,
+                            fontWeight: FontWeight.w800,
+                            color: selectedThemeData.canvasColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.arrow_outward_rounded,
+                      color: primary.withValues(alpha: 0.75), size: 18),
+                ],
               ),
             ),
-          ),
-          subtitle: Center(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: selectedThemeData.primaryColor,
-              ),
-            ),
-          ),
-          trailing: IconButton(
-            onPressed: () {
-              _showGraphPopup(index);
-            },
-            icon: Icon(
-              Icons.bar_chart_rounded,
-            ),
-            color: selectedThemeData.primaryColor,
           ),
         ),
       ),
@@ -849,7 +862,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildInsightsSection(BuildContext context, DashboardProvider provider,
       bool allApprovalsPresent) {
     final isMobile = ResponsiveWidget.isMobile(context);
-    final revenueData = _buildRevenueSplitData();
+    final revenueData = _buildRevenueSplitData(provider);
+    final revenueTotal = provider.revenueSummaryTotal.toStringAsFixed(0);
     final contentData = _buildContentTypeData(provider);
 
     if (isMobile) {
@@ -859,7 +873,7 @@ class _DashboardPageState extends State<DashboardPage> {
             title: 'Average Revenue',
             subtitle: 'Revenue split by content category',
             totalLabel: 'Total Revenue',
-            totalValue: '1000',
+            totalValue: revenueTotal,
             data: revenueData,
             chartKey: 'revenue',
             isCurrency: true,
@@ -904,7 +918,7 @@ class _DashboardPageState extends State<DashboardPage> {
             title: 'Average Revenue',
             subtitle: 'Revenue split by content category',
             totalLabel: 'Total Revenue',
-            totalValue: '1000',
+            totalValue: revenueTotal,
             data: revenueData,
             chartKey: 'revenue',
             isCurrency: true,
@@ -930,33 +944,24 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  List<Map<String, dynamic>> _buildRevenueSplitData() {
-    return [
-      {
-        'title': 'Movie Revenue',
-        'revenue': 750.0,
-        'value': 75.0,
-        'percentText': '75%',
-      },
-      {
-        'title': 'Series Revenue',
-        'revenue': 127.0,
-        'value': 12.7,
-        'percentText': '12.7%',
-      },
-      {
-        'title': 'Short Revenue',
-        'revenue': 123.0,
-        'value': 12.3,
-        'percentText': '12.3%',
-      },
-    ];
+  List<Map<String, dynamic>> _buildRevenueSplitData(
+      DashboardProvider provider) {
+    final total = provider.revenueSummaryTotal;
+    return (provider.revenueChartDataList ?? []).map((item) {
+      final revenue = (item['revenue'] as num?)?.toDouble() ?? 0;
+      final suppliedPercentage = (item['percentage'] as num?)?.toDouble();
+      final percentage =
+          suppliedPercentage ?? (total > 0 ? (revenue / total) * 100 : 0.0);
+      return {
+        'title': item['title'] ?? 'Other Revenue',
+        'revenue': revenue,
+        'value': percentage,
+        'percentText': '${percentage.toStringAsFixed(1)}%',
+      };
+    }).toList();
   }
 
   List<Map<String, dynamic>> _buildContentTypeData(DashboardProvider provider) {
-    final theme = Provider.of<ThemeProvider>(context, listen: false).getTheme;
-    final primary = theme.primaryColor;
-
     if ((provider.chartDataList ?? []).isNotEmpty) {
       final mapped = provider.chartDataList!.take(4).map((item) {
         final value = (item['value'] as num?)?.toDouble() ?? 0.0;
@@ -971,28 +976,7 @@ class _DashboardPageState extends State<DashboardPage> {
       return mapped;
     }
 
-    return [
-      {
-        'title': 'Movies',
-        'value': 52.0,
-        'percentText': '52%',
-        'color': primary,
-      },
-      {
-        'title': 'Series',
-        'value': 28.0,
-        'percentText': '28%',
-        'color':
-            Color.alphaBlend(primary.withValues(alpha: 0.45), Colors.green),
-      },
-      {
-        'title': 'Shorts',
-        'value': 20.0,
-        'percentText': '20%',
-        'color':
-            Color.alphaBlend(primary.withValues(alpha: 0.5), Colors.orange),
-      },
-    ];
+    return const [];
   }
 
   Widget _buildInsightCard({

@@ -79,7 +79,7 @@ class MovieCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        movie.type ?? 'CONTENT',
+                        formatContentTypeLabel(movie.type),
                         style: TextStyle(
                           color: selectedThemeData.canvasColor,
                           fontSize: 10,

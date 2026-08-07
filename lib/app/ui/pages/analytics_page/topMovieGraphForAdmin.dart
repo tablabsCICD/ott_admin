@@ -15,7 +15,13 @@ class TopMoviesGraphForAdmin extends StatefulWidget {
 }
 
 class _TopMoviesGraphForAdminState extends State<TopMoviesGraphForAdmin> {
-  static const _contentTypes = ['ALL', 'MOVIE', 'SERIES', 'MINI SERIES'];
+  static const _contentTypes = [
+    'ALL',
+    'MOVIE',
+    'SHORT_FILM',
+    'SERIES',
+    'MINI_SERIES',
+  ];
 
   @override
   void initState() {

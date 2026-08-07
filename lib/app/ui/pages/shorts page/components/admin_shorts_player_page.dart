@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:admin_ott/app/core/services/admin_secure_playback_service.dart';
 import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:admin_ott/app/widgets/ott_media_player.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
@@ -35,6 +38,8 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
   bool _isVideoLoading = false;
   bool _hasVideoError = false;
   String? _videoErrorMessage;
+  StreamSubscription<String>? _playbackErrorSubscription;
+  final Set<int> _retriedParts = <int>{};
 
   @override
   void initState() {
@@ -68,11 +73,16 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
       MediaKitPlaybackCoordinator.release(_player!);
     }
     _player?.dispose();
+    _playbackErrorSubscription?.cancel();
     _pageController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadPart(int index) async {
+  Future<void> _loadPart(
+    int index, {
+    Duration resumeAt = Duration.zero,
+    bool automaticRetry = false,
+  }) async {
     if (index < 0 || index >= _parts.length) return;
     final part = _parts[index];
     final url = (part.videoUrl ?? '').trim();
@@ -89,6 +99,8 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
     }
 
     final oldPlayer = _player;
+    await _playbackErrorSubscription?.cancel();
+    _playbackErrorSubscription = null;
     setState(() {
       _currentIndex = index;
       _player = null;
@@ -107,11 +119,61 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
     final player = Player();
     final videoController = VideoController(player);
     try {
-      await MediaKitPlaybackCoordinator.setActive(player);
-      await player.open(Media(url), play: true);
+      final partId = (part.partId?.trim().isNotEmpty == true)
+          ? part.partId!.trim()
+          : (part.partNumber != null ? part.partNumber.toString() : '');
+      final authorization = await AdminSecurePlaybackService().authorize(
+        contentId: partId,
+        playbackUrl: url,
+        contentType: 'MINI_SERIES_PART',
+      );
+      await player.open(
+        Media(
+          authorization.playbackUrl,
+          httpHeaders: authorization.headers,
+        ),
+        play: false,
+      );
+      try {
+        if (authorization.audioTrackUrl?.isNotEmpty == true) {
+          await player.setAudioTrack(
+            AudioTrack.uri(authorization.audioTrackUrl!),
+          );
+        }
+      } catch (e) {
+        debugPrint('[ADMIN_PLAYBACK] audioTrackError: $e');
+      }
+      try {
+        if (authorization.subtitleTrackUrl?.isNotEmpty == true) {
+          await player.setSubtitleTrack(
+            SubtitleTrack.uri(authorization.subtitleTrackUrl!),
+          );
+        }
+      } catch (e) {
+        debugPrint('[ADMIN_PLAYBACK] subtitleTrackError: $e');
+      }
+      if (resumeAt > Duration.zero) await player.seek(resumeAt);
+      _playbackErrorSubscription = player.stream.error.listen((_) {
+        if (_retriedParts.add(index)) {
+          _loadPart(
+            index,
+            resumeAt: player.state.position,
+            automaticRetry: true,
+          );
+        } else if (mounted) {
+          setState(() {
+            _hasVideoError = true;
+            _videoErrorMessage = 'Failed to load video';
+          });
+        }
+      });
     } catch (_) {
       await player.dispose();
       if (!mounted) return;
+      if (!automaticRetry && _retriedParts.add(index)) {
+        await _loadPart(index, resumeAt: resumeAt, automaticRetry: true);
+        return;
+      }
       setState(() {
         _currentIndex = index;
         _isVideoLoading = false;
@@ -132,6 +194,20 @@ class _AdminShortsPlayerPageState extends State<AdminShortsPlayerPage>
       _isVideoLoading = false;
       _hasVideoError = false;
       _videoErrorMessage = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || _player != player) return;
+      try {
+        await MediaKitPlaybackCoordinator.setActive(player);
+        await player.play();
+        debugPrint('[ADMIN_PLAYBACK] playbackStarted=true');
+      } catch (_) {
+        if (!mounted || _player != player) return;
+        setState(() {
+          _hasVideoError = true;
+          _videoErrorMessage = 'Failed to load video';
+        });
+      }
     });
   }
 

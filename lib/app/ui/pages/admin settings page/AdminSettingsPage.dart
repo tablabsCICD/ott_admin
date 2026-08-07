@@ -257,7 +257,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>
 
   AdminRuleListItem _revenueItem(RevenueShareRule rule) {
     return AdminRuleListItem(
-      contentType: rule.contentType.apiValue,
+      contentType: rule.contentType.label,
       audienceScope: rule.audienceScope.apiValue,
       primaryLabel: 'Admin',
       primaryValue: '${_formatNumber(rule.adminPercentage)}%',
@@ -275,7 +275,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>
 
   AdminRuleListItem _registrationItem(RegistrationFeeRule rule) {
     return AdminRuleListItem(
-      contentType: rule.contentType.apiValue,
+      contentType: rule.contentType.label,
       audienceScope: rule.audienceScope.apiValue,
       primaryLabel: 'Fee',
       primaryValue: 'Rs. ${_formatNumber(rule.registrationFee)}',

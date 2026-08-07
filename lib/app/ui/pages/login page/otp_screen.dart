@@ -33,17 +33,15 @@ class _OtpScreenState extends State<OtpScreen> {
     return Scaffold(
       backgroundColor: selectedThemeData.scaffoldBackgroundColor,
       body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(
-            height: 60,
-          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
                 child: Image.asset(
                   ImageConstant.logo,
-                  width: 200,
+                  width: 150,
                 ),
               ),
             ],

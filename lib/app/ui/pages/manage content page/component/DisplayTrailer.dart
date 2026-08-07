@@ -16,7 +16,7 @@ class _TrailerPageState extends State<TrailerPage> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Advanced Player"),
+        title: const Text("Trailer Player"),
       ),
       body: Column(
         children: [
@@ -31,14 +31,32 @@ class _TrailerPageState extends State<TrailerPage> {
   }
 
   Widget _buildPlayer(ThemeData theme) {
-    // Shared media_kit wrapper owns the playback engine, lifecycle handling,
-    // fullscreen orientation, and disposal.
+    final url = widget.trailerUrl.trim();
+    if (url.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.ondemand_video_outlined,
+                size: 48, color: theme.hintColor),
+            const SizedBox(height: 12),
+            Text(
+              "Trailer is unavailable for this content",
+              style: TextStyle(color: theme.canvasColor, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
     return OttMediaPlayer(
-      url: widget.trailerUrl,
-      autoPlay: false,
-      errorBuilder: (_, message) => Text(
-        message,
-        style: TextStyle(color: theme.colorScheme.error),
+      url: url,
+      autoPlay: true,
+      errorBuilder: (_, message) => Center(
+        child: Text(
+          message,
+          style: TextStyle(color: theme.colorScheme.error),
+        ),
       ),
     );
   }

@@ -35,9 +35,28 @@ class Data {
     this.promoters,
   });
 
-  factory Data.fromJson(Map<String, dynamic> json) => Data(
-    promoters: json["Promoters"] == null ? [] : List<Promoters>.from(json["Promoters"]!.map((x) => Promoters.fromJson(x))),
-  );
+  factory Data.fromJson(Map<String, dynamic> json) {
+    // This endpoint has returned both the original `Promoters` array and a
+    // Spring-page response (`promoters.content`) in different deployments.
+    // Accept both spellings/shapes so a backend pagination change does not
+    // silently turn a valid response into an empty Manage Promoters list.
+    dynamic rawPromoters = json["Promoters"] ?? json["promoters"];
+    if (rawPromoters is Map<String, dynamic>) {
+      rawPromoters = rawPromoters["content"] ??
+          rawPromoters["Promoters"] ??
+          rawPromoters["promoters"];
+    }
+
+    final promoterList = rawPromoters is List
+        ? rawPromoters
+            .whereType<Map>()
+            .map((item) => Promoters.fromJson(
+                Map<String, dynamic>.from(item)))
+            .toList()
+        : <Promoters>[];
+
+    return Data(promoters: promoterList);
+  }
 
   Map<String, dynamic> toJson() => {
     "Promoters": promoters == null ? [] : List<dynamic>.from(promoters!.map((x) => x.toJson())),

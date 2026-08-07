@@ -9,6 +9,7 @@ import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:admin_ott/domain/entities/mediaHouse.dart';
 import 'package:admin_ott/domain/entities/promoter.dart';
+import 'package:admin_ott/domain/entities/content.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -186,6 +187,8 @@ class _RevenueSettlementAnalyticsPageState
     switch (_contentType) {
       case 'All':
         return 'ALL';
+      case 'Short Film':
+        return 'SHORT_FILM';
       case 'Series':
         return 'SERIES';
       case 'Mini Series':
@@ -438,6 +441,7 @@ class _RevenueSettlementAnalyticsPageState
                   items: const {
                     'All': 'All',
                     'Movie': 'Movie',
+                    'Short Film': 'Short Film',
                     'Series': 'Series',
                     'Mini Series': 'Mini Series',
                     'Music': 'Music',
@@ -1118,7 +1122,8 @@ class _RevenueSettlementAnalyticsPageState
       final amount = _asDouble(map['amount']);
       final percentage = _asDouble(map['percentage']);
       return _ChartPoint(
-        map['label']?.toString() ?? map['contentType']?.toString() ?? '-',
+        map['label']?.toString() ??
+            formatContentTypeLabel(map['contentType']?.toString()),
         chartKey == 'platformVsProduction' && amount == 0 && percentage > 0
             ? percentage
             : amount,

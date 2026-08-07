@@ -10,6 +10,7 @@ import 'package:admin_ott/data/models/response/reportAndDataResponse.dart';
 import 'package:admin_ott/data/models/response/watchTimeAnalyticsResponseModel.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:admin_ott/app/widgets/app_loaders.dart';
+import 'package:admin_ott/domain/entities/content.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -460,7 +461,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   theme: theme,
                   label: "Content Type",
                   value: _contentType,
-                  options: const ["ALL", "MOVIE", "SERIES", "MINI SERIES"],
+                  options: const [
+                    "ALL",
+                    "MOVIE",
+                    "SHORT_FILM",
+                    "SERIES",
+                    "MINI_SERIES"
+                  ],
                   onChanged: (value) => setState(() => _contentType = value),
                 ),
               ),
@@ -2059,7 +2066,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       case "Content":
         final contentTypePoints = _groupReports(
           reports,
-          (item) => (item.contentType ?? "Unknown").toUpperCase(),
+          (item) => formatContentTypeLabel(item.contentType),
           _revenue,
         );
         return _buildContentAnalytics(
@@ -4756,7 +4763,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _detailLine("Production House", report.mediaHouseName ?? "-"),
-                _detailLine("Content Type", report.contentType ?? "-"),
+                _detailLine("Content Type", formatContentTypeLabel(report.contentType)),
                 _detailLine(
                     "Release Date", report.releasedDate?.toString() ?? "-"),
                 _detailLine("Release Time", report.releaseTime ?? "-"),

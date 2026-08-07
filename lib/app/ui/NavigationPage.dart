@@ -21,6 +21,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/ShortFilmListScreen.dart';
+
 class NavigationPage extends StatefulWidget {
   const NavigationPage({super.key});
 
@@ -40,6 +42,7 @@ class _NavigationPageState extends State<NavigationPage> {
         title: 'Manage Production House', page: const ManageMediaHousePage()),
     PageData(title: 'Manage Promoters', page: const ManagePromoterPage()),
     PageData(title: 'Manage Content', page: MovieListScreen()),
+    PageData(title: 'Manage Short Film', page: const ShortFilmListScreen()),
     PageData(title: 'Manage Mini Series', page: ShortsPage()),
     PageData(title: 'Manage User', page: ManageUserPage()),
     PageData(title: 'Notifications', page: const NotificationScreen()),
@@ -63,6 +66,7 @@ class _NavigationPageState extends State<NavigationPage> {
     Icons.house,
     Icons.supervisor_account,
     Icons.video_library,
+    Icons.movie_creation_outlined,
     Icons.smart_display_rounded,
     Icons.people_alt_rounded,
     Icons.notifications_active_outlined,
@@ -79,8 +83,8 @@ class _NavigationPageState extends State<NavigationPage> {
 
   @override
   Widget build(BuildContext context) {
-    var selectedThemeData =
-        Provider.of<ThemeProvider>(context, listen: false).getTheme;
+    final selectedThemeData =
+        Provider.of<ThemeProvider>(context, listen: true).getTheme;
 
     return PopScope(
       canPop: false,
@@ -219,7 +223,7 @@ class _NavigationPageState extends State<NavigationPage> {
               child: Hero(
                 tag: "logo",
                 child: ClipRRect(
-                  borderRadius: BorderRadiusGeometry.circular(25),
+                  borderRadius: BorderRadius.circular(25),
                   child: Image.asset(
                     ImageConstant.logo,
                     fit: BoxFit.contain,

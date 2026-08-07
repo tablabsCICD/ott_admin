@@ -2,6 +2,7 @@ import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/provider/videoProvider.dart';
 import 'package:admin_ott/app/ui/pages/manage%20media%20house%20page/component/movie_sales_chart.dart';
 import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/DisplayTrailer.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/secure_content_player_page.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:admin_ott/domain/entities/content.dart';
 import 'package:admin_ott/domain/entities/mediaHouse.dart';
@@ -499,7 +500,8 @@ class ContentSummaryChips extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _chip(context, Icons.movie_filter_outlined, content.type ?? 'CONTENT'),
+        _chip(context, Icons.movie_filter_outlined,
+            formatContentTypeLabel(content.type)),
         _chip(
             context, Icons.verified_outlined, content.approvalStatus ?? 'N/A'),
         _chip(context, Icons.calendar_today_outlined,
@@ -630,8 +632,11 @@ class ActionPanel extends StatelessWidget {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          TrailerPage(trailerUrl: content.contentUrl ?? ''),
+                      builder: (_) => SecureContentPlayerPage(
+                        contentId: content.id?.toString() ?? '',
+                        playbackUrl: content.contentUrl ?? '',
+                        contentType: content.type ?? 'MOVIE',
+                      ),
                     ),
                   ),
                 ),

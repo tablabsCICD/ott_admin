@@ -4,6 +4,7 @@ import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:admin_ott/data/models/response/transaction_settlement_report.dart';
 import 'package:admin_ott/data/models/response/userTransactionResponse.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
+import 'package:admin_ott/domain/entities/content.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -526,37 +527,96 @@ class _TransactionPageState extends State<TransactionPage> {
   }
 
   Widget _buildSearchField(ThemeData theme, TransactionProvider provider) {
-    return TextField(
-      controller: provider.searchController,
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Search by user name',
-        prefixIcon: Icon(Icons.search, color: theme.canvasColor),
-        suffixIcon: provider.searchController.text.isEmpty
-            ? null
-            : IconButton(
-                tooltip: 'Clear search',
-                onPressed: provider.searchController.clear,
-                icon: const Icon(Icons.close),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: provider.searchController,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            hintText: 'Search by user name',
+            prefixIcon: Icon(Icons.search, color: theme.canvasColor),
+            suffixIcon: provider.searchController.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: provider.searchController.clear,
+                    icon: const Icon(Icons.close),
+                  ),
+            filled: true,
+            fillColor: theme.scaffoldBackgroundColor,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide:
+                  BorderSide(color: theme.canvasColor.withValues(alpha: 0.12)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide:
+                  BorderSide(color: theme.canvasColor.withValues(alpha: 0.12)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: theme.primaryColor),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _buildContentTypeFilter(theme, provider),
+      ],
+    );
+  }
+
+  static const _contentTypeOptions = [
+    ('ALL', 'All Types'),
+    ('MOVIE', 'Movie'),
+    ('SHORT_FILM', 'Short Film'),
+    ('SERIES', 'Series'),
+    ('MINI_SERIES', 'Mini Series'),
+  ];
+
+  Widget _buildContentTypeFilter(ThemeData theme, TransactionProvider provider) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: _contentTypeOptions.map((option) {
+          final (value, label) = option;
+          final isSelected = provider.selectedContentType == value;
+          return Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () {
+                provider.setSelectedContentType(value);
+                provider.fetchUserTransactions(provider.searchController.text.trim());
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? theme.primaryColor
+                      : theme.scaffoldBackgroundColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? theme.primaryColor
+                        : theme.canvasColor.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : theme.canvasColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-        filled: true,
-        fillColor: theme.scaffoldBackgroundColor,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide:
-              BorderSide(color: theme.canvasColor.withValues(alpha: 0.12)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide:
-              BorderSide(color: theme.canvasColor.withValues(alpha: 0.12)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.primaryColor),
-        ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -695,8 +755,8 @@ class _TransactionPageState extends State<TransactionPage> {
                 theme,
                 leftLabel: 'Content',
                 leftValue: _contentTitle(transaction),
-                rightLabel: 'Price',
-                rightValue: _priceText(transaction),
+                rightLabel: 'Type',
+                rightValue: formatContentTypeLabel(transaction.movie?.type),
               ),
               const SizedBox(height: 10),
               _buildDetailRow(

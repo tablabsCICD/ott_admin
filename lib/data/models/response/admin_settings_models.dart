@@ -15,18 +15,38 @@ enum RevenueAudienceScope {
 }
 
 enum RevenueContentType {
-  movies('MOVIES'),
+  movie('MOVIE'),
   series('SERIES'),
-  shorts('SHORTS');
+  miniSeries('MINI_SERIES'),
+  shortFilm('SHORT_FILM');
 
   const RevenueContentType(this.apiValue);
 
   final String apiValue;
 
+  String get label {
+    switch (this) {
+      case RevenueContentType.movie:
+        return 'Movie';
+      case RevenueContentType.series:
+        return 'Series';
+      case RevenueContentType.miniSeries:
+        return 'Mini Series';
+      case RevenueContentType.shortFilm:
+        return 'Short Film';
+    }
+  }
+
   static RevenueContentType fromApi(String? value) {
+    final normalized = value?.trim().toUpperCase();
+    // Read legacy values without sending them back to the API.
+    if (normalized == 'MOVIES') return RevenueContentType.movie;
+    if (normalized == 'SHORTS' || normalized == 'MINI SERIES') {
+      return RevenueContentType.miniSeries;
+    }
     return RevenueContentType.values.firstWhere(
-      (item) => item.apiValue == value,
-      orElse: () => RevenueContentType.movies,
+      (item) => item.apiValue == normalized || item.name.toUpperCase() == normalized,
+      orElse: () => RevenueContentType.movie,
     );
   }
 }

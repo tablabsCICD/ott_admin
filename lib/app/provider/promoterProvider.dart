@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:admin_ott/app/core/constant/api_constant.dart';
-import 'package:admin_ott/app/ui/pages/manage%20promoter%20page/components/promoterList.dart';
 import 'package:admin_ott/app/widgets/show_toast.dart';
 import 'package:admin_ott/data/models/request/save_promoter_request.dart';
 import 'package:admin_ott/data/models/response/addPromoterResponse.dart';
@@ -24,12 +23,13 @@ class PromoterProvider extends ChangeNotifier {
   }
 
   void onSearchChanged() {
+    final query = searchController.text.trim().toLowerCase();
     _filteredPromoters = _promoters
-        .where((promoter) => promoter.promoterName
-            .toString()
-            .toLowerCase()
-            .contains(searchController.text.toLowerCase()))
+        .where((promoter) =>
+            (selectedLevel == 'All' || promoter.level == selectedLevel) &&
+            (promoter.promoterName ?? '').toLowerCase().contains(query))
         .toList();
+    notifyListeners();
   }
 
   TextEditingController firstNameController = TextEditingController();
@@ -274,6 +274,7 @@ class PromoterProvider extends ChangeNotifier {
   String selectedLevel = 'All';
 
   List<Promoters> filterPromotersByLevel(String level) {
+    selectedLevel = level;
     if (level == 'All') {
       _filteredPromoters = List.from(promoterList);
       notifyListeners();
@@ -281,7 +282,6 @@ class PromoterProvider extends ChangeNotifier {
     }
     _filteredPromoters =
         promoterList.where((promoter) => promoter.level == level).toList();
-    selectedLevel = level;
     notifyListeners();
     return _filteredPromoters;
   }

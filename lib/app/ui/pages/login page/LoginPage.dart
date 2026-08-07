@@ -44,16 +44,18 @@ class _LoginPageState extends State<LoginPage> {
           SizedBox(
             height: 60,
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
+          SizedBox(
+            height: ResponsiveWidget.isMobile(context) ? 90 : 150,
+            child: Hero(
+              tag: "logo",
+              child: ClipRRect(
+                borderRadius: BorderRadiusGeometry.circular(25),
                 child: Image.asset(
                   ImageConstant.logo,
-                  width: 200,
+                  fit: BoxFit.contain,
                 ),
               ),
-            ],
+            ),
           ),
           SizedBox(
             height: 20,

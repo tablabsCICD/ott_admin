@@ -45,7 +45,7 @@ class ProfilePageCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: selectedThemeData.focusColor.withValues(alpha: 0.42),
+                  color: selectedThemeData.focusColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(11),
                 ),
                 child: Row(

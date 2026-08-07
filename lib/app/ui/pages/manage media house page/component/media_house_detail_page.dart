@@ -137,6 +137,8 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
         children: [
           _buildModeChip(theme, _ContentMode.movie, 'Movie'),
           const SizedBox(width: 6),
+          _buildModeChip(theme, _ContentMode.shortFilm, 'Short Film'),
+          const SizedBox(width: 6),
           _buildModeChip(theme, _ContentMode.series, 'Series'),
           const SizedBox(width: 6),
           _buildModeChip(theme, _ContentMode.shorts, 'Mini Series'),
@@ -194,20 +196,28 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
     }
 
     final filtered = provider.filteredContentListByMediaHouse.where((item) {
-      final type = (item.type ?? '').trim().toLowerCase();
+      final type = (item.type ?? '').trim().toUpperCase();
       if (_selectedContentMode == _ContentMode.series) {
-        return type.contains('series');
+        return type == 'SERIES';
       }
-      return type.contains('movie') || type.isEmpty;
+      if (_selectedContentMode == _ContentMode.shortFilm) {
+        return type == 'SHORT_FILM';
+      }
+      return type == 'MOVIE' || type.isEmpty;
     }).toList();
+
+    final sectionTitle = switch (_selectedContentMode) {
+      _ContentMode.movie => 'Movies',
+      _ContentMode.shortFilm => 'Short Films',
+      _ContentMode.series => 'Series',
+      _ContentMode.shorts => 'Mini Series',
+    };
 
     return _buildContentSection(
       context: context,
       theme: theme,
-      title: _selectedContentMode == _ContentMode.movie ? 'Movies' : 'Series',
-      emptyText: _selectedContentMode == _ContentMode.movie
-          ? 'No movies available.'
-          : 'No series available.',
+      title: sectionTitle,
+      emptyText: 'No ${sectionTitle.toLowerCase()} available.',
       items: filtered,
       child: _buildMovieSeriesGrid(context, filtered, theme),
     );
@@ -900,7 +910,7 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
   }
 }
 
-enum _ContentMode { movie, series, shorts }
+enum _ContentMode { movie, shortFilm, series, shorts }
 
 class _MetricAmountHover extends StatefulWidget {
   const _MetricAmountHover({

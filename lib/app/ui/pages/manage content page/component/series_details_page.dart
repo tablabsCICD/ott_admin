@@ -10,6 +10,7 @@ import 'package:admin_ott/app/core/network/api_helper.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/provider/videoProvider.dart';
 import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/DisplayTrailer.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/secure_content_player_page.dart';
 import 'package:admin_ott/domain/entities/content.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -252,7 +253,7 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
                           mediaHouse: mediaHouse,
                           teaserUrl: teaserUrl,
                           desktop: desktop,
-                          onPlay: _openPreview,
+                          onPlay: _openDirectPreview,
                         ),
                         const SizedBox(height: 22),
                         _SectionHeader(
@@ -341,7 +342,8 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
                         _EpisodeDetailsPanel(
                           episode: _selectedEpisode,
                           desktop: desktop,
-                          onPlay: _openPreview,
+                          onPlay: (_) =>
+                              _openProtectedEpisode(_selectedEpisode),
                         ),
                         const SizedBox(height: 22),
                         DetailsSection(
@@ -364,7 +366,7 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
     if (action == 'View Details') {
       final url = _selectedEpisode.videoUrl;
       if (url.isNotEmpty) {
-        _openPreview(url);
+        _openProtectedEpisode(_selectedEpisode);
         return;
       }
     }
@@ -381,7 +383,7 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
     }).toList();
   }
 
-  void _openPreview(String url) {
+  void _openDirectPreview(String url) {
     if (url.trim().isEmpty) {
       _showUnavailable('Video preview');
       return;
@@ -389,6 +391,23 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => TrailerPage(trailerUrl: url.trim())),
+    );
+  }
+
+  void _openProtectedEpisode(_SeriesEpisode episode) {
+    if (episode.videoUrl.trim().isEmpty) {
+      _showUnavailable('Video preview');
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SecureContentPlayerPage(
+          contentId: episode.id.toString(),
+          playbackUrl: episode.videoUrl.trim(),
+          contentType: 'SERIES_EPISODE',
+        ),
+      ),
     );
   }
 

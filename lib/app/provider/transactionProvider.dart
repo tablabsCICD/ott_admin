@@ -96,8 +96,23 @@ class TransactionProvider extends ChangeNotifier {
   List<UserTransactionData> _filtteredUserTransactionList =[];
   List<UserTransactionData> get filtteredUserTransactionList => _filtteredUserTransactionList;
 
+  String _selectedContentType = 'ALL';
+  String get selectedContentType => _selectedContentType;
+
+  void setSelectedContentType(String type) {
+    _selectedContentType = type;
+    applyFilters();
+  }
+
   Future<void> fetchUserTransactions(String search) async {
     String apiUrl = ApiConstant.userTransactionApi(search);
+    if (_selectedContentType != 'ALL') {
+      final uri = Uri.parse(apiUrl);
+      apiUrl = uri.replace(queryParameters: {
+        ...uri.queryParameters,
+        'contentType': _selectedContentType,
+      }).toString();
+    }
     print(apiUrl);
     ApiHelper apiHelper = ApiHelper();
     try {
@@ -111,13 +126,16 @@ class TransactionProvider extends ChangeNotifier {
         if (userTransactionResponse.success == true) {
           if(userTransactionResponse.data != null){
             _userTransactionList = userTransactionResponse.data!;
-            _filtteredUserTransactionList = _userTransactionList;
+            applyFilters();
             debugPrint("message : ${userTransactionResponse.message}");
-            notifyListeners();
           }else {
+            _userTransactionList = [];
+            applyFilters();
             debugPrint("empty list: ${userTransactionResponse.message}");
           }
         } else {
+          _userTransactionList = [];
+          applyFilters();
           debugPrint("Error: ${userTransactionResponse.message}");
         }
       } else {
@@ -136,10 +154,24 @@ class TransactionProvider extends ChangeNotifier {
     );
   }
 
-
-
-
   void filterData() {
-    fetchUserTransactions(searchController.text);
+    applyFilters();
+  }
+
+  void applyFilters() {
+    final search = searchController.text.trim().toLowerCase();
+    _filtteredUserTransactionList = _userTransactionList.where((txn) {
+      final matchesSearch = search.isEmpty ||
+          (txn.user?.firstName?.toLowerCase().contains(search) ?? false) ||
+          (txn.user?.lastName?.toLowerCase().contains(search) ?? false) ||
+          (txn.user?.mobileNumber?.contains(search) ?? false) ||
+          (txn.movie?.title?.toLowerCase().contains(search) ?? false);
+
+      final matchesType = _selectedContentType == 'ALL' ||
+          (txn.movie?.type?.toUpperCase() == _selectedContentType.toUpperCase());
+
+      return matchesSearch && matchesType;
+    }).toList();
+    notifyListeners();
   }
 }
