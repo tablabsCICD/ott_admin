@@ -210,6 +210,18 @@ class _OttMediaPlayerState extends State<OttMediaPlayer>
     super.dispose();
   }
 
+  bool _isFullscreen = false;
+
+  Future<void> _toggleFullscreen() async {
+    if (_isFullscreen) {
+      await _exitFullscreen();
+      if (mounted) setState(() => _isFullscreen = false);
+    } else {
+      await _enterFullscreen();
+      if (mounted) setState(() => _isFullscreen = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final error = _errorMessage;
@@ -232,8 +244,14 @@ class _OttMediaPlayerState extends State<OttMediaPlayer>
       child: Video(
         controller: _videoController,
         fit: widget.fit,
-        controls:
-            widget.showDefaultControls ? widget.controls : NoVideoControls,
+        controls: widget.controls ??
+            (widget.showDefaultControls
+                ? (state) => OttMediaControls(
+                      player: _player,
+                      allowFullscreen: widget.allowFullscreen,
+                      onToggleFullscreen: _toggleFullscreen,
+                    )
+                : NoVideoControls),
         pauseUponEnteringBackgroundMode: true,
         onEnterFullscreen: _enterFullscreen,
         onExitFullscreen: _exitFullscreen,
@@ -248,5 +266,244 @@ class _OttMediaPlayerState extends State<OttMediaPlayer>
       return 16 / 9;
     }
     return width / height;
+  }
+}
+
+class OttMediaControls extends StatefulWidget {
+  final Player player;
+  final bool allowFullscreen;
+  final Future<void> Function()? onToggleFullscreen;
+
+  const OttMediaControls({
+    super.key,
+    required this.player,
+    this.allowFullscreen = true,
+    this.onToggleFullscreen,
+  });
+
+  @override
+  State<OttMediaControls> createState() => _OttMediaControlsState();
+}
+
+class _OttMediaControlsState extends State<OttMediaControls> {
+  bool _showControls = true;
+  Timer? _hideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startHideTimer();
+  }
+
+  void _startHideTimer() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && widget.player.state.playing) {
+        setState(() => _showControls = false);
+      }
+    });
+  }
+
+  void _toggleControls() {
+    setState(() {
+      _showControls = !_showControls;
+    });
+    if (_showControls) {
+      _startHideTimer();
+    }
+  }
+
+  void _seekRelative(Duration offset) {
+    _startHideTimer();
+    final current = widget.player.state.position;
+    final duration = widget.player.state.duration;
+    final target = current + offset;
+    final clamped = target < Duration.zero
+        ? Duration.zero
+        : (duration > Duration.zero && target > duration ? duration : target);
+    widget.player.seek(clamped);
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (d.inHours > 0) {
+      final hours = d.inHours.toString().padLeft(2, '0');
+      return '$hours:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _toggleControls,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedOpacity(
+        opacity: _showControls ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 300),
+        child: IgnorePointer(
+          ignoring: !_showControls,
+          child: Container(
+            color: Colors.black45,
+            child: Stack(
+              children: [
+                // Center Playback Controls: 10s Rewind, Play/Pause, 10s Forward
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        iconSize: 42,
+                        color: Colors.white,
+                        tooltip: 'Rewind 10s',
+                        icon: const Icon(Icons.replay_10_rounded),
+                        onPressed: () =>
+                            _seekRelative(const Duration(seconds: -10)),
+                      ),
+                      const SizedBox(width: 28),
+                      StreamBuilder<bool>(
+                        stream: widget.player.stream.playing,
+                        initialData: widget.player.state.playing,
+                        builder: (context, snapshot) {
+                          final playing = snapshot.data ?? false;
+                          return IconButton(
+                            iconSize: 56,
+                            color: Colors.white,
+                            tooltip: playing ? 'Pause' : 'Play',
+                            icon: Icon(playing
+                                ? Icons.pause_circle_filled_rounded
+                                : Icons.play_circle_filled_rounded),
+                            onPressed: () {
+                              _startHideTimer();
+                              if (playing) {
+                                widget.player.pause();
+                              } else {
+                                MediaKitPlaybackCoordinator.setActive(
+                                    widget.player);
+                                widget.player.play();
+                              }
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 28),
+                      IconButton(
+                        iconSize: 42,
+                        color: Colors.white,
+                        tooltip: 'Forward 10s',
+                        icon: const Icon(Icons.forward_10_rounded),
+                        onPressed: () =>
+                            _seekRelative(const Duration(seconds: 10)),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bottom Control Bar: Time + Progress Slider + Fullscreen
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 10,
+                  child: StreamBuilder<Duration>(
+                    stream: widget.player.stream.position,
+                    initialData: widget.player.state.position,
+                    builder: (context, posSnap) {
+                      return StreamBuilder<Duration>(
+                        stream: widget.player.stream.duration,
+                        initialData: widget.player.state.duration,
+                        builder: (context, durSnap) {
+                          final position = posSnap.data ?? Duration.zero;
+                          final duration = durSnap.data ?? Duration.zero;
+                          final maxMs = duration.inMilliseconds.toDouble();
+                          final valueMs = position.inMilliseconds
+                              .clamp(0, maxMs > 0 ? maxMs.toInt() : 0)
+                              .toDouble();
+
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    _formatDuration(position),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    _formatDuration(duration),
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: SliderTheme(
+                                      data: SliderTheme.of(context).copyWith(
+                                        trackHeight: 4,
+                                        thumbShape: const RoundSliderThumbShape(
+                                            enabledThumbRadius: 6),
+                                        activeTrackColor:
+                                            Theme.of(context).primaryColor,
+                                        inactiveTrackColor: Colors.white30,
+                                        thumbColor:
+                                            Theme.of(context).primaryColor,
+                                      ),
+                                      child: Slider(
+                                        min: 0,
+                                        max: maxMs > 0 ? maxMs : 1,
+                                        value: valueMs.clamp(
+                                            0, maxMs > 0 ? maxMs : 1),
+                                        onChanged: maxMs > 0
+                                            ? (val) {
+                                                _startHideTimer();
+                                                widget.player.seek(
+                                                    Duration(milliseconds: val.round()));
+                                              }
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                  if (widget.allowFullscreen &&
+                                      widget.onToggleFullscreen != null)
+                                    IconButton(
+                                      iconSize: 24,
+                                      color: Colors.white,
+                                      tooltip: 'Fullscreen',
+                                      icon: const Icon(Icons.fullscreen_rounded),
+                                      onPressed: () {
+                                        _startHideTimer();
+                                        widget.onToggleFullscreen?.call();
+                                      },
+                                    ),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
