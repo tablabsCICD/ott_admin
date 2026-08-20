@@ -25,378 +25,375 @@ class WeeklySettlementReportResponse {
 }
 
 class WeeklySettlementReportData {
-  final Map<String, dynamic> raw;
-  final String? transactionId;
-  final String? settlementReference;
   final String? title;
-  final String? status;
-  final String? customerPayment;
-  final String? customerPaymentLabel;
-  final String? customerName;
-  final String? contentTitle;
-  final String? currency;
+  final String? settlementBatchReference;
+  final String? settlementStatus;
+  final SettlementPeriodModel? settlementPeriod;
+  final String? reportType;
+  final String? beneficiary;
   final String? currencySymbol;
-  final String? settlementPeriod;
-  final DateTime? periodStart;
-  final DateTime? periodEnd;
-  final int? totalTransactions;
-  final List<SettlementReportMetric> metrics;
-  final List<SettlementReportSection> sections;
-  final List<SettlementReportFlexibleBlock> promoterCards;
-  final List<SettlementReportFlexibleBlock> finalSummary;
+  final List<SummaryCardModel> summaryCards;
+  final SettlementPurchaseSummaryModel? settlementPurchaseSummary;
+  final List<SettlementSectionModel> sections;
+  final List<BeneficiarySettlementModel> beneficiarySettlementSummary;
+  final TaxAndChargeSummaryModel? taxAndChargeSummary;
+  final List<FinalSummaryItemModel> finalSummary;
 
   WeeklySettlementReportData({
-    required this.raw,
-    this.transactionId,
-    this.settlementReference,
     this.title,
-    this.status,
-    this.customerPayment,
-    this.customerPaymentLabel,
-    this.customerName,
-    this.contentTitle,
-    this.currency,
-    this.currencySymbol,
+    this.settlementBatchReference,
+    this.settlementStatus,
     this.settlementPeriod,
-    this.periodStart,
-    this.periodEnd,
-    this.totalTransactions,
-    required this.metrics,
+    this.reportType,
+    this.beneficiary,
+    this.currencySymbol,
+    required this.summaryCards,
+    this.settlementPurchaseSummary,
     required this.sections,
-    required this.promoterCards,
+    required this.beneficiarySettlementSummary,
+    this.taxAndChargeSummary,
     required this.finalSummary,
   });
 
   factory WeeklySettlementReportData.fromJson(Map<String, dynamic> json) {
-    final metrics = _asMapList(json["metrics"])
-        .map(SettlementReportMetric.fromJson)
+    final rawSummaryCards = _asMapList(json["summaryCards"])
+        .map(SummaryCardModel.fromJson)
         .toList()
       ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
 
+    final rawSections = _asMapList(json["sections"])
+        .map(SettlementSectionModel.fromJson)
+        .toList()
+      ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+
+    final rawBeneficiaries = _asMapList(json["beneficiarySettlementSummary"])
+        .map(BeneficiarySettlementModel.fromJson)
+        .toList()
+      ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+
+    final rawFinalSummary = _asMapList(json["finalSummary"])
+        .map(FinalSummaryItemModel.fromJson)
+        .toList()
+      ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+
+    SettlementPeriodModel? period;
+    if (json["settlementPeriod"] is Map<String, dynamic>) {
+      period = SettlementPeriodModel.fromJson(json["settlementPeriod"]);
+    }
+
+    SettlementPurchaseSummaryModel? purchaseSummary;
+    if (json["settlementPurchaseSummary"] is Map<String, dynamic>) {
+      purchaseSummary = SettlementPurchaseSummaryModel.fromJson(
+        json["settlementPurchaseSummary"],
+      );
+    }
+
+    TaxAndChargeSummaryModel? taxAndCharges;
+    if (json["taxAndChargeSummary"] is Map<String, dynamic>) {
+      taxAndCharges = TaxAndChargeSummaryModel.fromJson(
+        json["taxAndChargeSummary"],
+      );
+    }
+
     return WeeklySettlementReportData(
-      raw: Map<String, dynamic>.from(json),
-      transactionId: _firstText(json, const [
-        "transactionId",
-        "transactionID",
-        "settlementId",
-        "settlementID",
-      ]),
-      settlementReference: _firstText(json, const [
-        "settlementReference",
-        "settlementRef",
-        "reference",
-        "settlementId",
-        "transactionId",
-        "id",
-      ]),
       title: json["title"]?.toString(),
-      status: _firstText(json, const [
-            "settlementStatus",
-            "settlement_status",
-            "paymentStatus",
-            "status",
-          ]) ??
-          _firstNestedText(json, const [
-            "settlement",
-            "settlementPeriod",
-            "settlementInfo",
-            "settlementInformation",
-            "settlementDetails",
-          ], const [
-            "status",
-            "settlementStatus",
-            "settlement_status",
-            "paymentStatus",
-          ]),
-      customerPayment: json["customerPayment"]?.toString(),
-      customerPaymentLabel: json["customerPaymentLabel"]?.toString(),
-      customerName: json["customerName"]?.toString(),
-      contentTitle: json["contentTitle"]?.toString(),
-      currency: _firstText(json, const ["currency", "currencyCode"]),
-      currencySymbol: _firstText(json, const ["currencySymbol", "symbol"]),
-      settlementPeriod: _settlementPeriodText(json),
-      periodStart: _firstDateFromSources(json, const [
-        "periodStart",
-        "startDate",
-        "fromDate",
-        "settlementStartDate",
+      settlementBatchReference: _firstText(json, const [
+        "settlementBatchReference",
+        "batchReference",
+        "reference",
+        "settlementReference",
+        "transactionId",
       ]),
-      periodEnd: _firstDateFromSources(json, const [
-        "periodEnd",
-        "endDate",
-        "toDate",
-        "settlementEndDate",
+      settlementStatus: _firstText(json, const [
+        "settlementStatus",
+        "status",
+        "paymentStatus",
       ]),
-      totalTransactions: _firstInt(json, const [
-        "totalTransactions",
-        "transactionCount",
-        "transactions",
-      ]),
-      metrics: metrics,
-      sections: _asMapList(json["sections"])
-          .map(SettlementReportSection.fromJson)
-          .toList(),
-      promoterCards: _asMapList(json["promoterCards"])
-          .map(SettlementReportFlexibleBlock.fromJson)
-          .toList(),
-      finalSummary: _asMapList(json["finalSummary"])
-          .map(SettlementReportFlexibleBlock.fromJson)
-          .toList(),
+      settlementPeriod: period,
+      reportType: json["reportType"]?.toString(),
+      beneficiary: json["beneficiary"]?.toString(),
+      currencySymbol: _firstText(json, const ["currencySymbol", "symbol", "currency"]),
+      summaryCards: rawSummaryCards,
+      settlementPurchaseSummary: purchaseSummary,
+      sections: rawSections,
+      beneficiarySettlementSummary: rawBeneficiaries,
+      taxAndChargeSummary: taxAndCharges,
+      finalSummary: rawFinalSummary,
     );
   }
 
-  String get displayCurrencySymbol {
-    final symbol = currencySymbol?.trim();
-    if (symbol != null && symbol.isNotEmpty) {
-      return symbol.replaceAll("Rs.", "\u20B9").replaceAll("Rs", "\u20B9");
+  String get fallbackSymbol {
+    final sym = currencySymbol?.trim();
+    if (sym != null && sym.isNotEmpty) {
+      return sym.replaceAll("Rs.", "₹").replaceAll("Rs", "₹");
     }
-    final code = currency?.trim().toUpperCase();
-    if (code == null || code == "INR" || code == "RUPEE") return "\u20B9";
-    return code;
+    return "₹";
   }
+}
 
-  String? amountTextFor(List<String> terms) {
-    final metric = metrics.cast<SettlementReportMetric?>().firstWhere(
-          (metric) => metric != null && _matchesAny(metric.searchText, terms),
-          orElse: () => null,
-        );
-    if (metric != null) return metric.amount;
+class SettlementPeriodModel {
+  final dynamic fromDate;
+  final dynamic toDate;
 
-    for (final section in sections) {
-      for (final row in section.rows) {
-        if (_matchesAny("${section.title} ${section.code} ${row.label}", terms)) {
-          return row.amount;
-        }
-      }
-    }
+  SettlementPeriodModel({this.fromDate, this.toDate});
 
-    for (final block in [...promoterCards, ...finalSummary]) {
-      for (final entry in block.displayEntries) {
-        if (_matchesAny("${block.title} ${entry.key}", terms)) {
-          return entry.value?.toString();
-        }
-      }
-    }
-    return null;
-  }
-
-  double amountFor(List<String> terms) => _asDouble(amountTextFor(terms));
-
-  List<SettlementReportRow> rowsFor(List<String> terms) {
-    return sections
-        .where((section) => _matchesAny("${section.title} ${section.code}", terms))
-        .expand((section) => section.rows)
-        .toList();
-  }
-
-  SettlementBeneficiary beneficiaryFromSection({
-    required String title,
-    required List<String> sectionTerms,
-    required List<String> grossTerms,
-    required List<String> finalTerms,
-  }) {
-    final rows = rowsFor(sectionTerms);
-    return SettlementBeneficiary(
-      title: title,
-      sharePercentage: _findRowValue(rows, const ["share", "percentage", "%"]),
-      grossAmount: _findRowValue(rows, grossTerms),
-      tds: _findRowValue(rows, const ["tds"]),
-      payoutCharges: _findRowValue(rows, const ["payout", "charge"]),
-      finalPayout: _findRowValue(rows, finalTerms),
-      extraRows: rows,
+  factory SettlementPeriodModel.fromJson(Map<String, dynamic> json) {
+    return SettlementPeriodModel(
+      fromDate: json["fromDate"] ?? json["startDate"] ?? json["from"],
+      toDate: json["toDate"] ?? json["endDate"] ?? json["to"],
     );
   }
 
-  List<SettlementBeneficiary> get promoterBeneficiaries {
-    return promoterCards
-        .map(SettlementBeneficiary.fromBlock)
-        .where((beneficiary) => !beneficiary.isFinanciallyEmpty)
-        .toList();
+  String get formattedPeriod {
+    final fromStr = _formatAnyDate(fromDate);
+    final toStr = _formatAnyDate(toDate);
+    if (fromStr != null && toStr != null) return "$fromStr – $toStr";
+    if (fromStr != null) return fromStr;
+    if (toStr != null) return toStr;
+    return "—";
   }
+}
 
-  SettlementBeneficiary get mediaHouseBeneficiary {
-    return beneficiaryFromSection(
-      title: "Media House",
-      sectionTerms: const ["media", "production", "house"],
-      grossTerms: const ["gross"],
-      finalTerms: const ["final", "payout", "bank"],
-    );
-  }
+class SummaryCardModel {
+  final String label;
+  final String amount;
+  final String? code;
+  final String? icon;
+  final int displayOrder;
 
-  SettlementBeneficiary get platformBeneficiary {
-    return beneficiaryFromSection(
-      title: "Platform",
-      sectionTerms: const ["platform"],
-      grossTerms: const ["gross", "revenue"],
-      finalTerms: const ["final", "revenue", "bank"],
+  SummaryCardModel({
+    required this.label,
+    required this.amount,
+    this.code,
+    this.icon,
+    required this.displayOrder,
+  });
+
+  factory SummaryCardModel.fromJson(Map<String, dynamic> json) {
+    return SummaryCardModel(
+      label: json["label"]?.toString() ?? "Summary",
+      amount: _formatRawAmount(json["amount"]),
+      code: json["code"]?.toString(),
+      icon: json["icon"]?.toString(),
+      displayOrder: _asInt(json["displayOrder"]) ?? 999,
     );
   }
 }
 
-class SettlementReportMetric {
-  final String code;
+class SettlementPurchaseSummaryModel {
+  final dynamic totalTransactions;
+  final dynamic successfulTransactions;
+  final dynamic failedTransactions;
+  final dynamic refundedTransactions;
+  final dynamic totalContentCount;
+  final dynamic totalCustomerPayment;
+
+  SettlementPurchaseSummaryModel({
+    this.totalTransactions,
+    this.successfulTransactions,
+    this.failedTransactions,
+    this.refundedTransactions,
+    this.totalContentCount,
+    this.totalCustomerPayment,
+  });
+
+  factory SettlementPurchaseSummaryModel.fromJson(Map<String, dynamic> json) {
+    return SettlementPurchaseSummaryModel(
+      totalTransactions: json["totalTransactions"] ?? json["transactionsCount"] ?? 0,
+      successfulTransactions: json["successfulTransactions"] ?? json["successCount"] ?? 0,
+      failedTransactions: json["failedTransactions"] ?? json["failedCount"] ?? 0,
+      refundedTransactions: json["refundedTransactions"] ?? json["refundedCount"] ?? 0,
+      totalContentCount: json["totalContentCount"] ?? json["contentCount"] ?? 0,
+      totalCustomerPayment: _formatRawAmount(json["totalCustomerPayment"]),
+    );
+  }
+}
+
+class SettlementSectionModel {
+  final String? code;
+  final String title;
+  final String? icon;
+  final int displayOrder;
+  final List<SettlementRowModel> rows;
+
+  SettlementSectionModel({
+    this.code,
+    required this.title,
+    this.icon,
+    required this.displayOrder,
+    required this.rows,
+  });
+
+  factory SettlementSectionModel.fromJson(Map<String, dynamic> json) {
+    final rawRows = _asMapList(json["rows"])
+        .map(SettlementRowModel.fromJson)
+        .toList()
+      ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+
+    return SettlementSectionModel(
+      code: json["code"]?.toString(),
+      title: json["title"]?.toString() ?? "Section Details",
+      icon: json["icon"]?.toString(),
+      displayOrder: _asInt(json["displayOrder"]) ?? 999,
+      rows: rawRows,
+    );
+  }
+}
+
+class SettlementRowModel {
   final String label;
+  final String? formula;
   final String amount;
-  final String icon;
   final int displayOrder;
 
-  SettlementReportMetric({
-    required this.code,
+  SettlementRowModel({
     required this.label,
+    this.formula,
     required this.amount,
-    required this.icon,
     required this.displayOrder,
   });
 
-  factory SettlementReportMetric.fromJson(Map<String, dynamic> json) {
-    return SettlementReportMetric(
-      code: json["code"]?.toString() ?? "",
-      label: json["label"]?.toString() ?? "Metric",
-      amount: json["amount"]?.toString() ?? "N/A",
-      icon: json["icon"]?.toString() ?? "",
+  factory SettlementRowModel.fromJson(Map<String, dynamic> json) {
+    return SettlementRowModel(
+      label: json["label"]?.toString() ?? "Detail",
+      formula: json["formula"]?.toString(),
+      amount: _formatRawAmount(json["amount"]),
+      displayOrder: _asInt(json["displayOrder"]) ?? 999,
+    );
+  }
+}
+
+class BeneficiarySettlementModel {
+  final String? beneficiaryName;
+  final String? beneficiaryType;
+  final String? promoterLevel;
+  final dynamic percentage;
+  final dynamic gross;
+  final dynamic tds;
+  final dynamic afterTds;
+  final dynamic payoutCharge;
+  final dynamic finalAmount;
+  final dynamic promoterAllocation;
+  final dynamic roundingDifference;
+  final int displayOrder;
+
+  BeneficiarySettlementModel({
+    this.beneficiaryName,
+    this.beneficiaryType,
+    this.promoterLevel,
+    this.percentage,
+    this.gross,
+    this.tds,
+    this.afterTds,
+    this.payoutCharge,
+    this.finalAmount,
+    this.promoterAllocation,
+    this.roundingDifference,
+    required this.displayOrder,
+  });
+
+  factory BeneficiarySettlementModel.fromJson(Map<String, dynamic> json) {
+    return BeneficiarySettlementModel(
+      beneficiaryName: json["beneficiaryName"]?.toString(),
+      beneficiaryType: json["beneficiaryType"]?.toString(),
+      promoterLevel: json["promoterLevel"]?.toString(),
+      percentage: json["percentage"],
+      gross: _formatRawAmount(json["gross"]),
+      tds: _formatRawAmount(json["tds"]),
+      afterTds: _formatRawAmount(json["afterTds"]),
+      payoutCharge: _formatRawAmount(json["payoutCharge"]),
+      finalAmount: _formatRawAmount(json["finalAmount"]),
+      promoterAllocation: json["promoterAllocation"] != null
+          ? _formatRawAmount(json["promoterAllocation"])
+          : null,
+      roundingDifference: json["roundingDifference"] != null
+          ? _formatRawAmount(json["roundingDifference"])
+          : null,
       displayOrder: _asInt(json["displayOrder"]) ?? 999,
     );
   }
 
-  String get searchText => "$code $label";
-}
-
-class SettlementReportSection {
-  final String code;
-  final String title;
-  final List<SettlementReportRow> rows;
-
-  SettlementReportSection({
-    required this.code,
-    required this.title,
-    required this.rows,
-  });
-
-  factory SettlementReportSection.fromJson(Map<String, dynamic> json) {
-    return SettlementReportSection(
-      code: json["code"]?.toString() ?? "",
-      title: json["title"]?.toString() ?? "Settlement Details",
-      rows: _asMapList(json["rows"]).map(SettlementReportRow.fromJson).toList(),
-    );
-  }
-}
-
-class SettlementReportRow {
-  final String label;
-  final String formula;
-  final String amount;
-
-  SettlementReportRow({
-    required this.label,
-    required this.formula,
-    required this.amount,
-  });
-
-  factory SettlementReportRow.fromJson(Map<String, dynamic> json) {
-    return SettlementReportRow(
-      label: json["label"]?.toString() ?? "Detail",
-      formula: json["formula"]?.toString() ?? "",
-      amount: json["amount"]?.toString() ?? "N/A",
-    );
-  }
-}
-
-class SettlementReportFlexibleBlock {
-  final String title;
-  final Map<String, dynamic> values;
-
-  SettlementReportFlexibleBlock({
-    required this.title,
-    required this.values,
-  });
-
-  factory SettlementReportFlexibleBlock.fromJson(Map<String, dynamic> json) {
-    return SettlementReportFlexibleBlock(
-      title: (json["title"] ?? json["label"] ?? json["name"] ?? "Summary")
-          .toString(),
-      values: Map<String, dynamic>.from(json),
-    );
+  String get formattedBeneficiaryType {
+    return _enumToTitleCase(beneficiaryType);
   }
 
-  List<MapEntry<String, dynamic>> get displayEntries {
-    const hiddenKeys = {
-      "title",
-      "label",
-      "name",
-      "code",
-      "displayOrder",
-      "formula",
-    };
-    return values.entries
-        .where((entry) => !hiddenKeys.contains(entry.key))
-        .where((entry) => !entry.key.toLowerCase().contains("formula"))
-        .toList();
+  String get formattedPromoterLevel {
+    return _enumToTitleCase(promoterLevel);
   }
-}
 
-class SettlementBeneficiary {
-  final String title;
-  final String? sharePercentage;
-  final String? grossAmount;
-  final String? tds;
-  final String? payoutCharges;
-  final String? finalPayout;
-  final List<SettlementReportRow> extraRows;
-
-  SettlementBeneficiary({
-    required this.title,
-    this.sharePercentage,
-    this.grossAmount,
-    this.tds,
-    this.payoutCharges,
-    this.finalPayout,
-    this.extraRows = const [],
-  });
-
-  factory SettlementBeneficiary.fromBlock(SettlementReportFlexibleBlock block) {
-    String? valueFor(List<List<String>> candidates) {
-      MapEntry<String, dynamic>? entry;
-      for (final terms in candidates) {
-        entry = block.displayEntries.cast<MapEntry<String, dynamic>?>().firstWhere(
-              (entry) => entry != null && _matchesAll(entry.key, terms),
-              orElse: () => null,
-            );
-        if (entry != null) break;
-      }
-      return entry?.value?.toString();
+  String get formattedPercentage {
+    if (percentage == null) return "—";
+    if (percentage is num) {
+      final val = (percentage as num).toDouble();
+      if (val == 0) return "0%";
+      if (val % 1 == 0) return "${val.toInt()}%";
+      return "$val%";
     }
-
-    return SettlementBeneficiary(
-      title: block.title,
-      sharePercentage: valueFor(const [
-        ["share", "percentage"],
-        ["percentage"],
-        ["%"],
-      ]),
-      grossAmount: valueFor(const [
-        ["gross"],
-      ]),
-      tds: valueFor(const [
-        ["tds"],
-      ]),
-      payoutCharges: valueFor(const [
-        ["payout", "charge"],
-        ["payout", "fee"],
-      ]),
-      finalPayout: valueFor(const [
-        ["final", "payout"],
-        ["bank", "amount"],
-        ["final"],
-      ]),
-    );
-  }
-
-  bool get isFinanciallyEmpty {
-    final values = [sharePercentage, grossAmount, tds, payoutCharges, finalPayout];
-    return values.every((value) => _asDouble(value) == 0);
+    final text = percentage.toString().trim();
+    if (text.isEmpty || text == "null") return "—";
+    return text.endsWith("%") ? text : "$text%";
   }
 }
 
+class TaxAndChargeSummaryModel {
+  final dynamic gstIncluded;
+  final dynamic razorpayCollectionFee;
+  final dynamic mediaHouseTds;
+  final dynamic mediaHousePayoutCharge;
+  final dynamic promoterTds;
+  final dynamic promoterPayoutCharge;
+  final dynamic totalTds;
+  final dynamic totalPayoutCharge;
+
+  TaxAndChargeSummaryModel({
+    this.gstIncluded,
+    this.razorpayCollectionFee,
+    this.mediaHouseTds,
+    this.mediaHousePayoutCharge,
+    this.promoterTds,
+    this.promoterPayoutCharge,
+    this.totalTds,
+    this.totalPayoutCharge,
+  });
+
+  factory TaxAndChargeSummaryModel.fromJson(Map<String, dynamic> json) {
+    return TaxAndChargeSummaryModel(
+      gstIncluded: _formatRawAmount(json["gstIncluded"] ?? json["gst"]),
+      razorpayCollectionFee: _formatRawAmount(json["razorpayCollectionFee"] ?? json["razorpayFee"]),
+      mediaHouseTds: _formatRawAmount(json["mediaHouseTds"]),
+      mediaHousePayoutCharge: _formatRawAmount(json["mediaHousePayoutCharge"]),
+      promoterTds: _formatRawAmount(json["promoterTds"]),
+      promoterPayoutCharge: _formatRawAmount(json["promoterPayoutCharge"]),
+      totalTds: _formatRawAmount(json["totalTds"]),
+      totalPayoutCharge: _formatRawAmount(json["totalPayoutCharge"]),
+    );
+  }
+}
+
+class FinalSummaryItemModel {
+  final String label;
+  final String amount;
+  final String? icon;
+  final int displayOrder;
+
+  FinalSummaryItemModel({
+    required this.label,
+    required this.amount,
+    this.icon,
+    required this.displayOrder,
+  });
+
+  factory FinalSummaryItemModel.fromJson(Map<String, dynamic> json) {
+    return FinalSummaryItemModel(
+      label: json["label"]?.toString() ?? "Final Summary",
+      amount: _formatRawAmount(json["amount"]),
+      icon: json["icon"]?.toString(),
+      displayOrder: _asInt(json["displayOrder"]) ?? 999,
+    );
+  }
+}
+
+// Helpers
 List<Map<String, dynamic>> _asMapList(dynamic value) {
   if (value is List) {
     return value
@@ -412,133 +409,11 @@ String? _firstText(Map<String, dynamic> json, List<String> keys) {
     final rawValue = json[key];
     if (rawValue is Map || rawValue is List) continue;
     final value = rawValue?.toString().trim();
-    final normalized = value?.toLowerCase();
-    if (value != null &&
-        value.isNotEmpty &&
-        normalized != "n/a" &&
-        normalized != "null") {
+    if (value != null && value.isNotEmpty && value != "null") {
       return value;
     }
   }
   return null;
-}
-
-String? _firstNestedText(
-  Map<String, dynamic> json,
-  List<String> parentKeys,
-  List<String> keys,
-) {
-  for (final parentKey in parentKeys) {
-    final nested = _asStringMap(json[parentKey]);
-    if (nested == null) continue;
-    final value = _firstText(nested, keys);
-    if (value != null) return value;
-  }
-  return null;
-}
-
-int? _firstInt(Map<String, dynamic> json, List<String> keys) {
-  for (final key in keys) {
-    final value = _asInt(json[key]);
-    if (value != null) return value;
-  }
-  return null;
-}
-
-DateTime? _firstDate(Map<String, dynamic> json, List<String> keys) {
-  for (final key in keys) {
-    final parsed = DateTime.tryParse(json[key]?.toString() ?? "");
-    if (parsed != null) return parsed;
-  }
-  return null;
-}
-
-DateTime? _firstDateFromSources(Map<String, dynamic> json, List<String> keys) {
-  final direct = _firstDate(json, keys);
-  if (direct != null) return direct;
-
-  const nestedKeys = [
-    "settlementPeriod",
-    "settlement",
-    "period",
-    "dateRange",
-    "settlementInfo",
-    "settlementInformation",
-    "settlementDetails",
-  ];
-  for (final nestedKey in nestedKeys) {
-    final nested = _asStringMap(json[nestedKey]);
-    if (nested == null) continue;
-    final parsed = _firstDate(nested, keys);
-    if (parsed != null) return parsed;
-  }
-  return null;
-}
-
-String? _settlementPeriodText(Map<String, dynamic> json) {
-  final direct = _firstText(json, const [
-    "settlementPeriod",
-    "settlement",
-    "period",
-    "dateRange",
-  ]);
-  if (direct != null) return direct;
-
-  const nestedKeys = [
-    "settlementPeriod",
-    "period",
-    "dateRange",
-    "settlementInfo",
-    "settlementInformation",
-    "settlementDetails",
-  ];
-  for (final nestedKey in nestedKeys) {
-    final nested = _asStringMap(json[nestedKey]);
-    if (nested == null) continue;
-    final from = _firstText(nested, const [
-      "fromDate",
-      "periodStart",
-      "startDate",
-      "settlementStartDate",
-    ]);
-    final to = _firstText(nested, const [
-      "toDate",
-      "periodEnd",
-      "endDate",
-      "settlementEndDate",
-    ]);
-    if (from != null && to != null) return "$from - $to";
-  }
-  return null;
-}
-
-Map<String, dynamic>? _asStringMap(dynamic value) {
-  if (value is Map) return Map<String, dynamic>.from(value);
-  return null;
-}
-
-String? _findRowValue(List<SettlementReportRow> rows, List<String> terms) {
-  final strictRow = rows.cast<SettlementReportRow?>().firstWhere(
-        (row) => row != null && _matchesAll(row.label, terms),
-        orElse: () => null,
-      );
-  if (strictRow != null) return strictRow.amount;
-
-  final row = rows.cast<SettlementReportRow?>().firstWhere(
-    (row) => row != null && _matchesAny(row.label, terms),
-    orElse: () => null,
-  );
-  return row?.amount;
-}
-
-bool _matchesAny(String text, List<String> terms) {
-  final normalized = text.toLowerCase();
-  return terms.any((term) => normalized.contains(term.toLowerCase()));
-}
-
-bool _matchesAll(String text, List<String> terms) {
-  final normalized = text.toLowerCase();
-  return terms.every((term) => normalized.contains(term.toLowerCase()));
 }
 
 int? _asInt(dynamic value) {
@@ -547,16 +422,59 @@ int? _asInt(dynamic value) {
   return int.tryParse(value?.toString() ?? "");
 }
 
-double _asDouble(dynamic value) {
-  if (value is num) return value.toDouble();
-  final text = value
-          ?.toString()
-          .replaceAll(",", "")
-          .replaceAll("\u20B9", "")
-          .replaceAll("Rs.", "")
-          .replaceAll("Rs", "")
-          .replaceAll("%", "")
-          .trim() ??
-      "";
-  return double.tryParse(RegExp(r"-?\d+(\.\d+)?").stringMatch(text) ?? "") ?? 0;
+String _formatRawAmount(dynamic value) {
+  if (value == null) return "—";
+  if (value is num) {
+    return value.toString();
+  }
+  final text = value.toString().trim();
+  if (text.isEmpty || text.toLowerCase() == "null") return "—";
+  return text;
+}
+
+String? _formatAnyDate(dynamic value) {
+  if (value == null) return null;
+  if (value is int) {
+    try {
+      final dt = DateTime.fromMillisecondsSinceEpoch(value);
+      return "${dt.day.toString().padLeft(2, '0')} ${_monthName(dt.month)} ${dt.year}";
+    } catch (_) {}
+  }
+  final str = value.toString().trim();
+  if (str.isEmpty || str == "null") return null;
+  final epoch = int.tryParse(str);
+  if (epoch != null) {
+    try {
+      final dt = DateTime.fromMillisecondsSinceEpoch(epoch);
+      return "${dt.day.toString().padLeft(2, '0')} ${_monthName(dt.month)} ${dt.year}";
+    } catch (_) {}
+  }
+  return str;
+}
+
+String _monthName(int month) {
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  if (month >= 1 && month <= 12) return months[month - 1];
+  return "";
+}
+
+String _enumToTitleCase(String? value) {
+  if (value == null || value.trim().isEmpty) return "—";
+  final text = value.trim();
+  if (text.toUpperCase() == "MEDIA_HOUSE") return "Media House";
+  if (text.toUpperCase() == "PROMOTER") return "Promoter";
+  if (text.toUpperCase() == "ADMIN") return "Admin";
+  if (text.toUpperCase() == "WEEKLY_SETTLEMENT") return "Weekly Settlement";
+
+  return text
+      .replaceAll("_", " ")
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.isNotEmpty
+          ? "${word[0].toUpperCase()}${word.substring(1)}"
+          : "")
+      .join(" ");
 }

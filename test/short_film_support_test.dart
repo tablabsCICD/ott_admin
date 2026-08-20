@@ -5,6 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('SHORT_FILM support', () {
+    test('content response parses totalPurchase safely', () {
+      expect(Content.fromJson({'totalPurchase': 125}).totalPurchase, 125);
+      expect(Content.fromJson({'totalPurchase': null}).totalPurchase, isNull);
+      expect(Content.fromJson({}).totalPurchase, isNull);
+      expect(Content.fromJson({'totalPurchase': '8'}).toJson()['totalPurchase'],
+          8);
+    });
+
     test('content response accepts contentType and preserves the API value', () {
       final content = Content.fromJson({
         'id': 101,

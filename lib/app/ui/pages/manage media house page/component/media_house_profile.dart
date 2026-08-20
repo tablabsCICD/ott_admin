@@ -174,9 +174,15 @@ class ProfilePageCard extends StatelessWidget {
   }
 
   static String _formatRevenue(String? value) {
-    final amount = num.tryParse(value ?? '');
-    if (amount == null) return 'Rs. -';
-    return 'Rs. ${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 2)}';
+    if (value == null) return 'Rs. -';
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return 'Rs. -';
+    if (trimmed.startsWith('Rs.') || trimmed.startsWith('Rs') || trimmed.startsWith('₹')) {
+      return trimmed;
+    }
+    final amount = num.tryParse(trimmed);
+    if (amount == null) return 'Rs. $trimmed';
+    return 'Rs. ${amount % 1 == 0 ? amount.toInt() : amount}';
   }
 }
 

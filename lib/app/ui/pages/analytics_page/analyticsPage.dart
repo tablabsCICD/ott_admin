@@ -4923,31 +4923,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     AnalyticsProvider provider,
     List<ReportAndDataObject> reports,
   ) {
-    if (provider.ageWiseRevenue.isEmpty && provider.ageWiseViews.isEmpty) {
-      final revenue = _ageRevenuePoints(
-        reports.fold<double>(0, (sum, report) => sum + _revenue(report)),
-      );
-      final views = _ageViewPoints(
-        reports.fold<int>(0, (sum, report) => sum + (report.totalViews ?? 0)),
-      );
-      return [
-        for (var index = 0; index < revenue.length; index++)
-          _AgeAudienceRow(
-            ageGroup: revenue[index].label,
-            users: (views[index].value / 8).round(),
-            revenue: revenue[index].value,
-            subscriptionRevenue: revenue[index].value * .72,
-            coinRevenue: revenue[index].value * .18,
-            avgWatchTime: 18 + index * 12,
-            retentionRate: 12 + index * 3,
-            views: views[index].value.round(),
-            uniqueUsers: (views[index].value / 4).round(),
-            watchHours: views[index].value * .14,
-            completionRate: 40 + index * 7,
-            rewatchRate: 18 + index * 8,
-          ),
-      ];
-    }
     final revenueByAge = {
       for (final item in provider.ageWiseRevenue) item.ageGroup: item
     };
@@ -5648,13 +5623,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   }
 
   List<_AnalyticsPoint> _safePoints(List<_AnalyticsPoint> points) {
-    if (points.any((point) => point.value > 0)) return points;
-    return const [
-      _AnalyticsPoint("A", 12),
-      _AnalyticsPoint("B", 18),
-      _AnalyticsPoint("C", 14),
-      _AnalyticsPoint("D", 22),
-    ];
+    return points;
   }
 
   _AnalyticsPoint _maxPoint(List<_AnalyticsPoint> points) {

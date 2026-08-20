@@ -33,10 +33,7 @@ class RevenueSettlementAnalyticsPage extends StatefulWidget {
 class _RevenueSettlementAnalyticsPageState
     extends State<RevenueSettlementAnalyticsPage> {
   _RevenueReportType _reportType = _RevenueReportType.platformRevenue;
-  DateTimeRange _dateRange = DateTimeRange(
-    start: DateTime(2026, 1, 1),
-    end: DateTime(2026, 6, 30),
-  );
+  DateTimeRange? _dateRange;
   String _contentType = 'All';
   int? _productionHouseId;
   String _promoterLevel = 'National';
@@ -72,11 +69,20 @@ class _RevenueSettlementAnalyticsPageState
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2027),
-      initialDateRange: _dateRange,
+      lastDate: DateTime(2030),
+      initialDateRange: _dateRange ??
+          DateTimeRange(
+            start: DateTime.now().subtract(const Duration(days: 30)),
+            end: DateTime.now(),
+          ),
     );
     if (picked == null) return;
     setState(() => _dateRange = picked);
+    _fetchRevenueAnalytics();
+  }
+
+  void _clearDateRange() {
+    setState(() => _dateRange = null);
     _fetchRevenueAnalytics();
   }
 
@@ -156,18 +162,26 @@ class _RevenueSettlementAnalyticsPageState
   }
 
   Map<String, dynamic> _revenueAnalyticsRequestBody() {
-    return {
+    final Map<String, dynamic> body = {
       'contentType': _apiContentType,
       'country': 'India',
       'format': 'string',
-      'fromDate': _apiDate(_dateRange.start),
       'previewTicketAmount': 0,
       'productionHouseId': _productionHouseId ?? 0,
       'promoterId': _promoterId ?? 0,
       'reportType': _apiReportType,
       'timeZone': 'Asia/Kolkata',
-      'toDate': _apiDate(_dateRange.end),
     };
+
+    if (_dateRange != null) {
+      body['fromDate'] = _apiDate(_dateRange!.start);
+      body['toDate'] = _apiDate(_dateRange!.end);
+    } else {
+      body['fromDate'] = '';
+      body['toDate'] = '';
+    }
+
+    return body;
   }
 
   String get _apiReportType {
@@ -425,11 +439,30 @@ class _RevenueSettlementAnalyticsPageState
               ),
               SizedBox(
                 width: fieldWidth,
-                child: OutlinedButton.icon(
-                  onPressed: _pickDateRange,
-                  icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                  label: Text(_dateRangeLabel()),
-                  style: _outlinedButtonStyle(theme),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _pickDateRange,
+                        icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                        label: Text(
+                          _dateRangeLabel(),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        style: _outlinedButtonStyle(theme),
+                      ),
+                    ),
+                    if (_dateRange != null) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        onPressed: _clearDateRange,
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                        tooltip: 'Clear Date Filter (All Time)',
+                        color: theme.hintColor,
+                      ),
+                    ],
+                  ],
                 ),
               ),
               SizedBox(
@@ -766,7 +799,11 @@ class _RevenueSettlementAnalyticsPageState
             _responseInfoTile(
               theme,
               'Date Filter',
-              '${filters?['fromDate'] ?? _apiDate(_dateRange.start)} - ${filters?['toDate'] ?? _apiDate(_dateRange.end)}',
+              filters?['fromDate'] != null && filters?['toDate'] != null
+                  ? '${filters!['fromDate']} - ${filters['toDate']}'
+                  : (_dateRange != null
+                      ? '${_apiDate(_dateRange!.start)} - ${_apiDate(_dateRange!.end)}'
+                      : 'All Time'),
             ),
           ];
 
@@ -1150,13 +1187,22 @@ class _RevenueSettlementAnalyticsPageState
   }
 
   String _formatCurrency(dynamic value) {
-    final amount = _asDouble(value);
-    final digits = amount == amount.roundToDouble() ? 0 : 2;
-    return NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: 'Rs. ',
-      decimalDigits: digits,
-    ).format(amount);
+    if (value == null) return 'Rs. 0';
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return 'Rs. 0';
+      if (trimmed.startsWith('Rs.') || trimmed.startsWith('Rs') || trimmed.startsWith('₹')) {
+        return trimmed;
+      }
+      return 'Rs. $trimmed';
+    }
+    if (value is num) {
+      if (value % 1 == 0) {
+        return 'Rs. ${value.toInt()}';
+      }
+      return 'Rs. $value';
+    }
+    return 'Rs. $value';
   }
 
   String _formatPreviewAmount(dynamic value) {
@@ -1432,6 +1478,7 @@ class _RevenueSettlementAnalyticsPageState
                   fontWeight: FontWeight.w900,
                 ),
               ),
+              _calculationBadge(theme, _platformPreviewBadge),
             ],
           ),
           const SizedBox(height: 6),
@@ -1519,6 +1566,7 @@ class _RevenueSettlementAnalyticsPageState
                   fontWeight: FontWeight.w900,
                 ),
               ),
+              _calculationBadge(theme, _platformPreviewBadge),
             ],
           ),
           const SizedBox(height: 6),
@@ -1584,6 +1632,7 @@ class _RevenueSettlementAnalyticsPageState
                   fontWeight: FontWeight.w900,
                 ),
               ),
+              _calculationBadge(theme, _platformPreviewBadge),
             ],
           ),
           const SizedBox(height: 6),
@@ -2869,8 +2918,9 @@ class _RevenueSettlementAnalyticsPageState
   }
 
   String _dateRangeLabel() {
+    if (_dateRange == null) return 'Date Range (Optional)';
     final format = DateFormat('dd MMM yyyy');
-    return '${format.format(_dateRange.start)} - ${format.format(_dateRange.end)}';
+    return '${format.format(_dateRange!.start)} - ${format.format(_dateRange!.end)}';
   }
 }
 

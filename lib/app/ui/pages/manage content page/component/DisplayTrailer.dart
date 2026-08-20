@@ -14,48 +14,41 @@ class _TrailerPageState extends State<TrailerPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final url = widget.trailerUrl.trim();
+
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
         title: const Text("Trailer Player"),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: _buildPlayer(theme),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlayer(ThemeData theme) {
-    final url = widget.trailerUrl.trim();
-    if (url.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.ondemand_video_outlined,
-                size: 48, color: theme.hintColor),
-            const SizedBox(height: 12),
-            Text(
-              "Trailer is unavailable for this content",
-              style: TextStyle(color: theme.canvasColor, fontSize: 16),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return OttMediaPlayer(
-      url: url,
-      autoPlay: true,
-      errorBuilder: (_, message) => Center(
-        child: Text(
-          message,
-          style: TextStyle(color: theme.colorScheme.error),
+      body: SizedBox.expand(
+        child: Center(
+          child: url.isEmpty
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.ondemand_video_outlined,
+                        size: 48, color: theme.hintColor),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Trailer is unavailable for this content",
+                      style: TextStyle(color: theme.canvasColor, fontSize: 16),
+                    ),
+                  ],
+                )
+              : OttMediaPlayer(
+                  url: url,
+                  autoPlay: true,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, message) => Center(
+                    child: Text(
+                      message,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                  ),
+                ),
         ),
       ),
     );

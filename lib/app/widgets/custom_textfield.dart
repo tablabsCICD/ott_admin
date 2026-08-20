@@ -112,6 +112,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   ? IconButton(
                       icon: Icon(
                         _isObscure ? Icons.visibility : Icons.visibility_off,
+                        color: Theme.of(context).canvasColor,
                       ),
                       onPressed: () {
                         setState(() {
@@ -120,7 +121,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
                       },
                     )
                   : widget.suffixIcon != null
-                      ? Icon(widget.suffixIcon)
+                      ? Icon(
+                          widget.suffixIcon,
+                          color: Theme.of(context).canvasColor,
+                        )
                       : null,
               prefixIcon: widget.prefixIcon,
             ),

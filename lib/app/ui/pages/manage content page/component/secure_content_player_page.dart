@@ -88,33 +88,40 @@ class _SecureContentPlayerPageState extends State<SecureContentPlayerPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Advanced Player')),
-      body: Center(
-        child: _loading
-            ? const AppSpinner()
-            : _failed || _url == null
-                ? Text(
-                    'Unable to play this content. Please try again.',
-                    style: TextStyle(color: theme.colorScheme.error),
-                  )
-                : OttMediaPlayer(
-                    key: ValueKey(_authorizationGeneration),
-                    url: _url!,
-                    httpHeaders: _headers,
-                    initialPosition: _resumeAt,
-                    audioTrackUrl: _audioTrackUrl,
-                    subtitleTrackUrl: _subtitleTrackUrl,
-                    autoPlay: true,
-                    onPlayerReady: (player) => _player = player,
-                    onReadyChanged: (ready) {
-                      if (ready) {
-                        debugPrint(
-                          '[ADMIN_PLAYBACK] controllerInitialized=true',
-                        );
-                      }
-                    },
-                    onError: _retryAfterPlaybackError,
-                  ),
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: const Text('Content Player'),
+      ),
+      body: SizedBox.expand(
+        child: Center(
+          child: _loading
+              ? const AppSpinner()
+              : _failed || _url == null
+                  ? Text(
+                      'Unable to play this content. Please try again.',
+                      style: TextStyle(color: theme.colorScheme.error),
+                    )
+                  : OttMediaPlayer(
+                      key: ValueKey(_authorizationGeneration),
+                      url: _url!,
+                      httpHeaders: _headers,
+                      initialPosition: _resumeAt,
+                      audioTrackUrl: _audioTrackUrl,
+                      subtitleTrackUrl: _subtitleTrackUrl,
+                      autoPlay: true,
+                      onPlayerReady: (player) => _player = player,
+                      onReadyChanged: (ready) {
+                        if (ready) {
+                          debugPrint(
+                            '[ADMIN_PLAYBACK] controllerInitialized=true',
+                          );
+                        }
+                      },
+                      onError: _retryAfterPlaybackError,
+                    ),
+        ),
       ),
     );
   }

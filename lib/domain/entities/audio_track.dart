@@ -1,19 +1,19 @@
 class AudioTrack {
   String? language;
-  String? code;
+  String? fileUrl;
 
   AudioTrack({
     this.language,
-    this.code,
+    this.fileUrl,
   });
 
   factory AudioTrack.fromJson(Map<String, dynamic> json) => AudioTrack(
-        language: json["language"],
-        code: json["code"],
+        language: json["language"] ?? json["name"],
+        fileUrl: json["fileUrl"] ?? json["url"],
       );
 
   Map<String, dynamic> toJson() => {
         "language": language,
-        "code": code,
+        if (fileUrl != null && fileUrl!.isNotEmpty) "fileUrl": fileUrl,
       };
 }

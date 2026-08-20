@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../data/models/response/mediaHouseWeeklySettelement.dart';
@@ -6,15 +7,16 @@ import '../../../provider/settelementProvider.dart';
 import '../../../provider/themeProvider.dart';
 import '../../../widgets/app_loaders.dart';
 import '../help support page/HelpSupportPage.dart';
-import 'package:intl/intl.dart';
-
 import 'adminSettelmentCard.dart';
+import 'components/manual_settlement_dialog.dart';
 import 'monthly_ios_settlement_section.dart';
 import 'promoter_settlement_download_section.dart';
 
 class SettlementPage extends StatefulWidget {
+  const SettlementPage({super.key});
+
   @override
-  _SettlementPageState createState() => _SettlementPageState();
+  State<SettlementPage> createState() => _SettlementPageState();
 }
 
 class _SettlementPageState extends State<SettlementPage> {
@@ -108,32 +110,87 @@ class _SettlementPageState extends State<SettlementPage> {
         backgroundColor: selectedThemeData.primaryColor,
         onPressed: () => Navigator.push(
             context, MaterialPageRoute(builder: (_) => HelpSupportPage())),
-        child: Icon(Icons.message_rounded),
+        child: const Icon(Icons.message_rounded),
       ),
     );
   }
 
   Widget _buildHeader(ThemeData selectedThemeData) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Settlement",
-          style: TextStyle(
-            color: selectedThemeData.canvasColor,
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 640;
+
+        final titleSection = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Settlement",
+              style: TextStyle(
+                color: selectedThemeData.canvasColor,
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Manage weekly settlements and monthly iOS settlements.",
+              style: TextStyle(
+                color: selectedThemeData.canvasColor.withValues(alpha: 0.62),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        );
+
+        final manualSettlementButton = ElevatedButton.icon(
+          onPressed: _openManualSettlementDialog,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: selectedThemeData.primaryColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          "Manage weekly settlements and monthly iOS settlements.",
-          style: TextStyle(
-            color: selectedThemeData.canvasColor.withValues(alpha: 0.62),
-            fontWeight: FontWeight.w600,
+          icon: const Icon(Icons.touch_app_outlined, size: 20),
+          label: const Text(
+            "Manual Settlement",
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
-        ),
-      ],
+        );
+
+        if (isNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              titleSection,
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: manualSettlementButton,
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: titleSection),
+            const SizedBox(width: 16),
+            manualSettlementButton,
+          ],
+        );
+      },
+    );
+  }
+
+  void _openManualSettlementDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => const ManualSettlementDialog(),
     );
   }
 
@@ -343,10 +400,8 @@ class SettlementDataSource extends DataTableSource {
   }
 
   @override
-  @override
   DataRow? getRow(int index) {
     if (index >= _sortedSettlements.length) {
-      // Return an empty DataRow or handle it gracefully
       return DataRow(cells: [
         DataCell(Text('N/A')),
         DataCell(Text('N/A')),

@@ -73,7 +73,7 @@ class _PromoterDetailsPageState extends State<PromoterDetailsPage> {
             ),
           )
         ],
-        backgroundColor: selectedThemeData.scaffoldBackgroundColor,
+        backgroundColor: selectedThemeData.primaryColor,
       ),
       body: SingleChildScrollView(
         child: Padding(

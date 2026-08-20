@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:admin_ott/app/core/constant/api_constant.dart';
 import 'package:admin_ott/app/core/constant/prefrense_constant.dart';
 import 'package:admin_ott/data/models/secure_playback.dart';
 import 'package:flutter/foundation.dart';
@@ -16,8 +17,8 @@ class AdminSecurePlaybackService {
   AdminSecurePlaybackService({http.Client? client})
       : _client = client ?? http.Client();
 
-  static const _endpoint =
-      'https://filmytell.in/ott2/anti-piracy/playback/signed-url';
+  static final _endpoint =
+      '${ApiConstant.baseUrl}anti-piracy/playback/signed-url';
   static const _deviceIdKey = 'admin_secure_playback_device_id';
   final http.Client _client;
 
@@ -29,7 +30,8 @@ class AdminSecurePlaybackService {
   }) async {
     debugPrint('[ADMIN_PLAYBACK] Play requested');
     if (contentType?.trim().isNotEmpty == true) {
-      debugPrint('[ADMIN_PLAYBACK] contentType=${contentType!.trim().toUpperCase()}');
+      debugPrint(
+          '[ADMIN_PLAYBACK] contentType=${contentType!.trim().toUpperCase()}');
     }
     if (contentId.trim().isEmpty || playbackUrl.trim().isEmpty) {
       debugPrint('[ADMIN_PLAYBACK] selectedContentValid=false');
@@ -53,11 +55,24 @@ class AdminSecurePlaybackService {
     debugPrint('[ADMIN_PLAYBACK] platform=$platform');
     final resolvedCountry = (country?.trim().isNotEmpty == true)
         ? country!.trim()
-        : (PlatformDispatcher.instance.locale.countryCode?.trim().isNotEmpty == true)
+        : (PlatformDispatcher.instance.locale.countryCode?.trim().isNotEmpty ==
+                true)
             ? PlatformDispatcher.instance.locale.countryCode!.trim()
             : 'IN';
     try {
       debugPrint('[ADMIN_PLAYBACK] securityRequestStarted=true');
+      final requestPayload = {
+        'contentId': contentId.trim(),
+        'deviceId': await _deviceId(prefs),
+        'playbackUrl': playbackUrl.trim(),
+        'country': resolvedCountry,
+        'platform': platform,
+        'deviceIntegrity': await _deviceIntegrity(),
+      };
+      final requestBody = jsonEncode(requestPayload);
+      debugPrint('[ADMIN_PLAYBACK] Url=$_endpoint');
+      debugPrint('[ADMIN_PLAYBACK] Request=$requestBody');
+
       final response = await _client
           .post(
             Uri.parse(_endpoint),
@@ -65,17 +80,12 @@ class AdminSecurePlaybackService {
               if (authHeader != null) 'Authorization': authHeader,
               'Content-Type': 'application/json',
             },
-            body: jsonEncode({
-              'contentId': contentId.trim(),
-              'deviceId': await _deviceId(prefs),
-              'playbackUrl': playbackUrl.trim(),
-              'country': resolvedCountry,
-              'platform': platform,
-              'deviceIntegrity': await _deviceIntegrity(),
-            }),
+            body: requestBody,
           )
           .timeout(const Duration(seconds: 12));
+
       debugPrint('[ADMIN_PLAYBACK] securityStatus=${response.statusCode}');
+      debugPrint('[ADMIN_PLAYBACK] Response=${response.body}');
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
         if (decoded is Map) {

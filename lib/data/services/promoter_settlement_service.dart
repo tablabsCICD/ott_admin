@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:admin_ott/app/core/constant/api_constant.dart';
 import 'package:admin_ott/app/core/constant/prefrense_constant.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_html/html.dart' as html;
@@ -33,6 +34,7 @@ class PromoterSettlementService {
       mimeType:
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       failureMessage: 'Failed to download settlement Excel.',
+      successMessage: 'Settlement Excel downloaded successfully.',
     );
   }
 
@@ -43,6 +45,7 @@ class PromoterSettlementService {
           'monthly-ios-settlement-$settlementId-${_apiDate(DateTime.now())}.csv',
       mimeType: 'text/csv',
       failureMessage: 'Failed to download settlement CSV.',
+      successMessage: 'Settlement CSV downloaded successfully.',
     );
   }
 
@@ -51,6 +54,7 @@ class PromoterSettlementService {
     required String fallbackFilename,
     required String mimeType,
     required String failureMessage,
+    String successMessage = 'Downloaded successfully.',
   }) async {
     final preferences = await SharedPreferences.getInstance();
     final token = preferences.getString(SharedPreferencesConstant.authToken);
@@ -62,9 +66,45 @@ class PromoterSettlementService {
       headers['Authorization'] = '$tokenType $token';
     }
 
+    debugPrint("========== SETTLEMENT FILE DOWNLOAD API REQUEST ==========");
+    debugPrint("URL: $uri");
+    debugPrint("Method: GET");
+
     final response = await http.get(uri, headers: headers);
+
+    debugPrint("========== SETTLEMENT FILE DOWNLOAD API RESPONSE ==========");
+    debugPrint("Status Code: ${response.statusCode}");
+    debugPrint("Headers: ${response.headers}");
+    debugPrint("Response Bytes: ${response.bodyBytes.length}");
+    debugPrint("==========================================================");
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw PromoterSettlementException(_errorMessage(response, failureMessage));
+    }
+
+    String? apiMessage;
+    if (response.headers.containsKey('message') &&
+        response.headers['message']!.trim().isNotEmpty) {
+      apiMessage = response.headers['message']!.trim();
+    } else if (response.headers.containsKey('x-message') &&
+        response.headers['x-message']!.trim().isNotEmpty) {
+      apiMessage = response.headers['x-message']!.trim();
+    }
+
+    try {
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (decoded is Map<String, dynamic>) {
+        final msg = decoded['message']?.toString() ?? decoded['msg']?.toString();
+        final success = decoded['success'] ?? decoded['status'];
+        if (msg != null && msg.trim().isNotEmpty) {
+          apiMessage = msg.trim();
+        }
+        if (success == false || success == 'false' || success == 'FAILED') {
+          throw PromoterSettlementException(apiMessage ?? failureMessage);
+        }
+      }
+    } catch (e) {
+      if (e is PromoterSettlementException) rethrow;
     }
 
     final filename = _filenameFrom(response.headers['content-disposition']) ??
@@ -76,7 +116,10 @@ class PromoterSettlementService {
     link.click();
     link.remove();
     html.Url.revokeObjectUrl(url);
-    return filename;
+
+    return (apiMessage != null && apiMessage.trim().isNotEmpty)
+        ? apiMessage
+        : successMessage;
   }
 
   Map<String, String>? _dateQuery({
@@ -96,13 +139,39 @@ class PromoterSettlementService {
   }
 
   String _errorMessage(http.Response response, String fallback) {
+    if (response.headers['message'] != null &&
+        response.headers['message']!.trim().isNotEmpty) {
+      return response.headers['message']!.trim();
+    }
+    if (response.headers['x-message'] != null &&
+        response.headers['x-message']!.trim().isNotEmpty) {
+      return response.headers['x-message']!.trim();
+    }
     try {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
-      if (body is Map<String, dynamic> && body['message'] is String) {
-        return body['message'] as String;
+      if (body is Map<String, dynamic>) {
+        if (body['message'] is String &&
+            (body['message'] as String).trim().isNotEmpty) {
+          return (body['message'] as String).trim();
+        }
+        if (body['msg'] is String &&
+            (body['msg'] as String).trim().isNotEmpty) {
+          return (body['msg'] as String).trim();
+        }
+        if (body['error'] is String &&
+            (body['error'] as String).trim().isNotEmpty) {
+          return (body['error'] as String).trim();
+        }
+        if (body['detail'] is String &&
+            (body['detail'] as String).trim().isNotEmpty) {
+          return (body['detail'] as String).trim();
+        }
       }
     } catch (_) {
-      // A non-JSON error body falls back to the standard failure message.
+      final rawStr = utf8.decode(response.bodyBytes).trim();
+      if (rawStr.isNotEmpty && !rawStr.startsWith('<') && rawStr.length < 200) {
+        return rawStr;
+      }
     }
     return fallback;
   }

@@ -54,6 +54,10 @@ class TicketRaised {
   String? image;
   String? description;
   bool? isResolved;
+  String? status;
+  String? priority;
+  String? category;
+  String? assignedTo;
 
   TicketRaised({
     this.tickedId,
@@ -67,21 +71,92 @@ class TicketRaised {
     this.image,
     this.description,
     this.isResolved,
+    this.status,
+    this.priority,
+    this.category,
+    this.assignedTo,
   });
 
-  factory TicketRaised.fromJson(Map<String, dynamic> json) => TicketRaised(
-    tickedId: json["tickedId"],
-    topic: json["topic"],
-    mobileNumber: json["mobileNumber"],
-    email: json["email"],
-    user: json["user"] == null ? null : User.fromJson(json["user"]),
-    userId: json["userId"],
-    date: json["date"],
-    feedback: json["feedback"],
-    image: json["image"],
-    description: json["description"],
-    isResolved: json["isResolved"],
-  );
+  TicketRaised copyWith({
+    int? tickedId,
+    String? topic,
+    String? mobileNumber,
+    String? email,
+    User? user,
+    int? userId,
+    int? date,
+    String? feedback,
+    String? image,
+    String? description,
+    bool? isResolved,
+    String? status,
+    String? priority,
+    String? category,
+    String? assignedTo,
+  }) {
+    return TicketRaised(
+      tickedId: tickedId ?? this.tickedId,
+      topic: topic ?? this.topic,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
+      email: email ?? this.email,
+      user: user ?? this.user,
+      userId: userId ?? this.userId,
+      date: date ?? this.date,
+      feedback: feedback ?? this.feedback,
+      image: image ?? this.image,
+      description: description ?? this.description,
+      isResolved: isResolved ?? this.isResolved,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      category: category ?? this.category,
+      assignedTo: assignedTo ?? this.assignedTo,
+    );
+  }
+
+  factory TicketRaised.fromJson(Map<String, dynamic> json) {
+    int? parsedDate;
+    final rawDate = json["date"] ?? json["createdAt"] ?? json["createdDate"];
+    if (rawDate is int) {
+      parsedDate = rawDate;
+    } else if (rawDate != null) {
+      final asInt = int.tryParse(rawDate.toString());
+      if (asInt != null) {
+        parsedDate = asInt;
+      } else {
+        parsedDate = DateTime.tryParse(rawDate.toString())?.millisecondsSinceEpoch;
+      }
+    }
+
+    final rawId = json["tickedId"] ?? json["ticketId"] ?? json["id"];
+    final parsedId = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '');
+
+    final rawResolved = json["isResolved"] ?? json["resolved"] ?? json["isSolved"];
+    final parsedResolved = rawResolved is bool
+        ? rawResolved
+        : (rawResolved?.toString().toLowerCase() == 'true' || rawResolved == 1);
+
+    return TicketRaised(
+      tickedId: parsedId,
+      topic: json["topic"] ?? json["title"] ?? json["subject"],
+      mobileNumber: json["mobileNumber"] ?? json["phone"] ?? json["mobile"],
+      email: json["email"] ?? json["emailId"] ?? json["userEmail"],
+      user: json["user"] == null
+          ? null
+          : (json["user"] is Map<String, dynamic>
+              ? User.fromJson(json["user"])
+              : (json["user"] is Map ? User.fromJson(Map<String, dynamic>.from(json["user"])) : null)),
+      userId: json["userId"] is int ? json["userId"] : int.tryParse(json["userId"]?.toString() ?? ''),
+      date: parsedDate,
+      feedback: json["feedback"] ?? json["resolution"] ?? json["response"] ?? json["adminFeedback"],
+      image: json["image"] ?? json["imageUrl"] ?? json["attachment"],
+      description: json["description"] ?? json["query"] ?? json["message"],
+      isResolved: parsedResolved,
+      status: json["status"]?.toString(),
+      priority: json["priority"]?.toString(),
+      category: json["category"]?.toString(),
+      assignedTo: json["assignedTo"]?.toString() ?? json["assignedUser"]?.toString(),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     "tickedId": tickedId,
@@ -95,5 +170,9 @@ class TicketRaised {
     "image": image,
     "description": description,
     "isResolved": isResolved,
+    if (status != null) "status": status,
+    if (priority != null) "priority": priority,
+    if (category != null) "category": category,
+    if (assignedTo != null) "assignedTo": assignedTo,
   };
 }

@@ -5,7 +5,8 @@ import 'movie_details_page.dart';
 import 'series_details_page.dart';
 
 void showMovieDetailsDialog(BuildContext context, Content content) {
-  final isSeries = (content.type ?? '').toUpperCase() == 'SERIES';
+  final type = (content.type ?? '').toUpperCase();
+  final isSeries = type == 'SERIES' || type == 'MINI_SERIES' || type == 'MINI SERIES';
 
   Navigator.push(
     context,

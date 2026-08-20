@@ -1,21 +1,22 @@
 import 'package:admin_ott/app/provider/videoProvider.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/DisplayTrailer.dart';
 import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/setPercentageDialog.dart';
-import 'package:admin_ott/app/widgets/custom_textfield.dart';
 import 'package:admin_ott/app/widgets/app_loaders.dart';
+import 'package:admin_ott/data/repositories/cast_repository.dart';
 import 'package:admin_ott/domain/entities/content.dart';
 import 'package:admin_ott/domain/entities/mediaHouse.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../device/utils/ResponsiveWidget.dart';
-import '../../../../../domain/entities/user.dart';
 import '../../../../provider/themeProvider.dart';
 import '../../../../widgets/show_toast.dart';
 import 'multi_select_dailog.dart';
 
 class AddDataWidget extends StatefulWidget {
-  const AddDataWidget({super.key});
+  final Content? editingContent;
+
+  const AddDataWidget({super.key, this.editingContent});
 
   @override
   State<AddDataWidget> createState() => _AddDataWidgetState();
@@ -23,18 +24,128 @@ class AddDataWidget extends StatefulWidget {
 
 class _AddDataWidgetState extends State<AddDataWidget> {
   final PageController _pageController = PageController();
+  final ScrollController _scrollController = ScrollController();
+
+  final TextEditingController _castNameController = TextEditingController();
+  final TextEditingController _castRoleController = TextEditingController();
 
   int _currentPage = 0;
+  bool _isSaving = false;
+  MediaHouse? _selectedMediaHouse;
+
+  bool get _isEditing => widget.editingContent != null;
+
+  String get _contentTypeLabel {
+    final rawType = widget.editingContent?.type ??
+        Provider.of<VideoProvider>(context, listen: false).typeController.text;
+    switch (rawType.toUpperCase()) {
+      case 'SERIES':
+        return 'Series';
+      case 'MINI_SERIES':
+      case 'MINISERIES':
+        return 'Mini Series';
+      case 'SHORT_FILM':
+      case 'SHORTFILM':
+        return 'Short Film';
+      case 'MOVIE':
+      default:
+        return 'Movie';
+    }
+  }
+
+  String get _stepTitle {
+    switch (_currentPage) {
+      case 0:
+        return 'Language, Details & Cast';
+      case 1:
+        return 'Video & Pricing Details';
+      case 2:
+      default:
+        return 'Upload Files & Settings';
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final videoProvider = Provider.of<VideoProvider>(context, listen: false);
+    if (widget.editingContent != null) {
+      videoProvider.populateContentForm(widget.editingContent!);
+      _loadCastIfEmpty(widget.editingContent!);
+    } else {
+      videoProvider.resetContentForm();
+    }
+    _fetchMediaHouses();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _scrollController.dispose();
+    _castNameController.dispose();
+    _castRoleController.dispose();
+    super.dispose();
+  }
+
+  void _loadCastIfEmpty(Content content) async {
+    final videoProvider = Provider.of<VideoProvider>(context, listen: false);
+    if (videoProvider.castList.isEmpty && content.id != null) {
+      try {
+        final castRepo = CastRepository();
+        final list = await castRepo.getCastForContent(
+          contentType: content.type ?? 'MOVIE',
+          contentId: content.id!,
+        );
+        if (list.isNotEmpty && mounted) {
+          for (final c in list) {
+            final name = c.name ?? '';
+            final role = c.role ?? '';
+            if (name.isNotEmpty) {
+              final entry = role.isNotEmpty ? "$name ($role)" : name;
+              if (!videoProvider.castList.contains(entry)) {
+                videoProvider.castList.add(entry);
+              }
+            }
+          }
+          videoProvider.notifyListeners();
+          setState(() {});
+        }
+      } catch (e) {
+        debugPrint("Error fetching additional cast: $e");
+      }
+    }
+  }
+
+  void _fetchMediaHouses() async {
+    final videoProvider = Provider.of<VideoProvider>(context, listen: false);
+    await videoProvider.fetchMediaHouse();
+    if (videoProvider.mediaHouseList.isNotEmpty) {
+      final editingMediaHouseId = widget.editingContent?.mediaHouseId;
+      final editingMediaHouseName = widget.editingContent?.mediaHouseName;
+      _selectedMediaHouse = videoProvider.mediaHouseList.firstWhere(
+        (mediaHouse) =>
+            (editingMediaHouseId != null && mediaHouse.id == editingMediaHouseId) ||
+            (editingMediaHouseName != null &&
+                mediaHouse.mediaHouseName?.toLowerCase() == editingMediaHouseName.toLowerCase()),
+        orElse: () => videoProvider.mediaHouseList.first,
+      );
+      if (mounted) setState(() {});
+    }
+  }
 
   void _nextPage() {
     if (_currentPage < 2) {
       setState(() {
         _currentPage++;
       });
-      _pageController.nextPage(
+      _pageController.animateToPage(
+        _currentPage,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
     }
   }
 
@@ -43,164 +154,173 @@ class _AddDataWidgetState extends State<AddDataWidget> {
       setState(() {
         _currentPage--;
       });
-      _pageController.previousPage(
+      _pageController.animateToPage(
+        _currentPage,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
     }
   }
 
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    getMediaHouse();
-  }
-
-  void getMediaHouse() async {
-    VideoProvider videoProvider =
-        Provider.of<VideoProvider>(context, listen: false);
-    await videoProvider.fetchMediaHouse();
-    if (videoProvider.mediaHouseList.isNotEmpty) {
-      _selectedMediaHouse = videoProvider
-          .mediaHouseList.first; // Optional: Set default to the first user
-    }
+  void _handleClose() {
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    ThemeProvider themeProvider =
-        Provider.of<ThemeProvider>(context, listen: false);
-    var selectedThemeData = themeProvider.getTheme;
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final selectedThemeData = themeProvider.getTheme;
+    final isMobile = ResponsiveWidget.isMobile(context);
+
     return Scaffold(
-      body: Container(
-        padding: const EdgeInsets.all(16.0),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selectedThemeData.cardColor,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Consumer<VideoProvider>(builder: (context, provider, child) {
-          return SizedBox(
-            width: ResponsiveWidget.isMobile(context)
-                ? MediaQuery.of(context).size.width
-                : MediaQuery.of(context).size.width - 700,
-            child: Column(
-              children: [
-                // Header with navigation buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        icon: Icon(Icons.remove_circle_outline_sharp,
-                            color: selectedThemeData.canvasColor)),
-                    if (_currentPage > 0)
-                      IconButton(
-                        icon: Icon(Icons.arrow_back,
-                            color: selectedThemeData.canvasColor),
-                        onPressed: _previousPage,
-                      ),
-                    Text(
-                      "Add Video - Step ${_currentPage + 1} of 3",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w500,
-                        color: selectedThemeData.canvasColor,
-                      ),
-                    ),
-                    if (_currentPage < 2)
-                      IconButton(
-                        icon: Icon(Icons.arrow_forward,
-                            color: selectedThemeData.canvasColor),
-                        onPressed: _nextPage,
-                      ),
-                  ],
-                ),
-
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(),
-                    children: [
-                      _buildBasicInfoSlide(selectedThemeData),
-                      _buildUploadFilesSlide(selectedThemeData),
-                      _buildPricingSlide(selectedThemeData),
-                    ],
-                  ),
-                ),
-
-                ElevatedButton(
-                  onPressed: () {
-                    if (_currentPage == 2) {
-                      _handleAdd(
-                          provider, selectedThemeData, _selectedMediaHouse);
-                    } else {
-                      // Validate title, price, and release date
-                      String releaseDate =
-                          provider.releaseDateController.text.trim();
-                      String title = provider.titleController.text.trim();
-                      String movieUrl = provider.movieUrlController.text.trim();
-                      String trailerUrl =
-                          provider.trailerUrlController.text.trim();
-                      String priceText = provider.priceController.text.trim();
-                      double? price = double.tryParse(priceText);
-
-                      /*  if (releaseDate.isEmpty || title.isEmpty || price == null || price <= 0) {
-                        CustomToast.show(
-                          "Please enter valid title, price, and release date.",
-                          isSuccess: false,
-                        );
-                        return;
-                      }
-*/
-                      if (_currentPage == 1) {
-                        if (movieUrl.isEmpty || trailerUrl.isEmpty) {
-                          CustomToast.show(
-                            "Please upload movie url and trailer url",
-                            isSuccess: false,
-                          );
-                          return;
-                        }
-                      }
-                      // Parse and compare the release date
-                      try {
-                        DateTime currentDate = DateTime.now();
-                        DateTime targetDate = DateTime.parse(releaseDate);
-
-                        if (targetDate.isAfter(currentDate)) {
-                          provider.toggleFeatured(true);
-                        } else {
-                          provider.toggleFeatured(false);
-                        }
-                        _nextPage();
-                      } catch (e) {
-                        CustomToast.show(
-                          "Invalid release date format. Please correct it.",
-                          isSuccess: false,
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: selectedThemeData.primaryColor,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 30),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                  ),
-                  child: Text(
-                    _currentPage == 2 ? "Submit" : "Next",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
+      backgroundColor: selectedThemeData.scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 960),
+            margin: EdgeInsets.symmetric(
+              horizontal: isMobile ? 8.0 : 24.0,
+              vertical: isMobile ? 8.0 : 16.0,
+            ),
+            decoration: BoxDecoration(
+              color: selectedThemeData.cardColor,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
                 ),
               ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Consumer<VideoProvider>(
+                builder: (context, provider, child) {
+                  return Column(
+                    children: [
+                      _buildHeader(selectedThemeData),
+                      _buildProgressBar(selectedThemeData),
+                      Expanded(
+                        child: PageView(
+                          controller: _pageController,
+                          physics: const NeverScrollableScrollPhysics(),
+                          children: [
+                            _buildStep1LanguageDetailsCast(selectedThemeData, provider),
+                            _buildStep2VideoPricing(selectedThemeData, provider),
+                            _buildStep3UploadFiles(selectedThemeData, provider),
+                          ],
+                        ),
+                      ),
+                      _buildBottomActionBar(selectedThemeData, provider),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    final redColor = theme.primaryColor;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor.withValues(alpha: 0.6),
+        border: Border(
+          bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5), width: 1),
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: InkWell(
+              onTap: _handleClose,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: theme.dividerColor.withValues(alpha: 0.6)),
+                ),
+                child: Icon(Icons.close, size: 18, color: theme.canvasColor),
+              ),
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _isEditing ? "Edit $_contentTypeLabel" : "Add Content",
+                style: TextStyle(
+                  color: redColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _stepTitle,
+                style: TextStyle(
+                  color: theme.canvasColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: redColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                "Step ${_currentPage + 1}/3",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressBar(ThemeData theme) {
+    final redColor = theme.primaryColor;
+    final inactiveColor = theme.dividerColor.withValues(alpha: 0.6);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Row(
+        children: List.generate(3, (index) {
+          final isPassedOrCurrent = index <= _currentPage;
+          return Expanded(
+            child: Container(
+              height: 4,
+              margin: EdgeInsets.only(right: index == 2 ? 0 : 6),
+              decoration: BoxDecoration(
+                color: isPassedOrCurrent ? redColor : inactiveColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           );
         }),
@@ -208,635 +328,1187 @@ class _AddDataWidgetState extends State<AddDataWidget> {
     );
   }
 
-  Widget _buildBasicInfoSlide(ThemeData themeData) {
-    return Consumer<VideoProvider>(builder: (context, provider, child) {
-      return ListView(
+  Widget _buildCardContainer({
+    required ThemeData theme,
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CustomTextField(
-            controller: provider.titleController,
-            hintText: "Video Name",
-            textInputType: TextInputType.text,
+          Text(
+            title,
+            style: TextStyle(
+              color: theme.primaryColor,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          CustomTextField(
-            controller: provider.descriptionController,
-            hintText: "Description",
-            textInputType: TextInputType.text,
-          ),
-          CustomTextField(
-            controller: provider.releaseDateController,
-            hintText: "Release Date (e.g., 2019-04-26)",
-            textInputType: TextInputType.datetime,
-          ),
-          CustomTextField(
-            controller: provider.runTimeController,
-            hintText: "Runtime (e.g., 181 minutes)",
-            textInputType: TextInputType.number,
-          ),
-          CustomTextField(
-            controller: provider.priceController,
-            hintText: "Price (e.g., 300)",
-            textInputType: TextInputType.text,
-          ),
-          _buildDropdownField(
-              'Age Rating',
-              [
-                'U (Universal)',
-                'U/A (Parental Guidance for Children Below 12)',
-                'A (Adults Only)',
-                'S (Restricted to a Special Class of Persons)'
-              ],
-              context,
-              provider,
-              themeData),
-          _buildDropdownField(
-              'Type', ['MOVIE', 'SERIES', 'SHORT_FILM'], context, provider, themeData),
-          _buildDropdownField(
-              'Rental Duration',
-              [
-                "One Time",
-                "One Day",
-                "Two Day",
-                "Three Day",
-                "One Week",
-                "Two Week",
-                "One Month",
-                "Three Month",
-                "Six Month",
-                "One Year",
-                "Lifetime",
-              ],
-              context,
-              provider,
-              themeData),
+          const SizedBox(height: 16),
+          ...children,
         ],
-      );
-    });
+      ),
+    );
   }
 
-  Widget _buildUploadFilesSlide(ThemeData themeData) {
-    return ListView(
+  Widget _buildFieldLabel(String label, ThemeData theme, {bool isRequired = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      child: RichText(
+        text: TextSpan(
+          text: label,
+          style: TextStyle(
+            color: theme.canvasColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          children: [
+            if (isRequired)
+              const TextSpan(
+                text: ' *',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String hintText,
+    required ThemeData theme,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      style: TextStyle(color: theme.canvasColor, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: theme.hintColor.withValues(alpha: 0.7), fontSize: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        filled: true,
+        fillColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.3),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: 0.6)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: 0.6)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.primaryColor, width: 1.5),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSingleDropdown({
+    required String label,
+    required List<String> items,
+    required String? selectedValue,
+    required Function(String?) onChanged,
+    required ThemeData theme,
+  }) {
+    final effectiveItems = List<String>.from(items);
+    String? matchedValue;
+
+    if (selectedValue != null && selectedValue.trim().isNotEmpty) {
+      final trimmed = selectedValue.trim();
+      final index = effectiveItems.indexWhere(
+        (item) => item.toLowerCase() == trimmed.toLowerCase(),
+      );
+      if (index >= 0) {
+        matchedValue = effectiveItems[index];
+      } else {
+        effectiveItems.insert(0, trimmed);
+        matchedValue = trimmed;
+      }
+    } else if (effectiveItems.isNotEmpty) {
+      matchedValue = effectiveItems.first;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _builtMultiValueTextField("Cast", themeData),
-        _builtMultiValueTextField("Director", themeData),
-        _buildUploadSection("Trailer File", themeData),
-        _buildUploadSection("Movie File", themeData),
-        _buildUploadSection("Censor Certificate", themeData),
-        ...List.generate(3, (index) {
-          return _buildUploadSection("Poster ${index + 1}", themeData);
-        }),
+        _buildFieldLabel(label, theme),
+        DropdownButtonFormField<String>(
+          value: matchedValue,
+          items: effectiveItems.map((item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(
+                item,
+                style: TextStyle(color: theme.canvasColor, fontSize: 14),
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
+          dropdownColor: theme.cardColor,
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            filled: true,
+            fillColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.3),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: 0.6)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: 0.6)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: theme.primaryColor, width: 1.5),
+            ),
+          ),
+          icon: Icon(Icons.keyboard_arrow_down_rounded, color: theme.canvasColor),
+        ),
       ],
     );
   }
 
-  Widget _buildPricingSlide(ThemeData themeData) {
-    return Consumer<VideoProvider>(builder: (context, provider, child) {
-      return ListView(
-        children: [
-          _buildMultiSelectDropdownField(
-              'Genres',
-              [
-                'Action',
-                'Drama',
-                'Comedy',
-                'Thriller',
-                'Horror',
-                'Romance',
-                'Sci-Fi',
-                'Fantasy',
-                'Mystery',
-                'Documentary',
-                'Animation',
-                'Adventure',
-                'Musical',
-                'Historical',
-                'Crime'
-              ],
-              context,
-              themeData),
-          _buildMultiSelectDropdownField(
-              'Audio Formats',
-              [
-                'Stereo',
-                'Dolby',
-                'Mono',
-                'Surround Sound',
-                'Dolby Atmos',
-                'Dolby Digital (AC-3)'
-              ],
-              context,
-              themeData),
-          _buildMultiSelectDropdownField(
-              'Subtitle Languages',
-              [
-                'Hindi',
-                'English',
-                'Bengali',
-                'Marathi',
-                'Telugu',
-                'Tamil',
-                'Gujarati',
-                'Urdu',
-                'Kannada',
-                'Odia',
-                'Malayalam',
-                'Punjabi',
-                'Assamese',
-                'Rajasthani',
-                'Bhojpuri',
-                'Sindhi',
-                'Konkani',
-                'Maithili',
-                'Santali',
-                'Manipuri',
-                'Kashmiri',
-                'Dogri',
-                'Tulu',
-                'Mizo',
-                'Bodo'
-              ],
-              context,
-              themeData),
-          _buildMultiSelectDropdownField(
-              'Languages',
-              [
-                'Hindi',
-                'English',
-                'Bengali',
-                'Marathi',
-                'Telugu',
-                'Tamil',
-                'Gujarati',
-                'Urdu',
-                'Kannada',
-                'Odia',
-                'Malayalam',
-                'Punjabi',
-                'Assamese',
-                'Rajasthani',
-                'Bhojpuri',
-                'Sindhi',
-                'Konkani',
-                'Maithili',
-                'Santali',
-                'Manipuri',
-                'Kashmiri',
-                'Dogri',
-                'Tulu',
-                'Mizo',
-                'Bodo'
-              ],
-              context,
-              themeData),
-          const SizedBox(height: 16),
-          _buildUserDropdownField(
-              'Contact Person', context, provider.mediaHouseList, themeData),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Text('Is Downloadable'),
-              const Spacer(),
-              Switch(
-                value: provider.isDownloadable,
-                onChanged: (value) {
-                  provider.toggleDownloadable(value);
-                },
-                activeColor: Theme.of(context).colorScheme.primary,
-                inactiveThumbColor: Colors.grey,
-                inactiveTrackColor: Colors.grey.shade300,
-              )
-            ],
-          ),
-          Row(
-            children: [
-              const Text('Is Featured'),
-              const Spacer(),
-              Switch(
-                value: provider.isFeatured,
-                onChanged: (value) {
-                  provider.toggleFeatured(value);
-                },
-                activeColor: Theme.of(context).colorScheme.primary,
-                inactiveThumbColor: Colors.grey,
-                inactiveTrackColor: Colors.grey.shade300,
-              )
-            ],
-          ),
-        ],
-      );
-    });
-  }
+  Widget _buildMultiSelectField({
+    required String label,
+    required List<String> allItems,
+    required List<String> selectedItems,
+    required BuildContext context,
+    required ThemeData theme,
+  }) {
+    final displayText = selectedItems.isNotEmpty ? selectedItems.join(', ') : 'Select $label';
 
-  Widget _buildDropdownField(
-    String label,
-    List<String> items,
-    BuildContext context,
-    VideoProvider provider,
-    ThemeData themeData,
-  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label for the dropdown
-        Text(
-          label,
-          style: themeData.textTheme.bodySmall?.copyWith(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          hint: Text(
-            "Select $label",
-            style: themeData.textTheme.bodySmall?.copyWith(fontSize: 14),
-          ),
-          items: items
-              .map(
-                (item) => DropdownMenuItem(
-                  value: item,
+        _buildFieldLabel(label, theme),
+        InkWell(
+          onTap: () async {
+            await showDialog(
+              context: context,
+              builder: (_) => MultiSelectDialog(
+                label: label,
+                items: allItems,
+                theme: theme,
+              ),
+            );
+            setState(() {});
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.scaffoldBackgroundColor.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.6)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
                   child: Text(
-                    item,
-                    style: themeData.textTheme.bodySmall?.copyWith(
+                    displayText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selectedItems.isNotEmpty ? theme.canvasColor : theme.hintColor,
                       fontSize: 14,
-                      color: themeData.textTheme.bodySmall?.color,
                     ),
                   ),
                 ),
-              )
-              .toList(),
-          onChanged: (value) {
-            provider.dropDownSelection(value!, label);
-          },
-          decoration: InputDecoration(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
+                Icon(Icons.keyboard_arrow_down_rounded, color: theme.canvasColor),
+              ],
             ),
-            enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(
-                color: themeData.dividerColor,
-                width: 1.0,
-              ),
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(
-                color: themeData.primaryColor,
-                width: 1.5,
-              ),
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-            filled: true,
-            fillColor: themeData.colorScheme.surface,
-          ),
-          dropdownColor: themeData.colorScheme.background,
-          icon: Icon(
-            Icons.arrow_drop_down,
-            color: themeData.iconTheme.color,
           ),
         ),
-        const SizedBox(height: 16),
       ],
     );
   }
 
-  Widget _buildMultiSelectDropdownField(
-    String label,
-    List<String> items,
-    BuildContext context,
-    ThemeData theme,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  // STEP 1: Language, Details & Cast
+  Widget _buildStep1LanguageDetailsCast(ThemeData theme, VideoProvider provider) {
+    final availableLanguages = [
+      'Marathi',
+      'Hindi',
+      'English',
+      'Bengali',
+      'Telugu',
+      'Tamil',
+      'Gujarati',
+      'Urdu',
+      'Kannada',
+      'Odia',
+      'Malayalam',
+      'Punjabi',
+      'Assamese',
+      'Rajasthani',
+      'Bhojpuri',
+      'Sindhi',
+      'Konkani',
+      'Maithili',
+      'Santali',
+      'Manipuri',
+      'Kashmiri',
+      'Dogri',
+      'Tulu',
+      'Mizo',
+      'Bodo'
+    ];
+
+    final ageRatings = [
+      'U (Universal)',
+      'U/A (Parental Guidance for Children Below 12)',
+      'A (Adults Only)',
+      'S (Restricted to a Special Class of Persons)'
+    ];
+
+    final availableGenres = [
+      'Action',
+      'Drama',
+      'Comedy',
+      'Thriller',
+      'Horror',
+      'Romance',
+      'Sci-Fi',
+      'Fantasy',
+      'Mystery',
+      'Documentary',
+      'Animation',
+      'Adventure',
+      'Musical',
+      'Historical',
+      'Crime'
+    ];
+
+    String? currentLanguage;
+    if (provider.selectedLanguages.isNotEmpty) {
+      currentLanguage = provider.selectedLanguages.first;
+    } else if (widget.editingContent?.languageList?.isNotEmpty == true) {
+      currentLanguage = widget.editingContent!.languageList!.first;
+    } else {
+      currentLanguage = 'Marathi';
+    }
+
+    String? currentAgeRating;
+    if (provider.ageRatingController.text.trim().isNotEmpty) {
+      currentAgeRating = provider.ageRatingController.text.trim();
+    } else if (widget.editingContent?.ageRating != null &&
+        widget.editingContent!.ageRating!.trim().isNotEmpty) {
+      currentAgeRating = widget.editingContent!.ageRating!.trim();
+    } else {
+      currentAgeRating = ageRatings.first;
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        // Add label for the dropdown
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: () async {
-            // Show the multi-select dialog
-            await showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return MultiSelectDialog(
-                  label: label,
-                  items: items,
-                  theme: theme,
-                );
+        _buildCardContainer(
+          theme: theme,
+          title: "Language & Basic Details",
+          children: [
+            _buildSingleDropdown(
+              label: "Languages",
+              items: availableLanguages,
+              selectedValue: currentLanguage,
+              onChanged: (val) {
+                if (val != null) {
+                  provider.selectedLanguages
+                    ..clear()
+                    ..add(val);
+                  provider.notifyListeners();
+                }
               },
-            );
-          },
-          child: Consumer<VideoProvider>(
-            builder: (context, provider, child) {
-              return Container(
-                width: MediaQuery.of(context).size.width,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: theme.dividerColor),
-                  borderRadius: BorderRadius.circular(8.0),
-                  color: theme.colorScheme.surface,
-                ),
-                child: Text(
-                  _getDisplayText(label, provider),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: theme.textTheme.bodySmall?.color,
+              theme: theme,
+            ),
+            const SizedBox(height: 14),
+            _buildFieldLabel("Title", theme, isRequired: true),
+            _buildInputField(
+              controller: provider.titleController,
+              hintText: "Enter title",
+              theme: theme,
+            ),
+            const SizedBox(height: 14),
+            _buildFieldLabel("Description", theme),
+            _buildInputField(
+              controller: provider.descriptionController,
+              hintText: "Enter description",
+              theme: theme,
+              maxLines: 3,
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFieldLabel("Release Date", theme),
+                      _buildInputField(
+                        controller: provider.releaseDateController,
+                        hintText: "e.g. 2026-04-24",
+                        theme: theme,
+                      ),
+                    ],
                   ),
                 ),
-              );
-            },
-          ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFieldLabel("Runtime (minutes)", theme),
+                      _buildInputField(
+                        controller: provider.runTimeController,
+                        hintText: "e.g. 120",
+                        theme: theme,
+                        keyboardType: TextInputType.number,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  String _getDisplayText(String label, VideoProvider provider) {
-    if (label == "Genres") {
-      return provider.selectedGeners.isNotEmpty
-          ? provider.selectedGeners.join(', ')
-          : 'Select $label';
-    } else if (label == "Audio Formats") {
-      return provider.selectedAudioFormat.isNotEmpty
-          ? provider.selectedAudioFormat.join(', ')
-          : 'Select $label';
-    } else if (label == "Subtitle Languages") {
-      return provider.selectedSubLanguages.isNotEmpty
-          ? provider.selectedSubLanguages.join(', ')
-          : 'Select $label';
-    } else {
-      return provider.selectedLanguages.isNotEmpty
-          ? provider.selectedLanguages.join(', ')
-          : 'Select $label';
-    }
-  }
-
-  Widget _builtMultiValueTextField(String label, ThemeData selectedThemeData) {
-    return Consumer<VideoProvider>(
-      builder: (context, provider, child) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        _buildCardContainer(
+          theme: theme,
+          title: "Cast And Crew",
           children: [
+            Text(
+              "Cast",
+              style: TextStyle(
+                color: theme.primaryColor,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _buildFieldLabel("Cast Name", theme, isRequired: true),
+            _buildInputField(
+              controller: _castNameController,
+              hintText: "Enter cast name",
+              theme: theme,
+            ),
+            const SizedBox(height: 12),
+            _buildFieldLabel("Cast Role", theme),
+            _buildInputField(
+              controller: _castRoleController,
+              hintText: "Enter cast role",
+              theme: theme,
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  final name = _castNameController.text.trim();
+                  final role = _castRoleController.text.trim();
+                  if (name.isNotEmpty) {
+                    final entry = role.isNotEmpty ? "$name ($role)" : name;
+                    provider.castList.add(entry);
+                    _castNameController.clear();
+                    _castRoleController.clear();
+                    provider.notifyListeners();
+                    setState(() {});
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.primaryColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+                icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                label: const Text("Add Cast", style: TextStyle(color: Colors.white, fontSize: 13)),
+              ),
+            ),
+            if (provider.castList.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: provider.castList.map((cast) {
+                  return Chip(
+                    label: Text(cast, style: const TextStyle(fontSize: 12, color: Colors.white)),
+                    backgroundColor: theme.primaryColor.withValues(alpha: 0.9),
+                    deleteIcon: const Icon(Icons.close, size: 14, color: Colors.white),
+                    onDeleted: () {
+                      provider.castList.remove(cast);
+                      provider.notifyListeners();
+                      setState(() {});
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 12),
+            Text(
+              "Director",
+              style: TextStyle(
+                color: theme.primaryColor,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 8),
+            _buildFieldLabel("Director Name(s)", theme),
             TextField(
-              controller: label == "Cast"
-                  ? provider.castController
-                  : provider.directorController,
+              controller: provider.directorController,
               decoration: InputDecoration(
-                labelText: "Enter $label names separated by commas",
-                border: OutlineInputBorder(),
+                hintText: "Enter director names separated by commas",
+                hintStyle: TextStyle(color: theme.hintColor.withValues(alpha: 0.7), fontSize: 14),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                filled: true,
+                fillColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.3),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: 0.6)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: 0.6)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: theme.primaryColor, width: 1.5),
+                ),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.add),
                   onPressed: () {
-                    provider.addValuesToList(label);
+                    provider.addValuesToList("Director");
+                    setState(() {});
                   },
                 ),
               ),
               onChanged: (value) {
                 if (value.contains(',')) {
-                  provider.addValuesToList(label);
+                  provider.addValuesToList("Director");
+                  setState(() {});
                 }
               },
-              onSubmitted: (_) => provider.addValuesToList(label),
+              onSubmitted: (_) {
+                provider.addValuesToList("Director");
+                setState(() {});
+              },
             ),
-            const SizedBox(height: 8),
-            // Display the list
-            if (label == "Cast" && provider.castList.isNotEmpty)
+            if (provider.directorList.isNotEmpty) ...[
+              const SizedBox(height: 10),
               Wrap(
-                spacing: 8.0,
-                children: provider.castList
-                    .map(
-                      (item) => Chip(
-                        label: Text(
-                          item,
-                          style:
-                              selectedThemeData.textTheme.bodyMedium?.copyWith(
-                            color: selectedThemeData.colorScheme.onPrimary,
-                          ),
-                        ),
-                        backgroundColor: selectedThemeData.colorScheme.primary,
-                        deleteIconColor:
-                            selectedThemeData.colorScheme.onPrimary,
-                        deleteIcon: const Icon(Icons.close),
-                        onDeleted: () {
-                          provider.castList.remove(item);
-                          provider.notifyListeners();
-                        },
-                      ),
-                    )
-                    .toList(),
+                spacing: 8,
+                runSpacing: 6,
+                children: provider.directorList.map((director) {
+                  return Chip(
+                    label: Text(director, style: const TextStyle(fontSize: 12, color: Colors.white)),
+                    backgroundColor: theme.primaryColor.withValues(alpha: 0.9),
+                    deleteIcon: const Icon(Icons.close, size: 14, color: Colors.white),
+                    onDeleted: () {
+                      provider.directorList.remove(director);
+                      provider.notifyListeners();
+                      setState(() {});
+                    },
+                  );
+                }).toList(),
               ),
-            if (label == "Director" && provider.directorList.isNotEmpty)
-              Wrap(
-                spacing: 8.0,
-                children: provider.directorList
-                    .map(
-                      (item) => Chip(
-                        label: Text(
-                          item,
-                          style:
-                              selectedThemeData.textTheme.bodyMedium?.copyWith(
-                            color: selectedThemeData.colorScheme.onPrimary,
-                          ),
-                        ),
-                        backgroundColor: selectedThemeData.colorScheme.primary,
-                        deleteIconColor:
-                            selectedThemeData.colorScheme.onPrimary,
-                        deleteIcon: const Icon(Icons.close),
-                        onDeleted: () {
-                          provider.directorList.remove(item);
-                          provider.notifyListeners();
-                        },
-                      ),
-                    )
-                    .toList(),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildUploadSection(String label, ThemeData selectedThemeData) {
-    return Consumer<VideoProvider>(builder: (context, provider, child) {
-      Color containerColor =
-          selectedThemeData.primaryColor.withOpacity(0.5); // Default color
-
-      if ("Trailer File" == label) {
-        if (provider.trailerUrlController.text.isEmpty ||
-            provider.trailerUrlController.text == '')
-          containerColor = containerColor;
-        else
-          containerColor = Colors.green.shade500;
-      } else if ("Movie File" == label) {
-        if (provider.movieUrlController.text.isEmpty ||
-            provider.movieUrlController.text == '')
-          containerColor = containerColor;
-        else
-          containerColor = Colors.green.shade500;
-      } else if ("Censor Certificate" == label) {
-        if (provider.censorCertificateController.text.isEmpty ||
-            provider.censorCertificateController.text == '')
-          containerColor = containerColor;
-        else
-          containerColor = Colors.green.shade500;
-      } else if ("Poster 1" == label) {
-        if (provider.poster1Controller.text.isEmpty ||
-            provider.poster1Controller.text == '')
-          containerColor = containerColor;
-        else
-          containerColor = Colors.green.shade500;
-      } else if ("Poster 2" == label) {
-        if (provider.poster2Controller.text.isEmpty ||
-            provider.poster2Controller.text == '')
-          containerColor = containerColor;
-        else
-          containerColor = Colors.green.shade500;
-      } else if ("Poster 3" == label) {
-        if (provider.poster3Controller.text.isEmpty ||
-            provider.poster3Controller.text == '')
-          containerColor = containerColor;
-        else
-          containerColor = Colors.green.shade500;
-      } else {
-        containerColor = Colors.green.shade500;
-      }
-
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: InkWell(
-          onTap: () async {
-            if (label == "Movie File" || label == "Trailer File") {
-              provider.uploadVideo(label == "Trailer File" ? true : false);
-            } else {
-              await provider.pickImage(label);
-            }
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: containerColor,
-                  borderRadius: BorderRadius.circular(5),
-                  border: Border.all(color: selectedThemeData.canvasColor),
-                ),
-                child: Center(
-                  child: provider.isUploading
-                      ? const AppSpinner()
-                      : Text(
-                          "Upload $label",
-                          style: TextStyle(
-                            color: selectedThemeData.canvasColor,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                ),
-              ),
-              /* if (kIsWeb && provider.webFile != null)
-                Text('$label: ${provider.webFile!.name}'),*/
             ],
-          ),
+          ],
         ),
-      );
-    });
-  }
-
-  MediaHouse? _selectedMediaHouse;
-
-  Widget _buildUserDropdownField(
-    String label,
-    BuildContext context,
-    List<MediaHouse> mediaHouseList,
-    ThemeData themeData,
-  ) {
-    print("${mediaHouseList.length} Length");
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 8),
-        DropdownButtonFormField<MediaHouse>(
-          value: _selectedMediaHouse,
-          items: mediaHouseList.map((MediaHouse mediaHouse) {
-            return DropdownMenuItem<MediaHouse>(
-              value: mediaHouse,
-              child: Text(
-                mediaHouse.mediaHouseName!,
-                style:
-                    themeData.textTheme.bodyMedium, // Apply theme's text style
-              ),
-            );
-          }).toList(),
-          onChanged: (MediaHouse? selectedMediaHouse) {
-            setState(() {
-              _selectedMediaHouse =
-                  selectedMediaHouse; // Update the selected Production house
-            });
-          },
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: themeData
-                .textTheme.bodyMedium, // Apply theme's label text style
-            border: OutlineInputBorder(
-              borderRadius:
-                  BorderRadius.circular(8), // Rounded corners for input field
-              borderSide: BorderSide(
-                  color: themeData.dividerColor), // Theme's divider color
+        _buildCardContainer(
+          theme: theme,
+          title: "Classification",
+          children: [
+            _buildSingleDropdown(
+              label: "Age Rating",
+              items: ageRatings,
+              selectedValue: currentAgeRating,
+              onChanged: (val) {
+                if (val != null) {
+                  provider.ageRatingController.text = val;
+                  provider.notifyListeners();
+                }
+              },
+              theme: theme,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: themeData.dividerColor),
+            const SizedBox(height: 14),
+            _buildMultiSelectField(
+              label: "Genres",
+              allItems: availableGenres,
+              selectedItems: provider.selectedGeners,
+              context: context,
+              theme: theme,
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                  color: themeData.primaryColor, width: 2), // Highlight color
-            ),
-          ),
-          dropdownColor: themeData.cardColor, // Apply theme's card color
-          hint: Text(
-            "Select MediaHouse",
-            style:
-                themeData.textTheme.bodySmall, // Apply theme's hint text style
-          ),
+          ],
         ),
-        const SizedBox(height: 16),
       ],
     );
   }
 
-  Future<void> _handleAdd(VideoProvider provider, ThemeData selectedThemeData,
-      MediaHouse? selectedMediaHouse) async {
-    Content? content =
-        await provider.uploadContent(selectedMediaHouse!, context);
-    if (content != null) {
-      await showSetPercentageDialog(context, content, selectedMediaHouse!);
+  // STEP 2: Video & Pricing Details
+  Widget _buildStep2VideoPricing(ThemeData theme, VideoProvider provider) {
+    final rentalDurations = [
+      "One Time",
+      "One Day",
+      "Two Day",
+      "Three Day",
+      "One Week",
+      "Two Week",
+      "One Month",
+      "Three Month",
+      "Six Month",
+      "One Year",
+      "Lifetime",
+    ];
+
+    final contentTypes = [
+      'MOVIE',
+      'SERIES',
+      'MINI_SERIES',
+      'SHORT_FILM',
+    ];
+
+    final audioFormats = [
+      'Stereo',
+      'Dolby',
+      'Mono',
+      'Surround Sound',
+      'Dolby Atmos',
+      'Dolby Digital (AC-3)'
+    ];
+
+    final subtitleLanguages = [
+      'English',
+      'Hindi',
+      'Marathi',
+      'Bengali',
+      'Telugu',
+      'Tamil',
+      'Gujarati',
+      'Urdu',
+      'Kannada',
+      'Malayalam',
+      'Punjabi',
+    ];
+
+    String? currentRentalDuration;
+    if (provider.rentalDurationController.text.trim().isNotEmpty) {
+      currentRentalDuration = provider.rentalDurationController.text.trim();
+    } else if (widget.editingContent?.rentlDuration != null &&
+        widget.editingContent!.rentlDuration!.trim().isNotEmpty) {
+      currentRentalDuration = widget.editingContent!.rentlDuration!.trim();
     } else {
-      CustomToast.show("Failed to add content.");
+      currentRentalDuration = "Lifetime";
+    }
+
+    String? currentType;
+    if (provider.typeController.text.trim().isNotEmpty) {
+      currentType = provider.typeController.text.trim().toUpperCase();
+    } else if (widget.editingContent?.type != null &&
+        widget.editingContent!.type!.trim().isNotEmpty) {
+      currentType = widget.editingContent!.type!.trim().toUpperCase();
+    } else {
+      currentType = 'MOVIE';
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        _buildCardContainer(
+          theme: theme,
+          title: "Pricing & Media House",
+          children: [
+            _buildFieldLabel("Price (INR)", theme, isRequired: true),
+            _buildInputField(
+              controller: provider.priceController,
+              hintText: "e.g. 300",
+              theme: theme,
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 14),
+            _buildSingleDropdown(
+              label: "Rental Duration",
+              items: rentalDurations,
+              selectedValue: currentRentalDuration,
+              onChanged: (val) {
+                if (val != null) {
+                  provider.rentalDurationController.text = val;
+                  provider.notifyListeners();
+                }
+              },
+              theme: theme,
+            ),
+            const SizedBox(height: 14),
+            _buildFieldLabel("Contact Person / Media House", theme),
+            DropdownButtonFormField<MediaHouse>(
+              value: _selectedMediaHouse,
+              items: provider.mediaHouseList.map((MediaHouse mediaHouse) {
+                return DropdownMenuItem<MediaHouse>(
+                  value: mediaHouse,
+                  child: Text(
+                    mediaHouse.mediaHouseName ?? "Unknown Media House",
+                    style: TextStyle(color: theme.canvasColor, fontSize: 14),
+                  ),
+                );
+              }).toList(),
+              onChanged: (MediaHouse? selected) {
+                setState(() {
+                  _selectedMediaHouse = selected;
+                });
+              },
+              dropdownColor: theme.cardColor,
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                filled: true,
+                fillColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.3),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: 0.6)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: 0.6)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: theme.primaryColor, width: 1.5),
+                ),
+              ),
+              icon: Icon(Icons.keyboard_arrow_down_rounded, color: theme.canvasColor),
+            ),
+          ],
+        ),
+        _buildCardContainer(
+          theme: theme,
+          title: "Content Formats & Configuration",
+          children: [
+            _buildSingleDropdown(
+              label: "Content Type",
+              items: contentTypes,
+              selectedValue: currentType,
+              onChanged: (val) {
+                if (val != null) {
+                  provider.typeController.text = val;
+                  provider.notifyListeners();
+                  setState(() {});
+                }
+              },
+              theme: theme,
+            ),
+            const SizedBox(height: 14),
+            _buildMultiSelectField(
+              label: "Audio Formats",
+              allItems: audioFormats,
+              selectedItems: provider.selectedAudioFormat,
+              context: context,
+              theme: theme,
+            ),
+            const SizedBox(height: 14),
+            _buildMultiSelectField(
+              label: "Subtitle Languages",
+              allItems: subtitleLanguages,
+              selectedItems: provider.selectedSubLanguages,
+              context: context,
+              theme: theme,
+            ),
+            const SizedBox(height: 14),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text("Is Downloadable", style: TextStyle(color: theme.canvasColor, fontSize: 14)),
+              value: provider.isDownloadable,
+              activeThumbColor: theme.primaryColor,
+              onChanged: (val) => provider.toggleDownloadable(val),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text("Is Featured", style: TextStyle(color: theme.canvasColor, fontSize: 14)),
+              value: provider.isFeatured,
+              activeThumbColor: theme.primaryColor,
+              onChanged: (val) => provider.toggleFeatured(val),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // STEP 3: Upload Files & Settings
+  Widget _buildStep3UploadFiles(ThemeData theme, VideoProvider provider) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        _buildCardContainer(
+          theme: theme,
+          title: "Upload Files",
+          children: [
+            _buildFileUploadItem(
+              label: "Censor Certificate",
+              subLabel: "Recommended: 1080 x 1620 px",
+              currentUrl: provider.censorCertificateController.text,
+              isImage: true,
+              theme: theme,
+              provider: provider,
+              onPick: () => provider.pickImage("Censor Certificate"),
+            ),
+            _buildFileUploadItem(
+              label: "Poster 1",
+              subLabel: "Recommended: 1080 x 1620 px",
+              currentUrl: provider.poster1Controller.text,
+              isImage: true,
+              theme: theme,
+              provider: provider,
+              onPick: () => provider.pickImage("Poster 1"),
+            ),
+            _buildFileUploadItem(
+              label: "Poster 2",
+              subLabel: "Recommended: 1080 x 1620 px",
+              currentUrl: provider.poster2Controller.text,
+              isImage: true,
+              theme: theme,
+              provider: provider,
+              onPick: () => provider.pickImage("Poster 2"),
+            ),
+            _buildFileUploadItem(
+              label: "Poster 3",
+              subLabel: "Recommended: 1080 x 1620 px",
+              currentUrl: provider.poster3Controller.text,
+              isImage: true,
+              theme: theme,
+              provider: provider,
+              onPick: () => provider.pickImage("Poster 3"),
+            ),
+            _buildFileUploadItem(
+              label: "Teaser File",
+              subLabel: "Recommended: Short teaser video (MP4 / HLS)",
+              currentUrl: provider.teaserUrlController.text,
+              isImage: false,
+              theme: theme,
+              provider: provider,
+              onPick: () => provider.uploadVideo(false, isTeaser: true),
+            ),
+            _buildFileUploadItem(
+              label: "Trailer File",
+              subLabel: "Recommended: Full trailer video (MP4 / HLS)",
+              currentUrl: provider.trailerUrlController.text,
+              isImage: false,
+              theme: theme,
+              provider: provider,
+              onPick: () => provider.uploadVideo(true, isTeaser: false),
+            ),
+            _buildFileUploadItem(
+              label: "Movie File",
+              subLabel: "Recommended: Full video content (MP4 / HLS)",
+              currentUrl: provider.movieUrlController.text,
+              isImage: false,
+              theme: theme,
+              provider: provider,
+              onPick: () => provider.uploadVideo(false, isTeaser: false),
+            ),
+          ],
+        ),
+        if (provider.selectedLanguages.isNotEmpty)
+          _buildCardContainer(
+            theme: theme,
+            title: "Audio Track Files",
+            children: [
+              ...provider.selectedLanguages.map((lang) {
+                final audioUrl = provider.languageAudioUrls[lang] ?? '';
+                return _buildFileUploadItem(
+                  label: "$lang Audio Track",
+                  subLabel: "Upload audio file for $lang (MP3 / AAC / MP4)",
+                  currentUrl: audioUrl,
+                  isImage: false,
+                  theme: theme,
+                  provider: provider,
+                  onPick: () => provider.pickAndUploadAudioTrack(lang),
+                );
+              }),
+            ],
+          ),
+        Builder(
+          builder: (context) {
+            final languagesForSubtitles = <String>{
+              ...provider.selectedSubLanguages,
+              ...provider.selectedLanguages,
+            }.where((l) => l.trim().isNotEmpty).toList();
+
+            if (languagesForSubtitles.isEmpty) return const SizedBox.shrink();
+
+            return _buildCardContainer(
+              theme: theme,
+              title: "Subtitle Files",
+              children: [
+                ...languagesForSubtitles.map((subLang) {
+                  final subtitleUrl = provider.subtitleLanguageUrls[subLang] ?? '';
+                  return _buildFileUploadItem(
+                    label: "$subLang Subtitle",
+                    subLabel: "Upload subtitle file for $subLang (VTT / SRT / SUB / TXT)",
+                    currentUrl: subtitleUrl,
+                    isImage: false,
+                    theme: theme,
+                    provider: provider,
+                    onPick: () => provider.pickAndUploadSubtitleFile(subLang),
+                  );
+                }),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFileUploadItem({
+    required String label,
+    required String subLabel,
+    required String currentUrl,
+    required bool isImage,
+    required ThemeData theme,
+    required VideoProvider provider,
+    required VoidCallback onPick,
+  }) {
+    final hasFile = currentUrl.trim().isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: theme.canvasColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subLabel,
+            style: TextStyle(
+              color: theme.hintColor.withValues(alpha: 0.7),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (hasFile)
+            Container(
+              height: 72,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade600, width: 1.2),
+                color: theme.scaffoldBackgroundColor.withValues(alpha: 0.4),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: Stack(
+                  children: [
+                    if (isImage)
+                      Positioned.fill(
+                        child: Opacity(
+                          opacity: 0.35,
+                          child: Image.network(
+                            currentUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isImage ? Icons.image : Icons.video_collection_outlined,
+                            color: Colors.green.shade600,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              "$label Uploaded",
+                              style: TextStyle(
+                                color: theme.canvasColor,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.remove_red_eye_outlined, size: 20),
+                            color: theme.canvasColor,
+                            tooltip: "Preview",
+                            onPressed: () => _previewMedia(currentUrl, isImage, label),
+                          ),
+                          Icon(Icons.check_circle, color: Colors.green.shade600, size: 20),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: provider.isUploading ? null : onPick,
+                            style: TextButton.styleFrom(
+                              foregroundColor: theme.primaryColor,
+                            ),
+                            child: const Text("Replace", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            InkWell(
+              onTap: provider.isUploading ? null : onPick,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                height: 54,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: theme.dividerColor.withValues(alpha: 0.7)),
+                  color: theme.scaffoldBackgroundColor.withValues(alpha: 0.2),
+                ),
+                child: Center(
+                  child: provider.isUploading
+                      ? const AppSpinner()
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.cloud_upload_outlined, color: theme.primaryColor, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Upload $label",
+                              style: TextStyle(
+                                color: theme.canvasColor,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _previewMedia(String url, bool isImage, String label) {
+    if (url.trim().isEmpty) return;
+    if (isImage) {
+      showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(16),
+          child: Stack(
+            alignment: Alignment.topRight,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    padding: const EdgeInsets.all(24),
+                    color: Colors.white,
+                    child: const Text("Failed to load preview image."),
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const CircleAvatar(
+                  backgroundColor: Colors.black54,
+                  child: Icon(Icons.close, color: Colors.white, size: 18),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TrailerPage(trailerUrl: url),
+        ),
+      );
     }
   }
 
-  showSetPercentageDialog(
-      BuildContext context, Content content, MediaHouse mediaHouse) async {
+  Widget _buildBottomActionBar(ThemeData theme, VideoProvider provider) {
+    final redColor = theme.primaryColor;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        border: Border(
+          top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5), width: 1),
+        ),
+      ),
+      child: _currentPage == 0
+          ? SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: () => _validateAndProceed(provider, 0),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: redColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  "Next",
+                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ),
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 46,
+                    child: OutlinedButton(
+                      onPressed: _previousPage,
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: redColor, width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: Text(
+                        "Previous",
+                        style: TextStyle(color: redColor, fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: SizedBox(
+                    height: 46,
+                    child: ElevatedButton(
+                      onPressed: _isSaving
+                          ? null
+                          : () {
+                              if (_currentPage == 1) {
+                                _validateAndProceed(provider, 1);
+                              } else {
+                                _submitForm(provider, theme);
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: redColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        elevation: 0,
+                      ),
+                      child: _isSaving
+                          ? const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                ),
+                                SizedBox(width: 10),
+                                Text("Saving...", style: TextStyle(color: Colors.white, fontSize: 14)),
+                              ],
+                            )
+                          : Text(
+                              _currentPage == 2 ? (_isEditing ? "Save Changes" : "Submit") : "Next",
+                              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  void _validateAndProceed(VideoProvider provider, int currentStep) {
+    if (currentStep == 0) {
+      final title = provider.titleController.text.trim();
+      if (title.isEmpty) {
+        CustomToast.show("Please enter a valid title.", isSuccess: false);
+        return;
+      }
+      _nextPage();
+    } else if (currentStep == 1) {
+      final priceText = provider.priceController.text.trim();
+      final price = double.tryParse(priceText);
+      if (priceText.isEmpty || price == null || price < 0) {
+        CustomToast.show("Please enter a valid price.", isSuccess: false);
+        return;
+      }
+      _nextPage();
+    }
+  }
+
+  Future<void> _submitForm(VideoProvider provider, ThemeData theme) async {
+    final title = provider.titleController.text.trim();
+    final priceText = provider.priceController.text.trim();
+    final price = double.tryParse(priceText);
+
+    if (title.isEmpty || price == null) {
+      CustomToast.show("Please check title and price before submitting.", isSuccess: false);
+      return;
+    }
+
+    if (_isEditing) {
+      final existing = widget.editingContent;
+      if (existing == null) return;
+      setState(() => _isSaving = true);
+      try {
+        final updated = await provider.updateContent(context, existing);
+        if (updated != null && mounted) {
+          Navigator.of(context).pop(updated);
+        }
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
+    } else {
+      if (_selectedMediaHouse == null) {
+        CustomToast.show("Please select a media house.", isSuccess: false);
+        return;
+      }
+      setState(() => _isSaving = true);
+      try {
+        final Content? content = await provider.uploadContent(_selectedMediaHouse!, context);
+        if (content != null && mounted) {
+          await showSetPercentageDialog(content, _selectedMediaHouse!);
+          if (mounted) Navigator.of(context).pop(content);
+        } else {
+          CustomToast.show("Failed to add content.", isSuccess: false);
+        }
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  Future<void> showSetPercentageDialog(
+      Content content, MediaHouse mediaHouse) async {
     final double? result = await showDialog<double>(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return SetPercentageDialog(content: content, mediaHouse: mediaHouse);
       },
     );
 
-    if (result != null) {
-      debugPrint("Selected Percentage: ${result.toInt()}%");
-      // Handle the selected percentage as needed
+    if (result != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Selected Percentage: ${result.toInt()}%")),
       );

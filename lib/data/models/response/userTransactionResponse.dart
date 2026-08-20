@@ -36,7 +36,7 @@ class UserTransactionData {
   int? dateFrom;
   int? dateTo;
   String? refferedBy;
-  int? price;
+  num? price;
   bool? isGifted;
   int? userIdGiftFrom;
   int? userIdGiftTo;

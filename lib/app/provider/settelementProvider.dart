@@ -2,9 +2,12 @@ import 'dart:convert';
 import 'dart:core';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import '../../data/models/request/manual_settlement_request.dart';
+import '../../data/models/response/manual_settlement_response.dart';
 import '../../data/models/response/mediaHouseWeeklySettelement.dart';
 import '../../data/models/response/monthly_ios_settlement.dart';
 import '../../data/models/response/weekly_settlement_report.dart';
+import '../../data/repositories/manual_settlement_repository.dart';
 import '../../data/repositories/monthly_ios_settlement_repository.dart';
 import '../../data/services/promoter_settlement_service.dart';
 import '../core/constant/api_constant.dart';
@@ -43,22 +46,24 @@ class SettelementProvider extends ChangeNotifier {
   // Fetch all moviesByMediaHouseId
   Future<void> fetchWeeklySettelementDataByMediaHouseId(int userId) async {
     String apiUrl = ApiConstant.weeklySettelementDataForMediaHouse(userId);
-    debugPrint(apiUrl);
+    debugPrint("========== WEEKLY SETTLEMENT BY MEDIA HOUSE API REQUEST ==========");
+    debugPrint("URL: $apiUrl");
+    debugPrint("Method: GET");
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.getApi(apiUrl);
-      debugPrint("response::: $response");
+      debugPrint("========== WEEKLY SETTLEMENT BY MEDIA HOUSE API RESPONSE ==========");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("==================================================================");
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        debugPrint("response::: $responseBody");
         MediaHouseWeeklySattelment mediaHouseWeeklySattelment =
             MediaHouseWeeklySattelment.fromJson(responseBody);
-        debugPrint("data::: ${mediaHouseWeeklySattelment.data}");
         if (mediaHouseWeeklySattelment.success == true) {
           if (mediaHouseWeeklySattelment.data != null) {
             _weeklySettelement = mediaHouseWeeklySattelment.data!;
             _filleterdWeeklySettelement = _weeklySettelement;
-            debugPrint("message : ${mediaHouseWeeklySattelment.message}");
             notifyListeners();
           } else {
             debugPrint("empty list: ${mediaHouseWeeklySattelment.message}");
@@ -78,22 +83,24 @@ class SettelementProvider extends ChangeNotifier {
 
   Future<void> fetchWeeklySettelementData() async {
     String apiUrl = ApiConstant.weeklySettelementData;
-    debugPrint(apiUrl);
+    debugPrint("========== WEEKLY SETTLEMENT API REQUEST ==========");
+    debugPrint("URL: $apiUrl");
+    debugPrint("Method: GET");
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.getApi(apiUrl);
-      debugPrint("response::: $response");
+      debugPrint("========== WEEKLY SETTLEMENT API RESPONSE ==========");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("==================================================");
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        debugPrint("response::: $responseBody");
         MediaHouseWeeklySattelment mediaHouseWeeklySattelment =
             MediaHouseWeeklySattelment.fromJson(responseBody);
-        debugPrint("data::: ${mediaHouseWeeklySattelment.data}");
         if (mediaHouseWeeklySattelment.success == true) {
           if (mediaHouseWeeklySattelment.data != null) {
             _weeklySettelement = mediaHouseWeeklySattelment.data!;
             _filleterdWeeklySettelement = _weeklySettelement;
-            debugPrint("message : ${mediaHouseWeeklySattelment.message}");
             notifyListeners();
           } else {
             debugPrint("empty list: ${mediaHouseWeeklySattelment.message}");
@@ -114,14 +121,18 @@ class SettelementProvider extends ChangeNotifier {
   Future<WeeklySettlementReportData> fetchWeeklySettlementReport(
       dynamic settelementId) async {
     String apiUrl = ApiConstant.weeklySettlementReport(settelementId);
-    debugPrint(apiUrl);
+    debugPrint("========== SETTLEMENT DETAILS (WEEKLY REPORT) API REQUEST ==========");
+    debugPrint("URL: $apiUrl");
+    debugPrint("Method: GET");
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.getApi(apiUrl);
-      debugPrint("response::: $response");
+      debugPrint("========== SETTLEMENT DETAILS (WEEKLY REPORT) API RESPONSE ==========");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("=====================================================================");
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        debugPrint("response::: $responseBody");
         final settlementReport =
             WeeklySettlementReportResponse.fromJson(responseBody);
         if (settlementReport.success == true && settlementReport.data != null) {
@@ -233,5 +244,17 @@ class SettelementProvider extends ChangeNotifier {
 
   Future<String> downloadMonthlySettlement(dynamic settlementId) {
     return _downloadService.downloadMonthlyIosSettlementCsv(settlementId);
+  }
+
+  final ManualSettlementRepository _manualRepository =
+      ManualSettlementRepository();
+
+  Future<ManualSettlementResponse> processManualSettlement(
+    ManualSettlementRequest request,
+  ) async {
+    final response = await _manualRepository.processManualSettlement(request);
+    await fetchWeeklySettelementData();
+    await fetchMonthlySettlements(refresh: true);
+    return response;
   }
 }

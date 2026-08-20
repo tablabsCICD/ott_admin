@@ -18,6 +18,14 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/content_rating_review_section.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/movie_purchased_users_section.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/content_review_components.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/add_video.dart';
+import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/edit_teaser_dialog.dart';
+import 'package:admin_ott/data/repositories/cast_repository.dart';
+import 'package:admin_ott/domain/entities/cast_crew.dart';
+
 import 'movie_details_page.dart' show DetailsSection;
 
 class SeriesDetailsPage extends StatefulWidget {
@@ -34,6 +42,7 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
   late _SeriesSeason _selectedSeason;
   late _SeriesEpisode _selectedEpisode;
   final _SeriesDetailsRepository _repository = _SeriesDetailsRepository();
+  final CastRepository _castRepository = CastRepository();
   final TextEditingController _episodeSearchController =
       TextEditingController();
   _LiveSeriesDetails? _liveDetails;
@@ -41,6 +50,9 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
   bool _isLoadingDetails = false;
   String? _detailsError;
   String _episodeQuery = '';
+  List<Cast> _seasonCastList = [];
+  bool _isLoadingSeasonCast = false;
+  String? _seasonCastError;
 
   @override
   void initState() {
@@ -54,12 +66,44 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
         _fetchSeriesDetails(id);
       });
     }
+    _fetchSeasonCast(_selectedSeason.id);
   }
 
   @override
   void dispose() {
     _episodeSearchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchSeasonCast(int seasonId) async {
+    final contentId = widget.content.id ?? _liveDetails?.content.id;
+    if (contentId == null) return;
+    setState(() {
+      _isLoadingSeasonCast = true;
+      _seasonCastError = null;
+      _seasonCastList = [];
+    });
+
+    try {
+      final list = await _castRepository.getCastForContent(
+        contentType: 'SERIES',
+        contentId: contentId,
+        seasonId: seasonId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _seasonCastList = list;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _seasonCastError = 'Unable to load cast and crew information.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingSeasonCast = false);
+      }
+    }
   }
 
   Future<void> _fetchSeriesDetails(int id) async {
@@ -82,6 +126,7 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
             ? seasons.first.episodes.first
             : _emptyEpisode();
       });
+      _fetchSeasonCast(seasons.first.id);
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -94,14 +139,38 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
     }
   }
 
+  Future<void> _openEdit() async {
+    final id = widget.content.id ?? _liveDetails?.content.id;
+    if (id == null) return;
+    final provider = context.read<VideoProvider>();
+    Content? fullContent;
+    try {
+      fullContent = await provider.getContentById(id);
+    } catch (_) {}
+    if (!mounted) return;
+
+    final baseContent = _liveDetails?.content ?? widget.content;
+    final target = baseContent.mergeWith(fullContent);
+    final updated = await Navigator.push<Content>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddDataWidget(editingContent: target),
+      ),
+    );
+    if (updated != null && mounted) {
+      _fetchSeriesDetails(id);
+      await provider.fetchMoviesByStatusAndMediaHouseId('ALL', 0);
+    }
+  }
+
   Future<void> _changeSeasonStatus(
     _SeriesSeason season,
-    String status,
+    String newStatus,
   ) async {
-    if (season.id <= 0 || status == season.status.toUpperCase()) return;
+    if (season.id <= 0 || newStatus == season.status.toUpperCase()) return;
     setState(() => _updatingSeasonStatus.add(season.id));
     try {
-      final result = await _repository.changeSeasonStatus(season.id, status);
+      final result = await _repository.changeSeasonStatus(season.id, newStatus);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -181,6 +250,11 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.refresh_rounded),
+          ),
+          IconButton(
+            tooltip: 'Edit Series',
+            onPressed: _openEdit,
+            icon: const Icon(Icons.edit_outlined),
           ),
           IconButton(
             tooltip: 'Delete Series',
@@ -276,10 +350,23 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
                               _episodeSearchController.clear();
                               _episodeQuery = '';
                             });
+                            _fetchSeasonCast(season.id);
                           },
                           onAction: _showUnavailable,
                           updatingStatus: _updatingSeasonStatus,
                           onStatusChanged: _changeSeasonStatus,
+                        ),
+                        const SizedBox(height: 16),
+                        CastCrewSection(
+                          castList: _seasonCastList,
+                          isLoading: _isLoadingSeasonCast,
+                          errorMessage: _seasonCastError,
+                          isSeries: true,
+                        ),
+                        const SizedBox(height: 16),
+                        AgreementSection(
+                          agreementUrl: displayContent.agreementUrl,
+                          censorCertificateUrl: displayContent.sensorCertificate,
                         ),
                         const SizedBox(height: 22),
                         _SectionHeader(title: _selectedSeason.name),
@@ -350,6 +437,18 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
                           content: displayContent,
                           heading: 'Series Metadata',
                         ),
+                        if (displayContent.id != null) ...[
+                          const SizedBox(height: 22),
+                          ContentRatingReviewSection(
+                            contentId: displayContent.id!,
+                            contentTitle: displayContent.title,
+                          ),
+                          const SizedBox(height: 22),
+                          MoviePurchasedUsersSection(
+                            contentId: displayContent.id!,
+                            contentTitle: displayContent.title,
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -439,6 +538,16 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
         .changeContentStatus(context, nextStatus, id);
     if (!mounted || !updated) return;
     await _fetchSeriesDetails(id);
+  }
+
+  Future<void> _openEditTeaser(Content content) async {
+    final updated = await showDialog<Content>(
+      context: context,
+      builder: (_) => EditTeaserDialog(content: content),
+    );
+    if (updated != null && mounted && content.id != null) {
+      await _fetchSeriesDetails(content.id!);
+    }
   }
 
   Future<void> _requestEdit(BuildContext context) async {
@@ -667,6 +776,7 @@ class _SeriesInfoCardState extends State<SeriesInfoCard> {
             content.type ?? 'Series',
             '${widget.seasonCount} seasons',
             '${widget.totalEpisodes} episodes',
+            'Total Purchases: ${content.totalPurchase ?? 0}',
           ],
         ),
         const SizedBox(height: 14),
@@ -4308,10 +4418,9 @@ class _SeriesAnalyticsDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isLoading) return const ShimmerLoader(height: 320);
     final live = analytics;
-    final revenueGraph = live?.revenueGraph ?? fallbackSeason.revenueByMonth;
-    final viewsGraph = live?.viewsGraph ?? fallbackSeason.viewsTrend;
-    final subscriptionGraph =
-        live?.subscriptionGrowth ?? fallbackSeason.subscriptionGrowth;
+    final revenueGraph = live?.revenueGraph ?? const [];
+    final viewsGraph = live?.viewsGraph ?? const [];
+    final subscriptionGraph = live?.subscriptionGrowth ?? const [];
     final stats = [
       RevenueCardData(
         icon: Icons.account_balance_wallet_outlined,
@@ -4347,8 +4456,8 @@ class _SeriesAnalyticsDashboard extends StatelessWidget {
       children: [
         if (error != null) ...[
           EmptyStateWidget(
-            icon: Icons.insights_outlined,
-            title: 'Using fallback analytics',
+            icon: Icons.error_outline,
+            title: 'Analytics error',
             message: error!,
             actionLabel: onRetry == null ? null : 'Retry',
             onAction: onRetry,
@@ -5532,6 +5641,8 @@ class _SeriesDetailsRepository {
       '${ApiConstant.baseUrl}api/series/$id/details',
       '${ApiConstant.baseUrl}series/getById?id=$id',
       '${ApiConstant.baseUrl}api/series/getById?id=$id',
+      ApiConstant.getVideoById(id),
+      '${ApiConstant.baseUrl}api/content/getById?id=$id',
     ];
     Object? lastError;
     for (final url in urls) {
@@ -6118,6 +6229,7 @@ class _LiveSeriesDetails {
       directorList: _asStringList(
           json['directorList'] ?? json['directors'] ?? json['director']),
       views: _asInt(json['views'] ?? json['viewCount'] ?? json['totalViews']),
+      totalPurchase: _asInt(json['totalPurchase']),
       totalRevenue: _asDouble(json['totalRevenue']),
       ageRating: _asString(json['ageRating']),
       posterUrlList: _asStringList(json['posterUrlList'] ??
@@ -6265,24 +6377,9 @@ List<_SeriesSeason> _buildFallbackSeasons(Content content) {
       countryCount: math.max(1, 4 + number),
       rating: (content.ratings ?? 4.2).clamp(0, 5).toDouble(),
       revenueChart: _trend(['W1', 'W2', 'W3', 'W4'], revenue),
-      retentionChart: const [
-        _ChartPoint('0%', 100),
-        _ChartPoint('25%', 82),
-        _ChartPoint('50%', 68),
-        _ChartPoint('75%', 54),
-        _ChartPoint('100%', 43),
-      ],
-      deviceChart: const [
-        _ChartPoint('Mobile', 64),
-        _ChartPoint('Web', 22),
-        _ChartPoint('TV', 14),
-      ],
-      countryChart: const [
-        _ChartPoint('IN', 74),
-        _ChartPoint('US', 12),
-        _ChartPoint('AE', 8),
-        _ChartPoint('UK', 6),
-      ],
+      retentionChart: const [],
+      deviceChart: const [],
+      countryChart: const [],
     );
   });
 
@@ -6807,7 +6904,7 @@ int _purchaseCount(Content content) {
 
 String _money(num? value) {
   if (value == null) return 'Rs -';
-  return 'Rs ${value.toStringAsFixed(value % 1 == 0 ? 0 : 2)}';
+  return 'Rs ${value % 1 == 0 ? value.toInt() : value}';
 }
 
 String _formatChartValue(num value) {

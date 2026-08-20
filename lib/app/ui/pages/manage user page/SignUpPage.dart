@@ -8,6 +8,7 @@ import '../../../provider/language_provider.dart';
 import '../../../provider/themeProvider.dart';
 import '../../../provider/userProvider.dart';
 import '../../../widgets/custom_textfield.dart';
+import '../../../widgets/show_toast.dart';
 import 'SelectLanguage.dart';
 
 
@@ -39,7 +40,6 @@ class _SignUpPageState extends State<SignUpPage> {
     var themeProvider = Provider.of<ThemeProvider>(context, listen: true);
     var userProvider = Provider.of<UserProvider>(context, listen: true);
     var selectedThemeData = themeProvider.getTheme;
-    bool isDark = selectedThemeData.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: selectedThemeData.scaffoldBackgroundColor,
@@ -206,28 +206,53 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _handleSignUp(UserProvider provider) async {
+    final firstName = provider.firstNameController.text.trim();
+    final lastName = provider.lastNameController.text.trim();
     final email = provider.emailController.text.trim();
     final mobile = provider.mobileController.text.trim();
     final password = provider.passwordController.text.trim();
     final confirmPassword = provider.confirmPasswordController.text.trim();
-    final name = provider.firstNameController.text.trim() + provider.lastNameController.text.trim();
+    final name = "$firstName $lastName".trim();
 
-    if (email.isEmpty ||
-        password.isEmpty ||
-        confirmPassword.isEmpty ||
-        name.isEmpty ||
-        provider.selectedGender == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please fill out all fields.')));
+    if (firstName.isEmpty) {
+      CustomToast.show('First Name is required', isSuccess: false);
       return;
     }
-
+    if (lastName.isEmpty) {
+      CustomToast.show('Last Name is required', isSuccess: false);
+      return;
+    }
+    if (email.isEmpty) {
+      CustomToast.show('Email is required', isSuccess: false);
+      return;
+    }
+    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+    if (!emailRegex.hasMatch(email)) {
+      CustomToast.show('Enter a valid Email address', isSuccess: false);
+      return;
+    }
+    if (mobile.isEmpty) {
+      CustomToast.show('Contact Number is required', isSuccess: false);
+      return;
+    }
+    if (mobile.length < 10) {
+      CustomToast.show('Contact Number must be at least 10 digits', isSuccess: false);
+      return;
+    }
+    if (password.isEmpty) {
+      CustomToast.show('Password is required', isSuccess: false);
+      return;
+    }
+    if (confirmPassword.isEmpty) {
+      CustomToast.show('Confirm Password is required', isSuccess: false);
+      return;
+    }
     if (password != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Passwords do not match'),
-        ),
-      );
+      CustomToast.show('Passwords do not match', isSuccess: false);
+      return;
+    }
+    if (provider.selectedGender == null || provider.selectedGender!.isEmpty) {
+      CustomToast.show('Gender selection is required', isSuccess: false);
       return;
     }
     Navigator.push(

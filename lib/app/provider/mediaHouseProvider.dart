@@ -277,6 +277,58 @@ class MediaHouseProvider extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, Object>> createMediaHouseWithModel(
+      SaveMediaHouse saveMediaHouse, BuildContext context) async {
+    String apiUrl = ApiConstant.saveMediaHouse;
+    saveMediaHouse.createdDate ??= '';
+    saveMediaHouse.updatedDate ??= '';
+    saveMediaHouse.status ??= "PENDING";
+    saveMediaHouse.postCount ??= "0";
+    saveMediaHouse.totalReveneu ??= "0";
+    saveMediaHouse.totalViews ??= "0";
+
+    ApiHelper apiHelper = ApiHelper();
+    try {
+      var response =
+          await apiHelper.postApiWithBody(apiUrl, saveMediaHouse.toJson());
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        Map<String, dynamic> responseBody = json.decode(response.body);
+        AddMediaHouseResponse addMediaHouseResponse =
+            AddMediaHouseResponse.fromJson(responseBody);
+        if (addMediaHouseResponse.success == true) {
+          if (addMediaHouseResponse.data?.mediaHouse != null) {
+            _mediaHouseList.add(addMediaHouseResponse.data!.mediaHouse!);
+            _filteredMediaHouseList = _mediaHouseList;
+          }
+          fetchMediaHouse();
+          notifyListeners();
+          return {
+            'success': true,
+            'message': addMediaHouseResponse.message ??
+                'Production house created successfully'
+          };
+        } else {
+          return {
+            'success': false,
+            'message': addMediaHouseResponse.message ?? 'Record not added'
+          };
+        }
+      } else {
+        return {
+          'success': false,
+          'message':
+              'Failed to add production house. Status code: ${response.statusCode}'
+        };
+      }
+    } catch (error) {
+      debugPrint("Error creating media house: $error");
+      return {
+        'success': false,
+        'message': 'An error occurred while adding production house: $error'
+      };
+    }
+  }
+
   String? selectedImage;
 
   List<Content> _contentListByMediaHouseAndStatus = [];

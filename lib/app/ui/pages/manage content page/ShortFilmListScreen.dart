@@ -112,15 +112,17 @@ class _ShortFilmListScreenState extends State<ShortFilmListScreen> {
                     )
                   : Expanded(
                       child: GridView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         gridDelegate:
                             SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 14,
                           childAspectRatio: ResponsiveWidget.isMobile(context)
-                              ? 1.1
+                              ? 0.95
                               : ResponsiveWidget.isDesktop(context)
-                                  ? 1.2
-                                  : 1.2,
+                                  ? 1.05
+                                  : 1.0,
                         ),
                         itemCount: shortFilms.length,
                         itemBuilder: (context, index) {

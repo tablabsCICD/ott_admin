@@ -1,8 +1,8 @@
 class ApiConstant {
   static const String baseUrl = "https://filmytell.com/ott/";
 
-  /* static const String baseUrl =
-      "http://ec2-43-205-217-79.ap-south-1.compute.amazonaws.com:8080/ott/"; */
+  /*  static const String baseUrl =
+      "http://ec2-13-201-27-141.ap-south-1.compute.amazonaws.com:8080/ott/"; */
 
   //loginPage
   static String login = "${baseUrl}userNew/admin/login";
@@ -220,6 +220,8 @@ class ApiConstant {
       "${baseUrl}api/mediaHouseLineCharts/getDetailsOfMovieByMediaHouseId?mediaHouseId=$id";
 
   static String weeklySettelementData = "${baseUrl}api/settelment/admin";
+  static String manualSettlement =
+      "${baseUrl}api/settelmentCalculation/manualSettelment";
   static String weeklySettelementDataForMediaHouse(mediaHouseId) =>
       "${baseUrl}api/settelment/mediaHouse/$mediaHouseId";
   static String weeklySettlementReport(settelementId) =>
@@ -349,4 +351,112 @@ class ApiConstant {
       "${baseUrl}api/TicketRaised/getAllTicketRaised";
   static String getRaisedTicketByFlag(isResolved) =>
       "${baseUrl}api/TicketRaised/getTicketRaisedForAdmin?isResolved=$isResolved";
+  static String searchAndFilterTickets({
+    String? keyword,
+    String? startDate,
+    String? endDate,
+    String? role,
+    String? level,
+    bool? isResolved,
+    String? status,
+    String? priority,
+  }) {
+    final queryParams = <String, String>{};
+    if (keyword != null && keyword.trim().isNotEmpty) {
+      queryParams['keyword'] = keyword.trim();
+    }
+    if (startDate != null && startDate.trim().isNotEmpty) {
+      queryParams['startDate'] = startDate.trim();
+    }
+    if (endDate != null && endDate.trim().isNotEmpty) {
+      queryParams['endDate'] = endDate.trim();
+    }
+    if (role != null && role.trim().isNotEmpty) {
+      queryParams['role'] = role.trim();
+    }
+    if (level != null && level.trim().isNotEmpty) {
+      queryParams['level'] = level.trim();
+    }
+    if (isResolved != null) {
+      queryParams['isResolved'] = isResolved.toString();
+    }
+    if (status != null && status.trim().isNotEmpty) {
+      queryParams['status'] = status.trim();
+    }
+    if (priority != null && priority.trim().isNotEmpty) {
+      queryParams['priority'] = priority.trim();
+    }
+
+    final uri = Uri.parse("${baseUrl}api/TicketRaised/searchAndFilter");
+    return queryParams.isEmpty
+        ? uri.toString()
+        : uri.replace(queryParameters: queryParams).toString();
+  }
+
+  static String getUsersByContentId({
+    required dynamic contentId,
+    String? keyword,
+    String? startDate,
+    String? endDate,
+    String? country,
+    String? state,
+    String? district,
+    String? taluka,
+    String? city,
+    String? pincode,
+    String? gender,
+    int page = 0,
+    int size = 20,
+  }) {
+    final queryParams = <String, String>{
+      'contentId': contentId.toString(),
+      'page': page.toString(),
+      'size': size.toString(),
+    };
+    if (keyword != null && keyword.trim().isNotEmpty) {
+      queryParams['keyword'] = keyword.trim();
+    }
+    if (startDate != null && startDate.trim().isNotEmpty) {
+      queryParams['startDate'] = startDate.trim();
+    }
+    if (endDate != null && endDate.trim().isNotEmpty) {
+      queryParams['endDate'] = endDate.trim();
+    }
+    if (country != null && country.trim().isNotEmpty) {
+      queryParams['country'] = country.trim();
+    }
+    if (state != null && state.trim().isNotEmpty) {
+      queryParams['state'] = state.trim();
+    }
+    if (district != null && district.trim().isNotEmpty) {
+      queryParams['district'] = district.trim();
+    }
+    if (taluka != null && taluka.trim().isNotEmpty) {
+      queryParams['taluka'] = taluka.trim();
+    }
+    if (city != null && city.trim().isNotEmpty) {
+      queryParams['city'] = city.trim();
+    }
+    if (pincode != null && pincode.trim().isNotEmpty) {
+      queryParams['pincode'] = pincode.trim();
+    }
+    if (gender != null && gender.trim().isNotEmpty) {
+      queryParams['gender'] = gender.trim();
+    }
+
+    final uri = Uri.parse("${baseUrl}api/contentList/getUsersByContentId");
+    return uri.replace(queryParameters: queryParams).toString();
+  }
+
+  // Ratings & Reviews API
+  static String getContentRatingAndReviews(dynamic contentId) =>
+      "${baseUrl}api/content/$contentId";
+
+  // Cast APIs
+  static String getCastByContentId(dynamic contentId) =>
+      "${baseUrl}api/Cast/getByContentId?contentId=$contentId";
+  static String getCastByContentIdAndSeasonId(dynamic contentId, dynamic seasonId) =>
+      "${baseUrl}api/Cast/getByContentIdAndSeasonId?contentId=$contentId&seasonId=$seasonId";
+  static String getCastByShortId(dynamic shortId) =>
+      "${baseUrl}api/Cast/getByShortId?shortId=$shortId";
 }

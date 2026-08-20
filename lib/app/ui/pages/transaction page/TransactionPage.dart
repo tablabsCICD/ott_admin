@@ -896,8 +896,7 @@ class _TransactionPageState extends State<TransactionPage> {
   String _priceText(UserTransactionData transaction) {
     final price = transaction.price ?? transaction.movie?.price;
     if (price == null) return 'Rs. 0';
-    final amount = price is num ? price : num.tryParse(price.toString()) ?? 0;
-    return 'Rs. ${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 2)}';
+    return 'Rs. ${price % 1 == 0 ? price.toInt() : price}';
   }
 
   String _runtimeText(UserTransactionData transaction) {
@@ -914,10 +913,20 @@ class _TransactionPageState extends State<TransactionPage> {
 
   String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
-  String _formatRevenue(String? value) {
-    final amount = num.tryParse(value ?? '');
-    if (amount == null) return 'Rs. 0';
-    return 'Rs. ${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 2)}';
+  String _formatRevenue(dynamic value) {
+    if (value == null) return 'Rs. 0';
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return 'Rs. 0';
+      if (trimmed.startsWith('Rs.') || trimmed.startsWith('Rs') || trimmed.startsWith('₹')) {
+        return trimmed;
+      }
+      return 'Rs. $trimmed';
+    }
+    if (value is num) {
+      return 'Rs. ${value % 1 == 0 ? value.toInt() : value}';
+    }
+    return 'Rs. $value';
   }
 }
 
@@ -1090,7 +1099,7 @@ class _TransactionDetailsPageState extends State<_TransactionDetailsPage> {
   double get _paymentAmount {
     final amount = widget.transaction.price ?? widget.transaction.movie?.price;
     if (amount == null) return 0;
-    return amount is num ? amount.toDouble() : double.tryParse('$amount') ?? 0;
+    return amount.toDouble();
   }
 }
 
@@ -2253,13 +2262,22 @@ String _transactionUserName(UserTransactionData transaction) {
   return user?.mobileNumber ?? user?.emailId ?? 'Unknown User';
 }
 
-String _settlementMoney(double amount, TransactionSettlementReportData report) {
+String _settlementMoney(dynamic amount, TransactionSettlementReportData report) {
   final symbol = report.displayCurrencySymbol;
-  return NumberFormat.currency(
-    symbol: symbol,
-    decimalDigits: 2,
-    locale: symbol == '\u20B9' ? 'en_IN' : 'en_US',
-  ).format(amount);
+  if (amount == null) return '$symbol 0';
+  if (amount is String) {
+    final trimmed = amount.trim();
+    if (trimmed.isEmpty) return '$symbol 0';
+    if (trimmed.startsWith(symbol) || trimmed.startsWith('₹') || trimmed.startsWith('Rs')) {
+      return trimmed;
+    }
+    return '$symbol$trimmed';
+  }
+  if (amount is num) {
+    final formatted = amount % 1 == 0 ? amount.toInt().toString() : amount.toString();
+    return '$symbol$formatted';
+  }
+  return '$symbol$amount';
 }
 
 String _settlementPercent(String? value) {
@@ -2282,12 +2300,13 @@ double _settlementAmount(dynamic value) {
   return double.tryParse(RegExp(r'-?\d+(\.\d+)?').stringMatch(text) ?? '') ?? 0;
 }
 
-String _fallbackMoney(num amount) {
-  return NumberFormat.currency(
-    symbol: '\u20B9',
-    decimalDigits: 2,
-    locale: 'en_IN',
-  ).format(amount);
+String _fallbackMoney(dynamic amount) {
+  if (amount == null) return '₹0';
+  if (amount is num) {
+    final formatted = amount % 1 == 0 ? amount.toInt().toString() : amount.toString();
+    return '₹$formatted';
+  }
+  return '₹$amount';
 }
 
 class TransactionChartData {

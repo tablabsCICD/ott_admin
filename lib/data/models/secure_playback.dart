@@ -42,8 +42,8 @@ class SecurePlaybackAuthorization {
             ? 'CLOUDFRONT_SIGNED_COOKIES'
             : 'CLOUDFRONT_SIGNED_URL';
     if (type == 'CLOUDFRONT_SIGNED_COOKIES' &&
-        (cookie.isEmpty || cookie.contains(RegExp(r'[\r\n]')))) {
-      throw const FormatException('Missing playback authorization');
+        (platform == 'WEB' || cookie.isEmpty || cookie.contains(RegExp(r'[\r\n]')))) {
+      throw const FormatException('Unsupported playback authorization for platform');
     }
     final rawEpoch = json['expiresAtEpochSeconds'];
     final epoch = rawEpoch is num

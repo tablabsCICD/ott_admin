@@ -55,22 +55,28 @@ class _PromoterSettlementDownloadSectionState
       return;
     }
 
+    final messenger = ScaffoldMessenger.maybeOf(context);
+
     setState(() {
       _dateError = null;
       _isDownloading = true;
     });
     try {
-      await _service.downloadSettlementExcel(
+      final message = await _service.downloadSettlementExcel(
         fromDate: _fromDate,
         toDate: _toDate,
       );
       if (!mounted) return;
-      _showMessage('Settlement Excel downloaded successfully.');
+      _showMessenger(messenger, message);
     } on PromoterSettlementException catch (error) {
-      if (mounted) _showMessage(error.message, isError: true);
-    } catch (_) {
+      if (mounted) _showMessenger(messenger, error.message, isError: true);
+    } catch (error) {
       if (mounted) {
-        _showMessage('Failed to download settlement Excel.', isError: true);
+        _showMessenger(
+          messenger,
+          error.toString().replaceFirst('Exception: ', ''),
+          isError: true,
+        );
       }
     } finally {
       if (mounted) setState(() => _isDownloading = false);
@@ -87,13 +93,23 @@ class _PromoterSettlementDownloadSectionState
   }
 
   void _showMessage(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context)
+    if (!mounted) return;
+    _showMessenger(ScaffoldMessenger.maybeOf(context), message, isError: isError);
+  }
+
+  void _showMessenger(
+    ScaffoldMessengerState? messenger,
+    String message, {
+    bool isError = false,
+  }) {
+    if (messenger == null) return;
+    messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: isError ? Colors.red.shade700 : null,
+          backgroundColor: isError ? Colors.red.shade700 : Colors.green.shade700,
         ),
       );
   }
@@ -125,7 +141,7 @@ class _PromoterSettlementDownloadSectionState
                 const SizedBox(height: 6),
                 Text(
                   'Select a settlement period and download the Excel report.',
-                  style: TextStyle(color: theme.canvasColor.withOpacity(.7)),
+                  style: TextStyle(color: theme.canvasColor.withValues(alpha: .7)),
                 ),
                 const SizedBox(height: 16),
                 _buildDateFields(theme, isNarrow),

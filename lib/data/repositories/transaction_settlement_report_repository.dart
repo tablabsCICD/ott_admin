@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import '../../app/core/constant/api_constant.dart';
 import '../../app/core/network/api_helper.dart';
 import '../models/response/transaction_settlement_report.dart';
@@ -10,9 +12,17 @@ class TransactionSettlementReportRepository {
   Future<TransactionSettlementReportData> fetchTransactionSettlementReport(
     dynamic transactionId,
   ) async {
-    final response = await ApiHelper().getApi(
-      ApiConstant.transactionSettlementReport(transactionId),
-    );
+    final url = ApiConstant.transactionSettlementReport(transactionId);
+    debugPrint("========== SETTLEMENT DETAILS (TRANSACTION REPORT) API REQUEST ==========");
+    debugPrint("URL: $url");
+    debugPrint("Method: GET");
+
+    final response = await ApiHelper().getApi(url);
+
+    debugPrint("========== SETTLEMENT DETAILS (TRANSACTION REPORT) API RESPONSE ==========");
+    debugPrint("Status Code: ${response.statusCode}");
+    debugPrint("Body: ${response.body}");
+    debugPrint("==========================================================================");
 
     if (response.statusCode != 200) {
       throw Exception(

@@ -83,17 +83,17 @@ class _MovieListScreenState extends State<MovieListScreen> {
                     ))
                   : Expanded(
                       child: GridView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: crossAxisCount,
-                            //crossAxisSpacing: 5,
-                            //mainAxisSpacing: 5,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
                             childAspectRatio: ResponsiveWidget.isMobile(context)
-                                ? 1.1
+                                ? 0.95
                                 : ResponsiveWidget.isDesktop(context)
-                                    ? 1.2
-                                    : 1.2,
+                                    ? 1.05
+                                    : 1.0,
                           ),
                           itemCount: provider.filteredContentList.length,
                           itemBuilder: (context, index) {

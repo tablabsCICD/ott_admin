@@ -309,18 +309,17 @@ class _SettlementCardState extends State<SettlementCard> {
   }
 
   String _parseNumber(dynamic value) {
+    if (value == null) return 'N/A';
     if (value is int) return value.toString();
     if (value is double) {
-      return value == value.roundToDouble()
-          ? value.toStringAsFixed(0)
-          : value.toStringAsFixed(2);
+      return value % 1 == 0 ? value.toInt().toString() : value.toString();
     }
     if (value is num) return value.toString();
     if (value is String) {
-      final parsed = num.tryParse(value);
-      return parsed?.toString() ?? 'N/A';
+      final trimmed = value.trim();
+      return trimmed.isNotEmpty ? trimmed : 'N/A';
     }
-    return 'N/A';
+    return value.toString();
   }
 
   String _formatDate(int? epoch) {

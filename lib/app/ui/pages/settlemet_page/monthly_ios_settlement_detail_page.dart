@@ -614,11 +614,22 @@ String _displayDate(DateTime? value) {
 }
 
 String _money(num? value) {
-  return NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: '₹',
-    decimalDigits: 2,
-  ).format(value ?? 0);
+  if (value == null) return '₹0.00';
+  final text = value.toString();
+  if (text.contains('.')) {
+    final parts = text.split('.');
+    final intPart = parts[0];
+    var decPart = parts[1];
+    if (decPart.length == 1) {
+      decPart = '${decPart}0';
+    }
+    final formattedInt =
+        NumberFormat('#,##,###', 'en_IN').format(int.tryParse(intPart) ?? 0);
+    return '₹$formattedInt.$decPart';
+  }
+  final formattedInt =
+      NumberFormat('#,##,###', 'en_IN').format(value.toInt());
+  return '₹$formattedInt.00';
 }
 
 String _summaryValue(dynamic value) {

@@ -78,23 +78,24 @@ class _PieChartClassState extends State<PieChartClass> {
                 touchCallback: (FlTouchEvent event, pieTouchResponse) {
                   if (!event.isInterestedForInteractions) return;
 
-                  setState(() {
-                    final touchedIndex =
-                        pieTouchResponse?.touchedSection?.touchedSectionIndex;
+                  final touchedIndex =
+                      pieTouchResponse?.touchedSection?.touchedSectionIndex;
+                  final isValid = touchedIndex != null &&
+                      touchedIndex >= 0 &&
+                      touchedIndex < chartData.length;
 
-                    if (touchedIndex != null &&
-                        touchedIndex >= 0 &&
-                        touchedIndex < chartData.length) {
-                      if (event is FlTapUpEvent) {
-                        tappedIndex = touchedIndex;
-                      } else {
-                        hoveredIndex = touchedIndex;
-                      }
-                    } else {
-                      hoveredIndex = null;
-                      tappedIndex = null;
-                    }
-                  });
+                  final newHovered =
+                      isValid && event is! FlTapUpEvent ? touchedIndex : null;
+                  final newTapped =
+                      isValid && event is FlTapUpEvent ? touchedIndex : null;
+
+                  if (hoveredIndex != newHovered ||
+                      (newTapped != null && tappedIndex != newTapped)) {
+                    setState(() {
+                      hoveredIndex = newHovered;
+                      if (newTapped != null) tappedIndex = newTapped;
+                    });
+                  }
                 },
               ),
             ),

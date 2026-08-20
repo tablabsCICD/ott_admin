@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../app/core/constant/api_constant.dart';
@@ -13,10 +14,20 @@ class MonthlyIosSettlementRepository {
   final ApiHelper _apiHelper;
 
   Future<void> generateMonthlySettlement(String month) async {
-    final response = await _apiHelper.postApiWithBody(
-      ApiConstant.generateMonthlyIosSettlement,
-      {'month': month},
-    ) as http.Response;
+    final url = ApiConstant.generateMonthlyIosSettlement;
+    final body = {'month': month};
+    debugPrint("========== GENERATE MONTHLY SETTLEMENT API REQUEST ==========");
+    debugPrint("URL: $url");
+    debugPrint("Method: POST");
+    debugPrint("Payload: ${jsonEncode(body)}");
+
+    final response = await _apiHelper.postApiWithBody(url, body) as http.Response;
+
+    debugPrint("========== GENERATE MONTHLY SETTLEMENT API RESPONSE ==========");
+    debugPrint("Status Code: ${response.statusCode}");
+    debugPrint("Body: ${response.body}");
+    debugPrint("=============================================================");
+
     _ensureSuccess(response, 'Failed to generate monthly iOS settlement.');
   }
 
@@ -37,7 +48,18 @@ class MonthlyIosSettlementRepository {
 
     final uri = Uri.parse(ApiConstant.monthlyIosSettlementList)
         .replace(queryParameters: query);
+
+    debugPrint("========== MONTHLY SETTLEMENT LIST API REQUEST ==========");
+    debugPrint("URL: $uri");
+    debugPrint("Method: GET");
+
     final response = await _apiHelper.getApi(uri.toString()) as http.Response;
+
+    debugPrint("========== MONTHLY SETTLEMENT LIST API RESPONSE ==========");
+    debugPrint("Status Code: ${response.statusCode}");
+    debugPrint("Body: ${response.body}");
+    debugPrint("=========================================================");
+
     _ensureSuccess(response, 'Failed to load monthly iOS settlements.');
     return MonthlySettlementListResponse.fromJson(_decode(response));
   }
@@ -45,9 +67,18 @@ class MonthlyIosSettlementRepository {
   Future<MonthlySettlementDetailModel> getMonthlySettlementDetail(
     dynamic settlementId,
   ) async {
-    final response = await _apiHelper.getApi(
-      ApiConstant.monthlyIosSettlementDetail(settlementId),
-    ) as http.Response;
+    final url = ApiConstant.monthlyIosSettlementDetail(settlementId);
+    debugPrint("========== SETTLEMENT DETAILS (MONTHLY iOS) API REQUEST ==========");
+    debugPrint("URL: $url");
+    debugPrint("Method: GET");
+
+    final response = await _apiHelper.getApi(url) as http.Response;
+
+    debugPrint("========== SETTLEMENT DETAILS (MONTHLY iOS) API RESPONSE ==========");
+    debugPrint("Status Code: ${response.statusCode}");
+    debugPrint("Body: ${response.body}");
+    debugPrint("==================================================================");
+
     _ensureSuccess(response, 'Failed to load monthly iOS settlement details.');
     final parsed = MonthlySettlementDetailResponse.fromJson(_decode(response));
     final data = parsed.data;

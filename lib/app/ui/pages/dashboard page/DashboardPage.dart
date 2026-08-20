@@ -420,9 +420,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
             ),
-            fullScreenProvider
-                    .isFullScreen //display revenue graph on fullsscreen
-                ? Expanded(
+            fullScreenProvider.isFullScreen
+                ? Positioned.fill(
                     child: Padding(
                       padding: const EdgeInsets.only(
                         left: 5,
@@ -440,7 +439,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ),
                   )
-                : SizedBox(),
+                : const SizedBox.shrink(),
           ],
         ));
   }
@@ -863,7 +862,9 @@ class _DashboardPageState extends State<DashboardPage> {
       bool allApprovalsPresent) {
     final isMobile = ResponsiveWidget.isMobile(context);
     final revenueData = _buildRevenueSplitData(provider);
-    final revenueTotal = provider.revenueSummaryTotal.toStringAsFixed(0);
+    final revenueTotal = provider.revenueSummaryTotal % 1 == 0
+        ? provider.revenueSummaryTotal.toInt().toString()
+        : provider.revenueSummaryTotal.toString();
     final contentData = _buildContentTypeData(provider);
 
     if (isMobile) {
@@ -1084,7 +1085,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   title: item['title'].toString(),
                   percentText: item['percentText']?.toString() ?? '',
                   revenueText: isCurrency
-                      ? '₹${(item['revenue'] as num).toStringAsFixed(0)}'
+                      ? '₹${(item['revenue'] as num) % 1 == 0 ? (item['revenue'] as num).toInt() : item['revenue']}'
                       : ((item['count'] as int?) != null
                           ? '${item['count']} items'
                           : null),
@@ -1122,24 +1123,24 @@ class _DashboardPageState extends State<DashboardPage> {
                   final section = response?.touchedSection;
                   final index = section?.touchedSectionIndex ?? -1;
                   final isValidIndex = index >= 0 && index < data.length;
+                  final targetIndex =
+                      (!event.isInterestedForInteractions || !isValidIndex)
+                          ? null
+                          : index;
 
-                  if (!event.isInterestedForInteractions || !isValidIndex) {
-                    setState(() {
-                      if (chartKey == 'revenue') {
-                        _revenueTouchedIndex = null;
-                      } else {
-                        _contentTouchedIndex = null;
-                      }
-                    });
-                    return;
-                  }
-                  setState(() {
-                    if (chartKey == 'revenue') {
-                      _revenueTouchedIndex = index;
-                    } else {
-                      _contentTouchedIndex = index;
+                  if (chartKey == 'revenue') {
+                    if (_revenueTouchedIndex != targetIndex) {
+                      setState(() {
+                        _revenueTouchedIndex = targetIndex;
+                      });
                     }
-                  });
+                  } else {
+                    if (_contentTouchedIndex != targetIndex) {
+                      setState(() {
+                        _contentTouchedIndex = targetIndex;
+                      });
+                    }
+                  }
                 },
               ),
               sections: List.generate(data.length, (index) {

@@ -239,23 +239,52 @@ class _OttMediaPlayerState extends State<OttMediaPlayer>
       return const Center(child: AppSpinner());
     }
 
+    final videoWidget = Video(
+      controller: _videoController,
+      fit: widget.fit,
+      controls: widget.controls ??
+          (widget.showDefaultControls
+              ? (state) => OttMediaControls(
+                    player: _player,
+                    allowFullscreen: widget.allowFullscreen,
+                    isFullscreen: _isFullscreen,
+                    onToggleFullscreen: _toggleFullscreen,
+                  )
+              : NoVideoControls),
+      pauseUponEnteringBackgroundMode: true,
+      onEnterFullscreen: _enterFullscreen,
+      onExitFullscreen: _exitFullscreen,
+    );
+
+    if (_isFullscreen) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Center(
+                child: videoWidget,
+              ),
+            ),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              left: 12,
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: _toggleFullscreen,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return AspectRatio(
       aspectRatio: widget.aspectRatio ?? _aspectRatio,
-      child: Video(
-        controller: _videoController,
-        fit: widget.fit,
-        controls: widget.controls ??
-            (widget.showDefaultControls
-                ? (state) => OttMediaControls(
-                      player: _player,
-                      allowFullscreen: widget.allowFullscreen,
-                      onToggleFullscreen: _toggleFullscreen,
-                    )
-                : NoVideoControls),
-        pauseUponEnteringBackgroundMode: true,
-        onEnterFullscreen: _enterFullscreen,
-        onExitFullscreen: _exitFullscreen,
-      ),
+      child: videoWidget,
     );
   }
 
@@ -272,12 +301,14 @@ class _OttMediaPlayerState extends State<OttMediaPlayer>
 class OttMediaControls extends StatefulWidget {
   final Player player;
   final bool allowFullscreen;
+  final bool isFullscreen;
   final Future<void> Function()? onToggleFullscreen;
 
   const OttMediaControls({
     super.key,
     required this.player,
     this.allowFullscreen = true,
+    this.isFullscreen = false,
     this.onToggleFullscreen,
   });
 
@@ -483,8 +514,12 @@ class _OttMediaControlsState extends State<OttMediaControls> {
                                     IconButton(
                                       iconSize: 24,
                                       color: Colors.white,
-                                      tooltip: 'Fullscreen',
-                                      icon: const Icon(Icons.fullscreen_rounded),
+                                      tooltip: widget.isFullscreen
+                                          ? 'Exit Fullscreen'
+                                          : 'Fullscreen',
+                                      icon: Icon(widget.isFullscreen
+                                          ? Icons.fullscreen_exit_rounded
+                                          : Icons.fullscreen_rounded),
                                       onPressed: () {
                                         _startHideTimer();
                                         widget.onToggleFullscreen?.call();

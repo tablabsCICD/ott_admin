@@ -902,11 +902,18 @@ class _MediaHouseDetailPageState extends State<MediaHouseDetailPage> {
 
   String _formatRevenue(dynamic value) {
     if (value == null) return 'Rs. -';
-
-    final amount = value is num ? value : num.tryParse(value.toString());
-    if (amount == null) return 'Rs. -';
-
-    return 'Rs. ${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 2)}';
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return 'Rs. -';
+      if (trimmed.startsWith('Rs.') || trimmed.startsWith('Rs') || trimmed.startsWith('₹')) {
+        return trimmed;
+      }
+      return 'Rs. $trimmed';
+    }
+    if (value is num) {
+      return 'Rs. ${value % 1 == 0 ? value.toInt() : value}';
+    }
+    return 'Rs. $value';
   }
 }
 

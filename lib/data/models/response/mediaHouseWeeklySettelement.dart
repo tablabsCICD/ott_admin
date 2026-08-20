@@ -73,10 +73,24 @@ class WeeklySettelementData {
   double? netRevenue;
   double? gstAmount;
   double? gstRate;
+  double? baseAmount;
+  double? razorpayFee;
   double? ottPlatformSharePercentage;
   double? ottPlatformRevenueShare;
+  double? adminGrossRevenue;
+  double? adminTdsAmount;
+  double? adminPayoutCharge;
+  double? adminFinalRevenue;
   double? mediaHouseSharePercentage;
   double? mediaHouseRevenueShare;
+  double? mediaHouseTdsAmount;
+  double? mediaHousePayoutCharge;
+  double? mediaHouseFinalPayout;
+  double? promoterGrossRevenueShare;
+  double? promoterTdsAmount;
+  double? promoterAmountAfterTds;
+  double? promoterPayoutCharge;
+  double? promoterFinalEarning;
   int? totalPurchases;
   int? totalUniqueMoviesSold;
   ListOfMoviesSold? listOfMoviesSold;
@@ -101,10 +115,24 @@ class WeeklySettelementData {
     this.netRevenue,
     this.gstAmount,
     this.gstRate,
+    this.baseAmount,
+    this.razorpayFee,
     this.ottPlatformSharePercentage,
     this.ottPlatformRevenueShare,
+    this.adminGrossRevenue,
+    this.adminTdsAmount,
+    this.adminPayoutCharge,
+    this.adminFinalRevenue,
     this.mediaHouseSharePercentage,
     this.mediaHouseRevenueShare,
+    this.mediaHouseTdsAmount,
+    this.mediaHousePayoutCharge,
+    this.mediaHouseFinalPayout,
+    this.promoterGrossRevenueShare,
+    this.promoterTdsAmount,
+    this.promoterAmountAfterTds,
+    this.promoterPayoutCharge,
+    this.promoterFinalEarning,
     this.totalPurchases,
     this.totalUniqueMoviesSold,
     this.listOfMoviesSold,
@@ -135,6 +163,8 @@ class WeeklySettelementData {
         netRevenue: _readDouble(json["netRevenue"] ?? json["NetRevenue"]),
         gstAmount: _readDouble(json["gstAmount"] ?? json["GstAmount"]),
         gstRate: _readDouble(json["gstRate"] ?? json["GstRate"]),
+        baseAmount: _readDouble(json["baseAmount"] ?? json["BaseAmount"]),
+        razorpayFee: _readDouble(json["razorpayFee"] ?? json["RazorpayFee"]),
         ottPlatformSharePercentage: _readDouble(
           json["ottPlatformSharePercentage"] ??
               json["OTTPlatformSharePercentage"] ??
@@ -143,6 +173,18 @@ class WeeklySettelementData {
         ottPlatformRevenueShare: _readDouble(
           json["ottPlatformRevenueShare"] ?? json["OTTPlatformRevenueShare"],
         ),
+        adminGrossRevenue: _readDouble(
+          json["adminGrossRevenue"] ?? json["AdminGrossRevenue"],
+        ),
+        adminTdsAmount: _readDouble(
+          json["adminTdsAmount"] ?? json["AdminTdsAmount"],
+        ),
+        adminPayoutCharge: _readDouble(
+          json["adminPayoutCharge"] ?? json["AdminPayoutCharge"],
+        ),
+        adminFinalRevenue: _readDouble(
+          json["adminFinalRevenue"] ?? json["AdminFinalRevenue"],
+        ),
         mediaHouseSharePercentage: _readDouble(
           json["mediaHouseSharePercentage"] ??
               json["MediaHouseSharePercentage"] ??
@@ -150,6 +192,31 @@ class WeeklySettelementData {
         ),
         mediaHouseRevenueShare: _readDouble(
           json["mediaHouseRevenueShare"] ?? json["MediaHouseRevenueShare"],
+        ),
+        mediaHouseTdsAmount: _readDouble(
+          json["mediaHouseTdsAmount"] ?? json["MediaHouseTdsAmount"],
+        ),
+        mediaHousePayoutCharge: _readDouble(
+          json["mediaHousePayoutCharge"] ?? json["MediaHousePayoutCharge"],
+        ),
+        mediaHouseFinalPayout: _readDouble(
+          json["mediaHouseFinalPayout"] ?? json["MediaHouseFinalPayout"],
+        ),
+        promoterGrossRevenueShare: _readDouble(
+          json["promoterGrossRevenueShare"] ??
+              json["PromoterGrossRevenueShare"],
+        ),
+        promoterTdsAmount: _readDouble(
+          json["promoterTdsAmount"] ?? json["PromoterTdsAmount"],
+        ),
+        promoterAmountAfterTds: _readDouble(
+          json["promoterAmountAfterTds"] ?? json["PromoterAmountAfterTds"],
+        ),
+        promoterPayoutCharge: _readDouble(
+          json["promoterPayoutCharge"] ?? json["PromoterPayoutCharge"],
+        ),
+        promoterFinalEarning: _readDouble(
+          json["promoterFinalEarning"] ?? json["PromoterFinalEarning"],
         ),
         totalPurchases:
             _readInt(json["totalPurchases"] ?? json["TotalPurchases"]),
@@ -185,10 +252,24 @@ class WeeklySettelementData {
         "netRevenue": netRevenue,
         "gstAmount": gstAmount,
         "gstRate": gstRate,
+        "baseAmount": baseAmount,
+        "razorpayFee": razorpayFee,
         "ottPlatformSharePercentage": ottPlatformSharePercentage,
         "ottPlatformRevenueShare": ottPlatformRevenueShare,
+        "adminGrossRevenue": adminGrossRevenue,
+        "adminTdsAmount": adminTdsAmount,
+        "adminPayoutCharge": adminPayoutCharge,
+        "adminFinalRevenue": adminFinalRevenue,
         "mediaHouseSharePercentage": mediaHouseSharePercentage,
         "mediaHouseRevenueShare": mediaHouseRevenueShare,
+        "mediaHouseTdsAmount": mediaHouseTdsAmount,
+        "mediaHousePayoutCharge": mediaHousePayoutCharge,
+        "mediaHouseFinalPayout": mediaHouseFinalPayout,
+        "promoterGrossRevenueShare": promoterGrossRevenueShare,
+        "promoterTdsAmount": promoterTdsAmount,
+        "promoterAmountAfterTds": promoterAmountAfterTds,
+        "promoterPayoutCharge": promoterPayoutCharge,
+        "promoterFinalEarning": promoterFinalEarning,
         "totalPurchases": totalPurchases,
         "totalUniqueMoviesSold": totalUniqueMoviesSold,
         "listOfMoviesSold": listOfMoviesSold?.toJson(),
