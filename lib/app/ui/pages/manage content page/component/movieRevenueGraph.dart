@@ -21,6 +21,7 @@ class MovieRevenueGraph extends StatefulWidget {
 
   final List<String> metrics; // e.g. ["revenue", "users_onboarded"]
   final bool canPop;
+  final String type;
 
   MovieRevenueGraph({
     super.key,
@@ -29,8 +30,8 @@ class MovieRevenueGraph extends StatefulWidget {
     required this.metrics,
     this.canPop = false,
     required this.graphNumber,
-    required this.contentId
-
+    required this.contentId,
+    this.type = "ALL",
   });
 
   @override
@@ -54,6 +55,26 @@ class _MovieRevenueGraphState extends State<MovieRevenueGraph> {
     _fetchGraphData(0, DateTime.now().subtract(Duration(days: 7)), DateTime.now());
   }
 
+  @override
+  void didUpdateWidget(covariant MovieRevenueGraph oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.type != widget.type ||
+        oldWidget.contentId != widget.contentId ||
+        oldWidget.graphNumber != widget.graphNumber) {
+      _fetchGraphData(
+        activeButton == '1W'
+            ? 0
+            : activeButton == '1M'
+                ? 1
+                : activeButton == '1Y'
+                    ? 2
+                    : 3,
+        startDate ?? DateTime.now().subtract(const Duration(days: 7)),
+        endDate ?? DateTime.now(),
+      );
+    }
+  }
+
   Future<void> _pickDateRange() async {
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
@@ -64,6 +85,10 @@ class _MovieRevenueGraphState extends State<MovieRevenueGraph> {
       setState(() {
         selectedDateRange = picked;
         activeButton = 'Custom Dates';
+        startDate = picked.start;//DateFormat('yyyy-MM-dd').format(DateTime.parse("2025-05-01 00:00:00.000"));
+        endDate = picked.end;
+        print("start date $startDate && end date $endDate");
+        _fetchGraphData(3,startDate!,endDate!);
       });
     }
   }
@@ -104,7 +129,8 @@ class _MovieRevenueGraphState extends State<MovieRevenueGraph> {
         selectedTimeRange,
         widget.contentId,
         startDateString,
-        endDateString
+        endDateString,
+        type: widget.type,
       );
 
   }

@@ -78,19 +78,19 @@ class UserContent {
   });
 
   factory UserContent.fromJson(Map<String, dynamic> json) => UserContent(
-    id: json["id"],
-    contentPercentage: json["contentPercentage"],
-    dateFrom: json["dateFrom"],
-    dateTo: json["dateTo"],
-    refferedBy: json["refferedBy"],
-    price: json["price"],
-    isGifted: json["isGifted"],
-    userIdGiftFrom: json["userIdGiftFrom"],
-    userIdGiftTo: json["userIdGiftTo"],
-    movie: json["movie"] == null ? null : Content.fromJson(json["movie"]),
-    user: json["user"] == null ? null : User.fromJson(json["user"]),
-    status: json["status"],
-    active: json["active"],
+    id: json["id"] is int ? json["id"] : (json["id"] is num ? (json["id"] as num).toInt() : int.tryParse(json["id"]?.toString() ?? '')),
+    contentPercentage: json["contentPercentage"] is int ? json["contentPercentage"] : (json["contentPercentage"] is num ? (json["contentPercentage"] as num).toInt() : int.tryParse(json["contentPercentage"]?.toString() ?? '')),
+    dateFrom: json["dateFrom"] is int ? json["dateFrom"] : (json["dateFrom"] is num ? (json["dateFrom"] as num).toInt() : int.tryParse(json["dateFrom"]?.toString() ?? '')),
+    dateTo: json["dateTo"] is int ? json["dateTo"] : (json["dateTo"] is num ? (json["dateTo"] as num).toInt() : int.tryParse(json["dateTo"]?.toString() ?? '')),
+    refferedBy: json["refferedBy"]?.toString(),
+    price: json["price"] is int ? json["price"] : (json["price"] is num ? (json["price"] as num).toInt() : int.tryParse(json["price"]?.toString() ?? '')),
+    isGifted: json["isGifted"] is bool ? json["isGifted"] : (json["isGifted"] != null ? json["isGifted"].toString().toLowerCase() == 'true' : null),
+    userIdGiftFrom: json["userIdGiftFrom"] is int ? json["userIdGiftFrom"] : (json["userIdGiftFrom"] is num ? (json["userIdGiftFrom"] as num).toInt() : int.tryParse(json["userIdGiftFrom"]?.toString() ?? '')),
+    userIdGiftTo: json["userIdGiftTo"] is int ? json["userIdGiftTo"] : (json["userIdGiftTo"] is num ? (json["userIdGiftTo"] as num).toInt() : int.tryParse(json["userIdGiftTo"]?.toString() ?? '')),
+    movie: json["movie"] == null ? null : (json["movie"] is Map<String, dynamic> ? Content.fromJson(json["movie"]) : (json["movie"] is Map ? Content.fromJson(Map<String, dynamic>.from(json["movie"])) : null)),
+    user: json["user"] == null ? null : (json["user"] is Map<String, dynamic> ? User.fromJson(json["user"]) : (json["user"] is Map ? User.fromJson(Map<String, dynamic>.from(json["user"])) : null)),
+    status: json["status"]?.toString(),
+    active: json["active"] is bool ? json["active"] : (json["active"] != null ? json["active"].toString().toLowerCase() == 'true' : null),
   );
 
   Map<String, dynamic> toJson() => {

@@ -5,7 +5,85 @@ import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:admin_ott/domain/entities/location.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
+/// Centralized Date and Timestamp helper
+class MovieBuyerDateHelper {
+  static final DateFormat _displayDateFormat = DateFormat('dd MMM yyyy');
+  static final DateFormat _displayDateTimeFormat = DateFormat('dd MMM yyyy, hh:mm a');
+
+  /// Safely parses a dynamic date value into a [DateTime]
+  /// Supports:
+  /// - int timestamp in milliseconds (e.g. 1789380356000)
+  /// - int timestamp in seconds (e.g. 1789380356)
+  /// - num timestamp
+  /// - numeric String timestamp (e.g. "1789380356000")
+  /// - ISO 8601 formatted String (e.g. "2026-09-28T05:50:47.732Z")
+  /// - Standard Date String (e.g. "2026-09-28")
+  /// - DateTime object
+  /// - null / invalid
+  static DateTime? parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+
+    if (value is int) {
+      if (value <= 0) return null;
+      if (value < 10000000000) {
+        // Timestamp in seconds
+        return DateTime.fromMillisecondsSinceEpoch(value * 1000);
+      }
+      // Timestamp in milliseconds
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+
+    if (value is num) {
+      final intVal = value.toInt();
+      if (intVal <= 0) return null;
+      if (intVal < 10000000000) {
+        return DateTime.fromMillisecondsSinceEpoch(intVal * 1000);
+      }
+      return DateTime.fromMillisecondsSinceEpoch(intVal);
+    }
+
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty || trimmed == 'null') return null;
+
+      // Numeric string timestamp check
+      final numVal = int.tryParse(trimmed);
+      if (numVal != null) {
+        if (numVal <= 0) return null;
+        if (numVal < 10000000000) {
+          return DateTime.fromMillisecondsSinceEpoch(numVal * 1000);
+        }
+        return DateTime.fromMillisecondsSinceEpoch(numVal);
+      }
+
+      // Try ISO 8601 parsing
+      try {
+        return DateTime.parse(trimmed);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  /// Formats date for UI display
+  static String format(dynamic value, {bool withTime = false, String fallback = '—'}) {
+    final dt = parseDateTime(value);
+    if (dt == null) {
+      if (value != null) {
+        final str = value.toString().trim();
+        if (str.isNotEmpty && str != 'null') return str;
+      }
+      return fallback;
+    }
+    return withTime ? _displayDateTimeFormat.format(dt.toLocal()) : _displayDateFormat.format(dt.toLocal());
+  }
+}
 
 class MovieUserItem {
   final int? id;
@@ -17,7 +95,7 @@ class MovieUserItem {
   final String? age;
   final List<String>? role;
   final String? profilePhoto;
-  final String? registrationDate;
+  final DateTime? registrationDate;
   final bool? active;
   final Location? location;
   final MoviePurchaseDetail? purchaseDetails;
@@ -46,39 +124,106 @@ class MovieUserItem {
     return parts.join(' ');
   }
 
+  String get formattedRegistrationDate =>
+      MovieBuyerDateHelper.format(registrationDate);
+
   factory MovieUserItem.fromJson(Map<String, dynamic> json) {
+    // 1. Support nested `user` map (e.g. from UserContent or nested API schemas)
+    final Map<String, dynamic> userMap = json['user'] is Map
+        ? Map<String, dynamic>.from(json['user'] as Map)
+        : json;
+
+    // 2. Safe ID extraction
+    final rawId = userMap['id'] ?? userMap['userId'] ?? json['userId'] ?? json['id'];
+    final int? id = rawId is int
+        ? rawId
+        : (rawId is num ? rawId.toInt() : int.tryParse(rawId?.toString() ?? ''));
+
+    // 3. Location extraction
+    final rawLoc = userMap['location'] ?? json['location'];
+    Location? location;
+    if (rawLoc is Map<String, dynamic>) {
+      location = Location.fromJson(rawLoc);
+    } else if (rawLoc is Map) {
+      location = Location.fromJson(Map<String, dynamic>.from(rawLoc));
+    }
+
+    // 4. Purchase details extraction
+    final rawPurchase = json['purchaseDetails'] ?? json['userContent'];
+    MoviePurchaseDetail? purchaseDetails;
+    if (rawPurchase is Map<String, dynamic>) {
+      purchaseDetails = MoviePurchaseDetail.fromJson(rawPurchase);
+    } else if (rawPurchase is Map) {
+      purchaseDetails = MoviePurchaseDetail.fromJson(Map<String, dynamic>.from(rawPurchase));
+    } else if (json['amount'] != null ||
+        json['price'] != null ||
+        json['purchaseDate'] != null ||
+        json['dateFrom'] != null ||
+        json['transactionId'] != null ||
+        json['txnId'] != null) {
+      purchaseDetails = MoviePurchaseDetail.fromJson(json);
+    }
+
+    // 5. Registration Date parsing (safely handles int timestamp, ISO string, etc.)
+    final dynamic rawRegDate = userMap['registrationDate'] ??
+        userMap['joinDate'] ??
+        userMap['createdDate'] ??
+        userMap['createdAt'] ??
+        json['registrationDate'] ??
+        json['joinDate'];
+    final DateTime? regDateTime = MovieBuyerDateHelper.parseDateTime(rawRegDate);
+
+    // 6. Role parsing
+    final rawRole = userMap['role'] ?? json['role'];
+    List<String>? roles;
+    if (rawRole != null) {
+      if (rawRole is List) {
+        roles = rawRole
+            .map((e) => e?.toString() ?? '')
+            .where((s) => s.isNotEmpty)
+            .toList();
+      } else {
+        roles = [rawRole.toString()];
+      }
+    }
+
+    // 7. Active parsing
+    final rawActive = userMap['active'] ?? json['active'];
+    final bool isActive = rawActive is bool
+        ? rawActive
+        : (rawActive == null ||
+            rawActive.toString().toLowerCase() == 'true' ||
+            rawActive == 1);
+
     return MovieUserItem(
-      id: json['id'] ?? json['userId'],
-      firstName: json['firstName'],
-      lastName: json['lastName'],
-      emailId: json['emailId'] ?? json['email'],
-      mobileNumber: json['mobileNumber'] ?? json['mobile'],
-      gender: json['gender'],
-      age: json['age']?.toString(),
-      role: json['role'] != null
-          ? (json['role'] is List
-              ? List<String>.from(json['role'])
-              : [json['role'].toString()])
-          : null,
-      profilePhoto: json['profilePhoto'],
-      registrationDate: json['registrationDate'] ?? json['joinDate'],
-      active: json['active'] ?? true,
-      location: json['location'] != null
-          ? Location.fromJson(json['location'] as Map<String, dynamic>)
-          : null,
-      purchaseDetails: json['purchaseDetails'] != null
-          ? MoviePurchaseDetail.fromJson(
-              json['purchaseDetails'] as Map<String, dynamic>)
-          : (json['amount'] != null || json['purchaseDate'] != null
-              ? MoviePurchaseDetail.fromJson(json)
-              : null),
+      id: id,
+      firstName: userMap['firstName']?.toString(),
+      lastName: userMap['lastName']?.toString(),
+      emailId: (userMap['emailId'] ??
+              userMap['email'] ??
+              json['emailId'] ??
+              json['email'])
+          ?.toString(),
+      mobileNumber: (userMap['mobileNumber'] ??
+              userMap['mobile'] ??
+              json['mobileNumber'] ??
+              json['mobile'])
+          ?.toString(),
+      gender: userMap['gender']?.toString(),
+      age: userMap['age']?.toString(),
+      role: roles,
+      profilePhoto: (userMap['profilePhoto'] ?? json['profilePhoto'])?.toString(),
+      registrationDate: regDateTime,
+      active: isActive,
+      location: location,
+      purchaseDetails: purchaseDetails,
     );
   }
 }
 
 class MoviePurchaseDetail {
   final int? purchaseId;
-  final dynamic purchaseDate;
+  final DateTime? purchaseDate;
   final double? amount;
   final String? paymentStatus;
   final String? transactionId;
@@ -91,15 +236,44 @@ class MoviePurchaseDetail {
     this.transactionId,
   });
 
+  String get formattedPurchaseDate =>
+      MovieBuyerDateHelper.format(purchaseDate, withTime: true);
+
   factory MoviePurchaseDetail.fromJson(Map<String, dynamic> json) {
+    final rawId = json['purchaseId'] ?? json['id'] ?? json['transactionId'];
+    final int? purchaseId = rawId is int
+        ? rawId
+        : (rawId is num ? rawId.toInt() : int.tryParse(rawId?.toString() ?? ''));
+
+    final dynamic rawDate = json['purchaseDate'] ??
+        json['date'] ??
+        json['dateFrom'] ??
+        json['createdDate'] ??
+        json['createdAt'] ??
+        json['paymentDate'] ??
+        json['transactionDate'];
+    final DateTime? purchaseDate = MovieBuyerDateHelper.parseDateTime(rawDate);
+
+    final rawAmount = json['amount'] ?? json['price'] ?? json['totalAmount'];
+    double? amount;
+    if (rawAmount is num) {
+      amount = rawAmount.toDouble();
+    } else if (rawAmount != null) {
+      amount = double.tryParse(rawAmount.toString());
+    }
+
+    final rawStatus = json['paymentStatus'] ?? json['status'] ?? 'SUCCESS';
+    final rawTxnId = json['transactionId'] ??
+        json['txnId'] ??
+        json['orderId'] ??
+        json['paymentId'];
+
     return MoviePurchaseDetail(
-      purchaseId: json['purchaseId'] ?? json['id'],
-      purchaseDate: json['purchaseDate'] ?? json['date'],
-      amount: (json['amount'] is num)
-          ? (json['amount'] as num).toDouble()
-          : double.tryParse('${json['amount']}'),
-      paymentStatus: json['paymentStatus'] ?? json['status'] ?? 'SUCCESS',
-      transactionId: json['transactionId'] ?? json['txnId'],
+      purchaseId: purchaseId,
+      purchaseDate: purchaseDate,
+      amount: amount,
+      paymentStatus: rawStatus?.toString(),
+      transactionId: rawTxnId?.toString(),
     );
   }
 }
@@ -193,51 +367,102 @@ class _MoviePurchasedUsersSectionState
       if (!mounted) return;
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> body = json.decode(response.body);
-        final data = body['data'];
+        final dynamic decoded = json.decode(response.body);
+        Map<String, dynamic> body = {};
+        if (decoded is Map<String, dynamic>) {
+          body = decoded;
+        } else if (decoded is Map) {
+          body = Map<String, dynamic>.from(decoded);
+        }
+
+        final dynamic data = body.containsKey('data') ? body['data'] : body;
 
         List<MovieUserItem> loadedUsers = [];
         int total = 0;
         int pages = 0;
 
         if (data != null) {
-          if (data is Map<String, dynamic>) {
-            total = data['totalUsers'] ?? 0;
-            pages = data['totalPages'] ?? 0;
-            final userListJson = data['users'] ?? data['userList'] ?? [];
+          if (data is Map) {
+            final dataMap = Map<String, dynamic>.from(data);
+            final rawTotal = dataMap['totalUsers'] ??
+                dataMap['totalElements'] ??
+                dataMap['totalCount'] ??
+                dataMap['total'] ??
+                dataMap['count'];
+            if (rawTotal is int) {
+              total = rawTotal;
+            } else if (rawTotal is num) {
+              total = rawTotal.toInt();
+            } else if (rawTotal != null) {
+              total = int.tryParse(rawTotal.toString()) ?? 0;
+            }
+
+            final rawPages = dataMap['totalPages'] ?? dataMap['pages'];
+            if (rawPages is int) {
+              pages = rawPages;
+            } else if (rawPages is num) {
+              pages = rawPages.toInt();
+            } else if (rawPages != null) {
+              pages = int.tryParse(rawPages.toString()) ?? 0;
+            }
+
+            final userListJson = dataMap['users'] ??
+                dataMap['userList'] ??
+                dataMap['userContent'] ??
+                dataMap['content'] ??
+                dataMap['list'] ??
+                [];
+
             if (userListJson is List) {
-              loadedUsers = userListJson
-                  .map((u) => MovieUserItem.fromJson(u as Map<String, dynamic>))
-                  .toList();
+              loadedUsers = userListJson.map((u) {
+                if (u is Map<String, dynamic>) {
+                  return MovieUserItem.fromJson(u);
+                } else if (u is Map) {
+                  return MovieUserItem.fromJson(Map<String, dynamic>.from(u));
+                }
+                return null;
+              }).whereType<MovieUserItem>().toList();
             }
           } else if (data is List) {
-            loadedUsers = data
-                .map((u) => MovieUserItem.fromJson(u as Map<String, dynamic>))
-                .toList();
+            loadedUsers = data.map((u) {
+              if (u is Map<String, dynamic>) {
+                return MovieUserItem.fromJson(u);
+              } else if (u is Map) {
+                return MovieUserItem.fromJson(Map<String, dynamic>.from(u));
+              }
+              return null;
+            }).whereType<MovieUserItem>().toList();
             total = loadedUsers.length;
             pages = (total / _pageSize).ceil();
           }
+        }
+
+        if (total == 0 && loadedUsers.isNotEmpty) {
+          total = loadedUsers.length;
+          pages = (total / _pageSize).ceil();
         }
 
         setState(() {
           _isLoading = false;
           _users = loadedUsers;
           _totalUsers = total;
-          _totalPages = pages;
+          _totalPages = pages > 0 ? pages : (loadedUsers.isNotEmpty ? 1 : 0);
+          _errorMessage = null;
         });
       } else {
         setState(() {
           _isLoading = false;
           _errorMessage =
-              "Users API not available yet (Status: ${response.statusCode}). Backend endpoint is being configured.";
+              "Could not fetch movie buyers (Status: ${response.statusCode}).";
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint("Error fetching movie buyers: $e\n$stackTrace");
       if (!mounted) return;
       setState(() {
         _isLoading = false;
         _errorMessage =
-            "Could not fetch movie buyers: $e. Endpoint will be active once deployed on backend.";
+            "Could not fetch movie buyers: ${e.toString()}";
       });
     }
   }
@@ -681,6 +906,17 @@ class _MoviePurchasedUsersSectionState
                         ),
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () => _fetchUsers(page: _currentPage),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text("Retry", style: TextStyle(fontSize: 12)),
+                    ),
                   ],
                 ),
               )
@@ -784,17 +1020,11 @@ class _MoviePurchasedUsersSectionState
                     ? "₹${purchase!.amount!.toStringAsFixed(2)}"
                     : "—";
 
-                String purchaseDateStr = "—";
-                if (purchase?.purchaseDate != null) {
-                  if (purchase!.purchaseDate is int) {
-                    final dt = DateTime.fromMillisecondsSinceEpoch(
-                        purchase.purchaseDate as int);
-                    purchaseDateStr =
-                        "${dt.day}/${dt.month}/${dt.year}";
-                  } else {
-                    purchaseDateStr = purchase.purchaseDate.toString();
-                  }
-                }
+                final purchaseDateStr = purchase?.purchaseDate != null
+                    ? purchase!.formattedPurchaseDate
+                    : (user.registrationDate != null
+                        ? user.formattedRegistrationDate
+                        : "—");
 
                 return DataRow(
                   cells: [

@@ -54,27 +54,41 @@ class Promoters {
   });
 
   factory Promoters.fromJson(Map<String, dynamic> json) => Promoters(
-    id: json["id"],
-    promoterName: json["promoterName"],
-    level: json["level"],
-    location: json["location"] == null ? null : Location.fromJson(json["location"]),
-    userId: json["userId"] == null ? null : User.fromJson(json["userId"]),
+    id: json["id"] is int
+        ? json["id"]
+        : (json["id"] != null
+            ? int.tryParse(json["id"].toString())
+            : (json["promoterId"] is int
+                ? json["promoterId"]
+                : int.tryParse(json["promoterId"]?.toString() ?? ''))),
+    promoterName: json["promoterName"] ?? json["name"] ?? json["userName"],
+    level: json["level"] ?? json["Level"] ?? json["promoterLevel"] ?? json["designation"],
+    location: json["location"] == null
+        ? null
+        : Location.fromJson(json["location"] is Map<String, dynamic>
+            ? json["location"]
+            : Map<String, dynamic>.from(json["location"])),
+    userId: json["userId"] == null
+        ? null
+        : User.fromJson(json["userId"] is Map<String, dynamic>
+            ? json["userId"]
+            : Map<String, dynamic>.from(json["userId"])),
     role: json["role"],
     status: json["status"],
     access: json["access"],
-    createdDate: json["createdDate"],
-    promoterId: json["promoterId"],
+    createdDate: json["createdDate"]?.toString(),
+    promoterId: json["promoterId"] ?? json["id"],
     active: json["active"],
     aadharCard: json["aadharCard"],
     accountNumber: json["accountNumber"],
     bankName: json["bankName"],
     branchName: json["branchName"],
-    contactNumber: json["contactNumber"],
+    contactNumber: json["contactNumber"] ?? json["mobileNumber"],
     gst: json["gst"],
     ifscCode: json["ifscCode"],
     panCard: json["panCard"],
     pincode: json["pincode"],
-    refferedBy: json["refferedBy"],
+    refferedBy: json["refferedBy"] ?? json["parentPromoterName"] ?? json["parentName"],
     registrationCertificate: json["registrationCertificate"],
     website: json["website"],
   );

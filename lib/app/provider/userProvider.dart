@@ -1,44 +1,35 @@
-import 'dart:convert';
-import 'dart:developer';
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' as io;
-import 'package:admin_ott/data/models/response/getUserResponse.dart';
-import 'package:admin_ott/data/models/response/loginUser.dart';
-import 'package:flutter/foundation.dart';
-import 'package:universal_html/html.dart' as html;
-
-import 'package:image_picker/image_picker.dart'; // For web-specific file handling
-
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../core/loading/app_loading_controller.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter/services.dart';
-
 import 'dart:io';
 
-import 'package:admin_ott/data/models/response/getAllUserResponse.dart';
-import 'package:admin_ott/data/models/response/updateUserResponse.dart';
-import 'package:admin_ott/domain/entities/user.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:universal_html/html.dart' as html;
+
+import 'package:admin_ott/data/models/response/getAllUserResponse.dart';
+import 'package:admin_ott/data/models/response/getUserResponse.dart';
+import 'package:admin_ott/data/models/response/loginUser.dart';
+import 'package:admin_ott/data/models/response/updateUserResponse.dart';
+import 'package:admin_ott/domain/entities/user.dart';
+
 import '../../data/models/request/user_request.dart';
 import '../../data/models/response/addUserResponse.dart';
 import '../../data/models/response/errorResponse.dart';
 import '../../data/models/response/moviePurchaseByUserResponse.dart';
 import '../core/constant/api_constant.dart';
 import '../core/constant/prefrense_constant.dart';
+import '../core/loading/app_loading_controller.dart';
 import '../core/network/api_helper.dart';
 import '../core/utils/sharepreferences.dart';
 import '../widgets/show_toast.dart';
 
 class UserProvider extends ChangeNotifier {
   UserProvider() : super() {
-    searchController.addListener(applySearch);
+    searchController.addListener(_onSearchChanged);
   }
 
   TextEditingController firstNameController = TextEditingController();
@@ -68,16 +59,114 @@ class UserProvider extends ChangeNotifier {
   File? image;
 
   bool isEnbale = false;
+  Timer? _searchDebounce;
+  bool _isSearching = false;
 
-  void applySearch([String? rawQuery]) {
-    final query = (rawQuery ?? searchController.text).trim().toLowerCase();
+  bool get isSearching => _isSearching;
+
+  void _onSearchChanged() {
+    searchUsers(searchController.text);
+  }
+
+  void searchUsers(String? rawQuery, {bool immediate = false}) {
+    final query = (rawQuery ?? searchController.text).trim();
+
+    _searchDebounce?.cancel();
 
     if (query.isEmpty) {
+      _isSearching = false;
       _filteredUsers = List<User>.from(_users);
       notifyListeners();
       return;
     }
 
+    if (immediate) {
+      _executeSearchApi(query);
+    } else {
+      _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+        _executeSearchApi(query);
+      });
+    }
+  }
+
+  Future<void> _executeSearchApi(String query) async {
+    final trimmedQuery = query.trim();
+    if (trimmedQuery.isEmpty) {
+      _filteredUsers = List<User>.from(_users);
+      _isSearching = false;
+      notifyListeners();
+      return;
+    }
+
+    _isSearching = true;
+    notifyListeners();
+
+    String apiUrl = ApiConstant.searchUser(trimmedQuery);
+    ApiHelper apiHelper = ApiHelper();
+
+    try {
+      var response = await apiHelper.getApi(apiUrl);
+      debugPrint("=== [Search User API] ===");
+      debugPrint("API URL: $apiUrl");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
+      debugPrint("=========================");
+
+      if (response.statusCode == 200) {
+        if (response.body.isNotEmpty) {
+          final decoded = json.decode(response.body);
+          List<User> resultUsers = [];
+
+          if (decoded is List) {
+            resultUsers = decoded
+                .whereType<Map<String, dynamic>>()
+                .map((x) => User.fromJson(x))
+                .toList();
+          } else if (decoded is Map<String, dynamic>) {
+            final data = decoded['data'];
+            if (data is List) {
+              resultUsers = data
+                  .whereType<Map<String, dynamic>>()
+                  .map((x) => User.fromJson(x))
+                  .toList();
+            } else if (data is Map<String, dynamic>) {
+              if (data['users'] is List) {
+                resultUsers = (data['users'] as List)
+                    .whereType<Map<String, dynamic>>()
+                    .map((x) => User.fromJson(x))
+                    .toList();
+              } else if (data['user'] is Map<String, dynamic>) {
+                resultUsers = [
+                  User.fromJson(data['user'] as Map<String, dynamic>)
+                ];
+              }
+            } else if (decoded['users'] is List) {
+              resultUsers = (decoded['users'] as List)
+                  .whereType<Map<String, dynamic>>()
+                  .map((x) => User.fromJson(x))
+                  .toList();
+            }
+          }
+
+          _filteredUsers = resultUsers;
+        } else {
+          _filteredUsers = [];
+        }
+      } else {
+        debugPrint("Search user API returned status code: ${response.statusCode}");
+        _applyLocalSearch(trimmedQuery);
+      }
+    } catch (error) {
+      debugPrint("Error searching users via API: $error");
+      _applyLocalSearch(trimmedQuery);
+    } finally {
+      _isSearching = false;
+      notifyListeners();
+    }
+  }
+
+  void _applyLocalSearch(String query) {
+    final lowerQuery = query.toLowerCase();
     _filteredUsers = _users.where((user) {
       final values = [
         user.firstName,
@@ -92,20 +181,26 @@ class UserProvider extends ChangeNotifier {
       ];
 
       return values
-          .any((value) => value?.toLowerCase().contains(query) ?? false);
+          .any((value) => value?.toLowerCase().contains(lowerQuery) ?? false);
     }).toList();
-    notifyListeners();
+  }
+
+  void applySearch([String? rawQuery]) {
+    searchUsers(rawQuery);
   }
 
   void clearUserSearch() {
+    _searchDebounce?.cancel();
     if (searchController.text.isNotEmpty) {
       searchController.clear();
     }
-    applySearch('');
+    _isSearching = false;
+    _filteredUsers = List<User>.from(_users);
+    notifyListeners();
   }
 
   void filterUsers() {
-    applySearch();
+    searchUsers(searchController.text);
   }
 
   setValue(User? user) async {
@@ -226,7 +321,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   // Delete a user
-  Future<void> deleteUser(int id) async {
+  Future<bool> deleteUser(int id) async {
     String apiUrl = ApiConstant.deleteUserById(id);
     ApiHelper apiHelper = ApiHelper();
     try {
@@ -236,25 +331,34 @@ class UserProvider extends ChangeNotifier {
         AddUserResponse deleteUserResponse =
             AddUserResponse.fromJson(responseBody);
         if (deleteUserResponse.success == true) {
-          CustomToast.show("Profile updated successfully!", isSuccess: true);
+          _users.removeWhere((u) => u.id == id);
+          _filteredUsers.removeWhere((u) => u.id == id);
+          CustomToast.show(
+            deleteUserResponse.message ?? "User deleted successfully!",
+            isSuccess: true,
+          );
           notifyListeners();
+          return true;
         } else {
           debugPrint("Error: ${deleteUserResponse.message}");
-          CustomToast.show("Error: ${deleteUserResponse.message}",
-              isSuccess: false);
+          CustomToast.show(
+            deleteUserResponse.message ?? "Failed to delete user.",
+            isSuccess: false,
+          );
+          return false;
         }
       } else {
         CustomToast.show(
-            "Failed to delete user. Status code: ${response.statusCode}",
-            isSuccess: false);
-        throw Exception(
-            'Failed to delete user. Status code: ${response.statusCode}');
+          "Failed to delete user. Status code: ${response.statusCode}",
+          isSuccess: false,
+        );
+        return false;
       }
     } catch (error) {
       debugPrint("Error: $error");
-      CustomToast.show("An error occurred while delete user.",
+      CustomToast.show("An error occurred while deleting user.",
           isSuccess: false);
-      throw Exception('An error occurred while delete user.');
+      return false;
     }
   }
 
@@ -498,7 +602,12 @@ class UserProvider extends ChangeNotifier {
         if (getAllUserResponse.success == true) {
           if (getAllUserResponse.data != null) {
             _users = getAllUserResponse.data!.users!;
-            applySearch();
+            if (searchController.text.trim().isNotEmpty) {
+              searchUsers(searchController.text);
+            } else {
+              _filteredUsers = List<User>.from(_users);
+              notifyListeners();
+            }
           } else {
             debugPrint("empty list: ${getAllUserResponse.message}");
           }
@@ -731,57 +840,102 @@ class UserProvider extends ChangeNotifier {
   List<UserContent> _filtteredUserContentList = [];
   List<UserContent> get filtteredUserContentList => _filtteredUserContentList;
 
+  bool _isUserContentLoading = false;
+  bool get isUserContentLoading => _isUserContentLoading;
+
+  String? _userContentErrorMessage;
+  String? get userContentErrorMessage => _userContentErrorMessage;
+
+  String _userContentFilterStatus = 'All';
+  String get userContentFilterStatus => _userContentFilterStatus;
+
+  String _userContentSearchQuery = '';
+  String get userContentSearchQuery => _userContentSearchQuery;
+
   Future<void> fetchUserContent(int userId) async {
+    _isUserContentLoading = true;
+    _userContentErrorMessage = null;
+    notifyListeners();
+
     String apiUrl = ApiConstant.getPurchaseMovieByUser(userId);
-    print(apiUrl);
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.getApi(apiUrl);
-      debugPrint("response::: " + response.toString());
+      debugPrint("=== [User Purchased Content API] ===");
+      debugPrint("API URL: $apiUrl");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
+      debugPrint("====================================");
+
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
-        debugPrint("response::: " + responseBody.toString());
         MoviePurchaseByUserResponse moviePurchaseByUserResponse =
             MoviePurchaseByUserResponse.fromJson(responseBody);
-        debugPrint("data::: " + moviePurchaseByUserResponse.data.toString());
         if (moviePurchaseByUserResponse.success == true) {
-          if (moviePurchaseByUserResponse.data != null) {
-            _userContentList.clear();
-            _filtteredUserContentList.clear();
-            _userContentList = moviePurchaseByUserResponse.data!.userContent!;
-            _filtteredUserContentList = _userContentList;
-            debugPrint("message : ${moviePurchaseByUserResponse.message}");
-            notifyListeners();
-          } else {
-            _userContentList.clear();
-            _filtteredUserContentList.clear();
-            CustomToast.show(
-                "empty list: ${moviePurchaseByUserResponse.message}",
-                isSuccess: true);
-
-            debugPrint("empty list: ${moviePurchaseByUserResponse.message}");
-            notifyListeners();
+          _userContentList.clear();
+          if (moviePurchaseByUserResponse.data?.userContent != null) {
+            _userContentList =
+                moviePurchaseByUserResponse.data!.userContent!;
           }
+          _applyUserContentFilter();
         } else {
           _userContentList.clear();
           _filtteredUserContentList.clear();
-          debugPrint("Error: ${moviePurchaseByUserResponse.message}");
-          CustomToast.show("Error: ${moviePurchaseByUserResponse.message}",
-              isSuccess: false);
-          notifyListeners();
+          _userContentErrorMessage =
+              moviePurchaseByUserResponse.message ?? 'No content found';
         }
       } else {
-        CustomToast.show(
-            "Failed to fetch Content. Status code: ${response.statusCode}",
-            isSuccess: false);
-        throw Exception(
-            'Failed to fetch Content. Status code: ${response.statusCode}');
+        _userContentList.clear();
+        _filtteredUserContentList.clear();
+        _userContentErrorMessage =
+            "Failed to fetch content. Status code: ${response.statusCode}";
       }
     } catch (error) {
-      debugPrint("Error: $error");
-      CustomToast.show("An error occurred while fetching user content.",
-          isSuccess: false);
-      throw Exception('An error occurred while fetching Content.');
+      debugPrint("Error fetching user content: $error");
+      _userContentList.clear();
+      _filtteredUserContentList.clear();
+      _userContentErrorMessage =
+          "An error occurred while fetching user content.";
+    } finally {
+      _isUserContentLoading = false;
+      notifyListeners();
     }
+  }
+
+  void setUserContentFilter(String status) {
+    _userContentFilterStatus = status;
+    _applyUserContentFilter();
+  }
+
+  void setUserContentSearch(String query) {
+    _userContentSearchQuery = query;
+    _applyUserContentFilter();
+  }
+
+  void _applyUserContentFilter() {
+    List<UserContent> list = List.from(_userContentList);
+
+    if (_userContentFilterStatus.toLowerCase() == 'available') {
+      list = list.where((item) => item.active == true).toList();
+    } else if (_userContentFilterStatus.toLowerCase() == 'expired') {
+      list = list.where((item) => item.active == false).toList();
+    }
+
+    if (_userContentSearchQuery.trim().isNotEmpty) {
+      final q = _userContentSearchQuery.trim().toLowerCase();
+      list = list.where((item) {
+        final title = item.movie?.title?.toLowerCase() ?? '';
+        final idStr = item.id?.toString() ?? '';
+        final movieType = item.movie?.type?.toLowerCase() ?? '';
+        final desc = item.movie?.description?.toLowerCase() ?? '';
+        return title.contains(q) ||
+            idStr.contains(q) ||
+            movieType.contains(q) ||
+            desc.contains(q);
+      }).toList();
+    }
+
+    _filtteredUserContentList = list;
+    notifyListeners();
   }
 }

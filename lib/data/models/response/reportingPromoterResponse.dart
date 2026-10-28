@@ -1,4 +1,3 @@
-import 'package:admin_ott/domain/entities/promoter.dart';
 
 class ReportingPromotersResponse {
   String? message;

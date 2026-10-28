@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:admin_ott/app/config/routes/app_routes.dart';
 import 'package:admin_ott/app/config/routes/routes.dart';
 import 'package:admin_ott/app/provider/accessControleProvider.dart';
@@ -26,6 +27,27 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.invertedStylus,
+        PointerDeviceKind.unknown,
+      };
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const BouncingScrollPhysics(
+      parent: AlwaysScrollableScrollPhysics(),
+    );
+  }
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -124,6 +146,7 @@ class MyApp extends StatelessWidget {
         theme: themeNotifier.getTheme,
         navigatorKey: navigatorKey, // Pass the navigatorKey here
         debugShowCheckedModeBanner: false,
+        scrollBehavior: const AppScrollBehavior(),
         builder: (context, child) => AppLoaderOverlay(
           child: NetworkHandler(
             mainPage: child ?? const SizedBox.shrink(),
@@ -137,4 +160,3 @@ class MyApp extends StatelessWidget {
     });
   }
 }
-// latest code

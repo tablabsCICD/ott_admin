@@ -1,6 +1,7 @@
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/provider/transactionProvider.dart';
 import 'package:admin_ott/app/widgets/app_loaders.dart';
+import 'package:admin_ott/app/widgets/financial_formatter.dart';
 import 'package:admin_ott/data/models/response/transaction_settlement_report.dart';
 import 'package:admin_ott/data/models/response/userTransactionResponse.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
@@ -895,8 +896,8 @@ class _TransactionPageState extends State<TransactionPage> {
 
   String _priceText(UserTransactionData transaction) {
     final price = transaction.price ?? transaction.movie?.price;
-    if (price == null) return 'Rs. 0';
-    return 'Rs. ${price % 1 == 0 ? price.toInt() : price}';
+    if (price == null) return FinancialFormatter.format4(0);
+    return FinancialFormatter.format4(price);
   }
 
   String _runtimeText(UserTransactionData transaction) {
@@ -914,19 +915,9 @@ class _TransactionPageState extends State<TransactionPage> {
   String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
   String _formatRevenue(dynamic value) {
-    if (value == null) return 'Rs. 0';
-    if (value is String) {
-      final trimmed = value.trim();
-      if (trimmed.isEmpty) return 'Rs. 0';
-      if (trimmed.startsWith('Rs.') || trimmed.startsWith('Rs') || trimmed.startsWith('₹')) {
-        return trimmed;
-      }
-      return 'Rs. $trimmed';
-    }
-    if (value is num) {
-      return 'Rs. ${value % 1 == 0 ? value.toInt() : value}';
-    }
-    return 'Rs. $value';
+    if (value == null) return FinancialFormatter.format4(0);
+    final val = _settlementAmount(value);
+    return FinancialFormatter.format4(val);
   }
 }
 
@@ -2263,21 +2254,9 @@ String _transactionUserName(UserTransactionData transaction) {
 }
 
 String _settlementMoney(dynamic amount, TransactionSettlementReportData report) {
-  final symbol = report.displayCurrencySymbol;
-  if (amount == null) return '$symbol 0';
-  if (amount is String) {
-    final trimmed = amount.trim();
-    if (trimmed.isEmpty) return '$symbol 0';
-    if (trimmed.startsWith(symbol) || trimmed.startsWith('₹') || trimmed.startsWith('Rs')) {
-      return trimmed;
-    }
-    return '$symbol$trimmed';
-  }
-  if (amount is num) {
-    final formatted = amount % 1 == 0 ? amount.toInt().toString() : amount.toString();
-    return '$symbol$formatted';
-  }
-  return '$symbol$amount';
+  if (amount == null) return FinancialFormatter.format4(0);
+  final val = _settlementAmount(amount);
+  return FinancialFormatter.format4(val);
 }
 
 String _settlementPercent(String? value) {
@@ -2301,12 +2280,9 @@ double _settlementAmount(dynamic value) {
 }
 
 String _fallbackMoney(dynamic amount) {
-  if (amount == null) return '₹0';
-  if (amount is num) {
-    final formatted = amount % 1 == 0 ? amount.toInt().toString() : amount.toString();
-    return '₹$formatted';
-  }
-  return '₹$amount';
+  if (amount == null) return FinancialFormatter.format4(0);
+  final val = _settlementAmount(amount);
+  return FinancialFormatter.format4(val);
 }
 
 class TransactionChartData {

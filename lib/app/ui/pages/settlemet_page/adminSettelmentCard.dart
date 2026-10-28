@@ -1,6 +1,7 @@
 import 'package:admin_ott/app/provider/settelementProvider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
+import 'package:admin_ott/app/widgets/financial_formatter.dart';
 import 'package:admin_ott/data/models/response/mediaHouseWeeklySettelement.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -819,21 +820,7 @@ class _AdminSettlementCardState extends State<AdminSettlementCard> {
 
   String _formatCurrency(double? value, {int? maxDecimals}) {
     if (value == null) return '—';
-    if (value == 0) return '₹0';
-
-    final text = value.toString();
-    if (text.contains('.')) {
-      final parts = text.split('.');
-      final intPart = parts[0];
-      final decPart = parts[1];
-      final formattedInt =
-          NumberFormat('#,##,###', 'en_IN').format(int.tryParse(intPart) ?? 0);
-      return '₹$formattedInt.$decPart';
-    } else {
-      final formattedInt =
-          NumberFormat('#,##,###', 'en_IN').format(value.toInt());
-      return '₹$formattedInt';
-    }
+    return FinancialFormatter.format4(value);
   }
 
   String _formatPercent(double? value) {

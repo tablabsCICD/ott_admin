@@ -347,7 +347,7 @@ class UserGraphProvider extends ChangeNotifier {
     isYear = false;isMonth = false;isWeek = false;
   }
 
-  Future<void> fetchUserGraph(int selectedTimeRange) async {
+  Future<void> fetchUserGraph(int selectedTimeRange, {String type = "ALL"}) async {
     if(selectedTimeRange==0){
       isWeek=true;
       isMonth=false;
@@ -367,6 +367,7 @@ class UserGraphProvider extends ChangeNotifier {
       isYear,
       isMonth,
       isWeek,
+      type: type,
     );
     ApiHelper apiHelper = ApiHelper();
 
@@ -403,7 +404,7 @@ class UserGraphProvider extends ChangeNotifier {
   }
 
 
-  Future<void> fetchPurchaseGraph(int selectedTimeRange) async {
+  Future<void> fetchPurchaseGraph(int selectedTimeRange, {String type = "ALL"}) async {
     if(selectedTimeRange==0){
       isWeek=true;
       isMonth=false;
@@ -423,6 +424,7 @@ class UserGraphProvider extends ChangeNotifier {
       isYear,
       isMonth,
       isWeek,
+      type: type,
     );
     ApiHelper apiHelper = ApiHelper();
 
@@ -459,7 +461,7 @@ class UserGraphProvider extends ChangeNotifier {
   }
 
 
-  Future<void> fetchPromoterCountGraph(int selectedTimeRange) async {
+  Future<void> fetchPromoterCountGraph(int selectedTimeRange, {String type = "ALL"}) async {
     if(selectedTimeRange==0){
       isWeek=true;
       isMonth=false;
@@ -479,6 +481,7 @@ class UserGraphProvider extends ChangeNotifier {
       isYear,
       isMonth,
       isWeek,
+      type: type,
     );
     ApiHelper apiHelper = ApiHelper();
 
@@ -514,7 +517,7 @@ class UserGraphProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchMediaHouseCountGraph(int selectedTimeRange) async {
+  Future<void> fetchMediaHouseCountGraph(int selectedTimeRange, {String type = "ALL"}) async {
     if(selectedTimeRange==0){
       isWeek=true;
       isMonth=false;
@@ -534,6 +537,7 @@ class UserGraphProvider extends ChangeNotifier {
       isYear,
       isMonth,
       isWeek,
+      type: type,
     );
     ApiHelper apiHelper = ApiHelper();
 
@@ -569,7 +573,7 @@ class UserGraphProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchApprovedContentGraph(int selectedTimeRange) async {
+  Future<void> fetchApprovedContentGraph(int selectedTimeRange, {String type = "ALL"}) async {
     if(selectedTimeRange==0){
       isWeek=true;
       isMonth=false;
@@ -589,6 +593,7 @@ class UserGraphProvider extends ChangeNotifier {
       isYear,
       isMonth,
       isWeek,
+      type: type,
     );
     ApiHelper apiHelper = ApiHelper();
 

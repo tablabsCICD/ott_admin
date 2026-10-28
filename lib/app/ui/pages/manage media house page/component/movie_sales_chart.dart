@@ -20,6 +20,7 @@ class MovieSalesChart extends StatefulWidget {
 
   final List<String> metrics; // e.g. ["revenue", "users_onboarded"]
   final bool canPop;
+  final String type;
 
   MovieSalesChart({
     super.key,
@@ -28,8 +29,8 @@ class MovieSalesChart extends StatefulWidget {
     required this.metrics,
     this.canPop = false,
     required this.graphNumber,
-    required this.contentId
-
+    required this.contentId,
+    this.type = "ALL",
   });
 
   @override
@@ -44,13 +45,33 @@ class _MovieSalesChartState extends State<MovieSalesChart> {
   DateTime get today => DateTime.now();
   DateTime? startDate = DateTime.now().subtract(Duration(days: 7));
   DateTime? endDate = DateTime.now();
-  String activeButton = 'Week';
+  String activeButton = '1W';
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
     _fetchGraphData(0, DateTime.now().subtract(Duration(days: 7)), DateTime.now());
+  }
+
+  @override
+  void didUpdateWidget(covariant MovieSalesChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.type != widget.type ||
+        oldWidget.contentId != widget.contentId ||
+        oldWidget.graphNumber != widget.graphNumber) {
+      _fetchGraphData(
+        activeButton == '1W'
+            ? 0
+            : activeButton == '1M'
+                ? 1
+                : activeButton == '1Y'
+                    ? 2
+                    : 3,
+        startDate ?? DateTime.now().subtract(const Duration(days: 7)),
+        endDate ?? DateTime.now(),
+      );
+    }
   }
 
   Future<void> _pickDateRange() async {
@@ -74,9 +95,9 @@ class _MovieSalesChartState extends State<MovieSalesChart> {
 
   Future<void> _setDateRange(String label, int days) async {
     int selectedTimeRange;
-    if (label == 'Week') {
+    if (label == '1W') {
       selectedTimeRange = 0;
-    } else if (label == 'Month') {
+    } else if (label == '1M') {
       selectedTimeRange = 1;
     } else {
       selectedTimeRange = 2;
@@ -108,7 +129,8 @@ class _MovieSalesChartState extends State<MovieSalesChart> {
         selectedTimeRange,
         widget.contentId,
         startDateString,
-        endDateString
+        endDateString,
+        type: widget.type,
     );
 
   }

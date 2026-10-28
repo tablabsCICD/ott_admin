@@ -28,23 +28,26 @@ class TransactionProvider extends ChangeNotifier {
   List<TransactionChartData> chartData = [];
   String? totalRevenue;
 
-  falseAllFilter(){
-    isYear = false;isMonth = false;isWeek = false;
+  falseAllFilter() {
+    isYear = false;
+    isMonth = false;
+    isWeek = false;
   }
 
-  Future<void> fetchTransactionGraph(int selectedTimeRange) async {
-    if(selectedTimeRange==0){
-      isWeek=true;
-      isMonth=false;
-      isYear=false;
-    }else  if(selectedTimeRange==1){
-      isWeek=false;
-      isMonth=true;
-      isYear=false;
-    }else{
-      isWeek=false;
-      isMonth=false;
-      isYear=true;
+  Future<void> fetchTransactionGraph(int selectedTimeRange,
+      {String type = "ALL"}) async {
+    if (selectedTimeRange == 0) {
+      isWeek = true;
+      isMonth = false;
+      isYear = false;
+    } else if (selectedTimeRange == 1) {
+      isWeek = false;
+      isMonth = true;
+      isYear = false;
+    } else {
+      isWeek = false;
+      isMonth = false;
+      isYear = true;
     }
     notifyListeners();
     String apiUrl = ApiConstant.transactionRevenueGraph(
@@ -53,24 +56,23 @@ class TransactionProvider extends ChangeNotifier {
       isYear,
       isMonth,
       isWeek,
+      type: type,
     );
     ApiHelper apiHelper = ApiHelper();
 
     try {
       var response = await apiHelper.getApi(apiUrl);
-
-
       Map<String, dynamic> responseBody = json.decode(response.body);
 
       GraphResponse chartResponse = GraphResponse.fromJson(responseBody);
-      if(chartResponse.success==true){
+      if (chartResponse.success == true) {
         chartData.clear();
         for (var data in chartResponse.data!) {
           chartData.add(
             TransactionChartData(
               data.label as String,
               (data.value as num).toDouble(),
-              0
+              0,
             ),
           );
         }
@@ -81,7 +83,7 @@ class TransactionProvider extends ChangeNotifier {
           print('Label: ${item.date}, Value: ${item.revenue}');
         }
         notifyListeners();
-      }else{
+      } else {
         CustomToast.show(chartResponse.message.toString());
       }
     } catch (error) {

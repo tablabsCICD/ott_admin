@@ -55,33 +55,104 @@ class User {
     this.age,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) => User(
-    id: json["id"],
-    refferedBy: json["refferedBy"],
-    lastName: json["lastName"],
-    role: json["role"] == null ? [] : List<String>.from(json["role"]!.map((x) => x)),
-    gender: json["gender"],
-    mobileNumber: json["mobileNumber"],
-    admin: json["admin"],
-    emailId: json["emailId"],
-    refferCode: json["refferCode"],
-    deviceId: json["deviceId"],
-    deviceName: json["deviceName"],
-    password: json["password"],
-    profilePhoto: json["profilePhoto"],
-    joinDate: json["joinDate"],
-    registrationDate: json["registrationDate"],
-    selectedLanguages: json["selectedLanguages"] == null ? [] : List<String>.from(json["selectedLanguages"]!.map((x) => x)),
-    verified: json["verified"],
-    active: json["active"],
-    otp: json["otp"],
-    osName: json["osName"],
-    deviceToken: json["deviceToken"],
-    firstName: json["firstName"],
-    dob: json["dob"],
-    location: json["location"] == null ? null : Location.fromJson(json["location"]),
-    age: json["age"],
-  );
+  factory User.fromJson(Map<String, dynamic> json) {
+    final rawId = json["id"];
+    final int? id = rawId is int
+        ? rawId
+        : (rawId is num ? rawId.toInt() : int.tryParse(rawId?.toString() ?? ''));
+
+    final rawAdmin = json["admin"];
+    final bool? admin = rawAdmin is bool
+        ? rawAdmin
+        : (rawAdmin != null ? rawAdmin.toString().toLowerCase() == 'true' : null);
+
+    final rawVerified = json["verified"];
+    final bool? verified = rawVerified is bool
+        ? rawVerified
+        : (rawVerified != null ? rawVerified.toString().toLowerCase() == 'true' : null);
+
+    final rawActive = json["active"];
+    final bool? active = rawActive is bool
+        ? rawActive
+        : (rawActive != null ? rawActive.toString().toLowerCase() == 'true' : null);
+
+    final rawRole = json["role"];
+    List<String>? role;
+    if (rawRole != null) {
+      if (rawRole is List) {
+        role = rawRole.map((x) => x?.toString() ?? '').where((s) => s.isNotEmpty).toList();
+      } else {
+        role = [rawRole.toString()];
+      }
+    }
+
+    final rawLangs = json["selectedLanguages"];
+    List<String>? selectedLanguages;
+    if (rawLangs != null) {
+      if (rawLangs is List) {
+        selectedLanguages = rawLangs.map((x) => x?.toString() ?? '').where((s) => s.isNotEmpty).toList();
+      } else {
+        selectedLanguages = [rawLangs.toString()];
+      }
+    }
+
+    final rawLoc = json["location"];
+    Location? location;
+    if (rawLoc is Map<String, dynamic>) {
+      location = Location.fromJson(rawLoc);
+    } else if (rawLoc is Map) {
+      location = Location.fromJson(Map<String, dynamic>.from(rawLoc));
+    }
+
+    return User(
+      id: id,
+      refferedBy: json["refferedBy"]?.toString(),
+      lastName: json["lastName"]?.toString(),
+      role: role ?? [],
+      gender: json["gender"]?.toString(),
+      mobileNumber: json["mobileNumber"]?.toString(),
+      admin: admin,
+      emailId: json["emailId"]?.toString(),
+      refferCode: json["refferCode"]?.toString(),
+      deviceId: json["deviceId"]?.toString(),
+      deviceName: json["deviceName"]?.toString(),
+      password: json["password"]?.toString(),
+      profilePhoto: json["profilePhoto"]?.toString(),
+      joinDate: _safeDateString(json["joinDate"]),
+      registrationDate: _safeDateString(json["registrationDate"]),
+      selectedLanguages: selectedLanguages ?? [],
+      verified: verified,
+      active: active,
+      otp: json["otp"],
+      osName: json["osName"]?.toString(),
+      deviceToken: json["deviceToken"]?.toString(),
+      firstName: json["firstName"]?.toString(),
+      dob: _safeDateString(json["dob"]),
+      location: location,
+      age: json["age"]?.toString(),
+    );
+  }
+
+  static String? _safeDateString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is int) {
+      if (value <= 0) return null;
+      if (value < 10000000000) {
+        return DateTime.fromMillisecondsSinceEpoch(value * 1000).toIso8601String();
+      }
+      return DateTime.fromMillisecondsSinceEpoch(value).toIso8601String();
+    }
+    if (value is num) {
+      final intVal = value.toInt();
+      if (intVal <= 0) return null;
+      if (intVal < 10000000000) {
+        return DateTime.fromMillisecondsSinceEpoch(intVal * 1000).toIso8601String();
+      }
+      return DateTime.fromMillisecondsSinceEpoch(intVal).toIso8601String();
+    }
+    return value.toString();
+  }
 
   Map<String, dynamic> toJson() => {
     "id":id,

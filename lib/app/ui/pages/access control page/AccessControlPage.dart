@@ -90,9 +90,11 @@ class _AccessControlPageState extends State<AccessControlPage> {
             });
           }
 
-          return Padding(
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16.0),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildAccessForm(theme, provider),
                 const SizedBox(height: 16),
@@ -158,43 +160,42 @@ class _AccessControlPageState extends State<AccessControlPage> {
 
   Widget _buildPermissionTable(
       ThemeData theme, AccesscontroleProvider provider) {
-    return Expanded(
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            children: [
-              Text(
-                'Module Permissions for $selectedLevel',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  color: theme.canvasColor,
-                ),
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: theme.cardColor,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Module Permissions for $selectedLevel',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: theme.canvasColor,
               ),
-              const Divider(height: 20),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: modules.length,
-                  itemBuilder: (_, index) {
-                    final module = modules[index];
-                    return SwitchListTile(
-                      title: Text(module,
-                          style: TextStyle(color: theme.canvasColor)),
-                      value: accessMap[selectedLevel]![module] ?? false,
-                      activeColor: theme.primaryColor,
-                      onChanged: (val) {
-                        setState(() => accessMap[selectedLevel]![module] = val);
-                      },
-                    );
+            ),
+            const Divider(height: 20),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: modules.length,
+              itemBuilder: (_, index) {
+                final module = modules[index];
+                return SwitchListTile(
+                  title: Text(module,
+                      style: TextStyle(color: theme.canvasColor)),
+                  value: accessMap[selectedLevel]![module] ?? false,
+                  activeColor: theme.primaryColor,
+                  onChanged: (val) {
+                    setState(() => accessMap[selectedLevel]![module] = val);
                   },
-                ),
-              ),
-            ],
-          ),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );

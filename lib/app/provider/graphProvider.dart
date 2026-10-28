@@ -48,7 +48,93 @@ class GraphProvider extends ChangeNotifier {
     isWeek = false;
   }
 
-  Future<void> fetchTopPerformingMovieGraph(int selectedTimeRange,int id) async {
+  bool isRevenueGraphLoading = false;
+  String? revenueGraphError;
+
+  Future<void> fetchTopPerformingMovieGraph(int selectedTimeRange, int id,
+      {String type = "ALL"}) async {
+    isRevenueGraphLoading = true;
+    revenueGraphError = null;
+    notifyListeners();
+
+    String start = DateFormat('yyyy-MM-dd').format(startDate!);
+    String end = DateFormat('yyyy-MM-dd').format(endDate!);
+    if (selectedTimeRange == 0) {
+      isWeek = true;
+      isMonth = false;
+      isYear = false;
+    } else if (selectedTimeRange == 1) {
+      isWeek = false;
+      isMonth = true;
+      isYear = false;
+    } else {
+      isWeek = false;
+      isMonth = false;
+      isYear = true;
+    }
+
+    final urls = [
+      ApiConstant.mediaHouseRevenueGraphV2Clean(id),
+      ApiConstant.mediaHouseRevenueGraphV2(id,
+          startDate: start, endDate: end, type: type),
+      ApiConstant.mediaHouseRevenueGraphV2Alias(id,
+          startDate: start, endDate: end, type: type),
+      ApiConstant.topRevenueContentGraphForMediaHouse(
+        id,
+        start,
+        end,
+        isYear,
+        isMonth,
+        isWeek,
+        type: type,
+      ),
+    ];
+
+    ApiHelper apiHelper = ApiHelper();
+
+    for (final apiUrl in urls) {
+      try {
+        var response = await apiHelper.getApi(apiUrl);
+        if (response.statusCode == 200) {
+          Map<String, dynamic> responseBody = json.decode(response.body);
+          TopRevenueMovie topRevenueMovie =
+              TopRevenueMovie.fromJson(responseBody);
+          final list = topRevenueMovie.data?.contentWithRevenue ?? [];
+          if (list.isNotEmpty) {
+            chartData.clear();
+            graphData.clear();
+            chartData = list;
+
+            for (var data in chartData) {
+              graphData.add({
+                "label": data.name,
+                "value": data.totalRevenue ?? 0.0,
+                "grossRevenue": data.mediaHouseGrossRevenue ?? 0.0,
+                "netRevenue": data.mediaHouseNetRevenue ?? 0.0,
+                "totalRevenue": data.totalRevenue ?? 0.0,
+              });
+            }
+
+            isRevenueGraphLoading = false;
+            revenueGraphError = null;
+            notifyListeners();
+            return;
+          }
+        }
+      } catch (error) {
+        debugPrint("Error fetching graph from $apiUrl: $error");
+      }
+    }
+
+    isRevenueGraphLoading = false;
+    if (chartData.isEmpty) {
+      revenueGraphError = "Revenue graph unavailable";
+    }
+    notifyListeners();
+  }
+
+  Future<void> fetchTopRatedMovieGraph(int selectedTimeRange, id,
+      {String type = "ALL"}) async {
     print("start date $startDate && end date $endDate");
     String start = DateFormat('yyyy-MM-dd').format(startDate!);
     String end = DateFormat('yyyy-MM-dd').format(endDate!);
@@ -66,77 +152,14 @@ class GraphProvider extends ChangeNotifier {
       isYear = true;
     }
 
-    String apiUrl = ApiConstant.topRevenueContentGraphForMediaHouse(
+    String apiUrl = ApiConstant.topRatedContentGraph(
       id,
       start,
       end,
       isYear,
       isMonth,
       isWeek,
-    );
-
-    ApiHelper apiHelper = ApiHelper();
-    print(apiUrl);
-
-    try {
-      var response = await apiHelper.getApi(apiUrl);
-      print(response);
-      Map<String, dynamic> responseBody = json.decode(response.body);
-
-      TopRevenueMovie topRevenueMovie = TopRevenueMovie.fromJson(responseBody);
-      if (topRevenueMovie.success == true) {
-        if (topRevenueMovie.data!.contentWithRevenue != null) {
-          chartData.clear();
-          graphData.clear(); // Clear previous data to avoid duplication
-
-          chartData = topRevenueMovie.data!.contentWithRevenue!;
-
-          for (var data in chartData) {
-            // Assuming ContentWithRating has `label` and `value` properties
-            graphData.add({
-              "label": data.name, // Replace with actual property name from ContentWithRating
-              "value": data.totalRevenue, // Replace with actual property name from ContentWithRating
-            });
-          }
-
-          notifyListeners();
-        } else {
-          CustomToast.show(topRevenueMovie.message.toString(), isSuccess: topRevenueMovie.success!,);
-        }
-      } else {
-        CustomToast.show(topRevenueMovie.message.toString(), isSuccess: topRevenueMovie.success!,);
-      }
-    } catch (error) {
-      debugPrint("Error occurred while fetching graph data: $error");
-      throw Exception('Failed to fetch graph data. Error: $error');
-    }
-  }
-
-  Future<void> fetchTopRatedMovieGraph(int selectedTimeRange,id) async {
-    print("start date $startDate && end date $endDate");
-    String start = DateFormat('yyyy-MM-dd').format(startDate!);
-    String end = DateFormat('yyyy-MM-dd').format(endDate!);
-       if (selectedTimeRange == 0) {
-      isWeek = true;
-      isMonth = false;
-      isYear = false;
-    } else if (selectedTimeRange == 1) {
-      isWeek = false;
-      isMonth = true;
-      isYear = false;
-    } else {
-      isWeek = false;
-      isMonth = false;
-      isYear = true;
-    }
-
-    String apiUrl = ApiConstant.topRatedContentGraph(
-     id,
-      start,
-      end,
-      isYear,
-      isMonth,
-      isWeek,
+      type: type,
     );
 
     ApiHelper apiHelper = ApiHelper();
@@ -176,12 +199,13 @@ class GraphProvider extends ChangeNotifier {
     }
   }
 
-  void setDateRange(String label, int days, BuildContext context, bool isRevenue,int id) {
+  void setDateRange(String label, int days, BuildContext context, bool isRevenue,
+      int id, {String type = "ALL"}) {
     activeButton = label;
 
     // Set start and end date based on the label
     if (label == "Custom Dates") {
-      pickDateRange(context,isRevenue,id); // Trigger date range picker
+      pickDateRange(context, isRevenue, id, type: type); // Trigger date range picker
     } else {
       endDate = today;
       startDate = endDate!.subtract(Duration(days: days));
@@ -189,20 +213,29 @@ class GraphProvider extends ChangeNotifier {
 
       // Fetch graph data based on the label
       if (label == "Week") {
-        isRevenue?fetchTopPerformingMovieGraph(0,id):fetchTopRatedMovieGraph(0,id);
+        isRevenue
+            ? fetchTopPerformingMovieGraph(0, id, type: type)
+            : fetchTopRatedMovieGraph(0, id, type: type);
       } else if (label == "Month") {
-        isRevenue?fetchTopPerformingMovieGraph(1,id):fetchTopRatedMovieGraph(1,id);
+        isRevenue
+            ? fetchTopPerformingMovieGraph(1, id, type: type)
+            : fetchTopRatedMovieGraph(1, id, type: type);
       } else if (label == "Year") {
-        isRevenue?fetchTopPerformingMovieGraph(2,id):fetchTopRatedMovieGraph(2,id);
+        isRevenue
+            ? fetchTopPerformingMovieGraph(2, id, type: type)
+            : fetchTopRatedMovieGraph(2, id, type: type);
       } else {
-        isRevenue?fetchTopPerformingMovieGraph(0,id):fetchTopRatedMovieGraph(0,id);
+        isRevenue
+            ? fetchTopPerformingMovieGraph(0, id, type: type)
+            : fetchTopRatedMovieGraph(0, id, type: type);
       }
 
       notifyListeners();
     }
   }
 
-  Future<void> pickDateRange(BuildContext context, bool isRevenue,int id) async {
+  Future<void> pickDateRange(BuildContext context, bool isRevenue, int id,
+      {String type = "ALL"}) async {
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
@@ -216,7 +249,9 @@ class GraphProvider extends ChangeNotifier {
       startDate = picked.start;//DateFormat('yyyy-MM-dd').format(DateTime.parse("2025-05-01 00:00:00.000"));
       endDate = picked.end;
       print("start date $startDate && end date $endDate");
-      isRevenue?fetchTopPerformingMovieGraph(0,id):fetchTopRatedMovieGraph(0,id);
+      isRevenue
+          ? fetchTopPerformingMovieGraph(0, id, type: type)
+          : fetchTopRatedMovieGraph(0, id, type: type);
       notifyListeners();
     }
   }

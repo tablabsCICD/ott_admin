@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'package:admin_ott/data/models/response/getAllMediaHouseByStatus.dart';
 import 'package:admin_ott/data/models/response/getMediaHouseResponse.dart';
+import 'package:admin_ott/data/models/response/userTransactionResponse.dart';
 import 'package:admin_ott/domain/entities/shorts_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -24,6 +25,7 @@ import 'package:admin_ott/domain/entities/content.dart';
 //import 'package:cross_file/src/types/interface.dart';
 import 'package:flutter/material.dart';
 import '../../data/models/response/chartResponse.dart';
+import '../../data/models/response/topRevenueMovie.dart';
 import '../../data/models/response/getAllMediaHouseResponse.dart';
 import '../../data/models/response/getAllUserResponse.dart';
 import '../../data/models/response/mediaHouseDashboardCount.dart';
@@ -69,6 +71,8 @@ class MediaHouseProvider extends ChangeNotifier {
   List<MediaHouse> _filteredMediaHouseListByStatus = [];
   MediaHouse _mediaHouse = MediaHouse();
   MediaHouse? _selectedMediaHouse = MediaHouse();
+  List<UserTransactionData> _mediaHouseTransactions = [];
+  bool _isTransactionsLoading = false;
 
   List<MediaHouse> get mediaHouseList => _mediaHouseList;
 
@@ -80,6 +84,9 @@ class MediaHouseProvider extends ChangeNotifier {
   MediaHouse get mediaHouse => _mediaHouse;
 
   MediaHouse? get selectedMediaHouse => _selectedMediaHouse;
+  List<UserTransactionData> get mediaHouseTransactions =>
+      _mediaHouseTransactions;
+  bool get isTransactionsLoading => _isTransactionsLoading;
 
   // Fetch all mediaHouse
   Future<void> fetchMediaHouse() async {
@@ -87,6 +94,11 @@ class MediaHouseProvider extends ChangeNotifier {
     ApiHelper apiHelper = ApiHelper();
     try {
       var response = await apiHelper.getApi(apiUrl);
+      debugPrint("=== [Manage Media House API] ===");
+      debugPrint("API URL: $apiUrl");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
+      debugPrint("================================");
       if (response.statusCode == 200) {
         Map<String, dynamic> responseBody = json.decode(response.body);
         GetAllMediaHouseResponse getAllMediaHouseResponse =
@@ -149,16 +161,30 @@ class MediaHouseProvider extends ChangeNotifier {
   }
 
   void filterMediaHouse() {
-    _filteredMediaHouseList = _mediaHouseList.where((mediaHouse) {
-      final query = searchMediaHouseController.text.toLowerCase();
-      return mediaHouse.mediaHouseName!.toLowerCase().contains(query) ||
-          mediaHouse.contactNumber!.toLowerCase().contains(query) ||
-          mediaHouse.email!.toLowerCase().contains(query) ||
-          mediaHouse.discription!.toLowerCase().contains(query) ||
-          mediaHouse.location!.state!.toLowerCase().contains(query) ||
-          mediaHouse.location!.district!.toLowerCase().contains(query) ||
-          mediaHouse.location!.taluka!.toLowerCase().contains(query);
-    }).toList();
+    final query = searchMediaHouseController.text.toLowerCase().trim();
+    if (query.isEmpty) {
+      _filteredMediaHouseList = List.from(_mediaHouseList);
+    } else {
+      _filteredMediaHouseList = _mediaHouseList.where((mediaHouse) {
+        final name = (mediaHouse.mediaHouseName ?? '').toLowerCase();
+        final contact = (mediaHouse.contactNumber ?? '').toLowerCase();
+        final email = (mediaHouse.email ?? '').toLowerCase();
+        final desc = (mediaHouse.discription?.toString() ?? '').toLowerCase();
+        final state = (mediaHouse.location?.state ?? '').toLowerCase();
+        final district = (mediaHouse.location?.district ?? '').toLowerCase();
+        final taluka = (mediaHouse.location?.taluka ?? '').toLowerCase();
+        final address = (mediaHouse.address ?? '').toLowerCase();
+
+        return name.contains(query) ||
+            contact.contains(query) ||
+            email.contains(query) ||
+            desc.contains(query) ||
+            state.contains(query) ||
+            district.contains(query) ||
+            taluka.contains(query) ||
+            address.contains(query);
+      }).toList();
+    }
     notifyListeners();
   }
 
@@ -263,9 +289,6 @@ class MediaHouseProvider extends ChangeNotifier {
           'message':
               'Failed to add production house. Status code: ${response.statusCode}'
         };
-        /*throw Exception(
-            'Failed to add production house. Status code: ${response.statusCode}');
-*/
       }
     } catch (error) {
       debugPrint("Error: $error");
@@ -273,7 +296,6 @@ class MediaHouseProvider extends ChangeNotifier {
         'success': false,
         'message': 'An error occurred while adding production house: $error'
       };
-      // throw Exception('An error occurred while adding production house.');
     }
   }
 
@@ -352,39 +374,32 @@ class MediaHouseProvider extends ChangeNotifier {
 
   // Fetch all moviesByMediaHouseId
   Future<void> fetchMoviesByMediaHouseId(int mediaHouseId) async {
-    String apiUrl = ApiConstant.getVideoByMediaHouseId(mediaHouseId);
-    ApiHelper apiHelper = ApiHelper();
-    try {
-      var response = await apiHelper.getApi(apiUrl);
-      if (response.statusCode == 200) {
-        Map<String, dynamic> responseBody = json.decode(response.body);
-        debugPrint("response::: " + responseBody.toString());
-        GetAllVideoResponse getAllContentResponse =
-            GetAllVideoResponse.fromJson(responseBody);
-
-        debugPrint("data::: " + getAllContentResponse.data.toString());
-        if (getAllContentResponse.success == true) {
-          if (getAllContentResponse.data != null) {
-            _filteredContentListByMediaHouse.clear();
-            _filteredContentListByMediaHouse =
-                getAllContentResponse.data!.contentList!;
-            debugPrint("length::: " +
-                _filteredContentListByMediaHouse.length.toString());
-
-            notifyListeners();
-          } else {
-            debugPrint("empty list: ${getAllContentResponse.message}");
+    final urls = [
+      ApiConstant.videoByMediaHouseV2(mediaHouseId),
+      ApiConstant.videoByMediaHouseV2Alias(mediaHouseId),
+      ApiConstant.getVideoByMediaHouseId(mediaHouseId),
+    ];
+    final apiHelper = ApiHelper();
+    for (final apiUrl in urls) {
+      try {
+        var response = await apiHelper.getApi(apiUrl);
+        if (response.statusCode == 200) {
+          Map<String, dynamic> responseBody = json.decode(response.body);
+          GetAllVideoResponse getAllContentResponse =
+              GetAllVideoResponse.fromJson(responseBody);
+          if (getAllContentResponse.success == true) {
+            if (getAllContentResponse.data != null) {
+              _filteredContentListByMediaHouse.clear();
+              _filteredContentListByMediaHouse =
+                  getAllContentResponse.data!.contentList ?? [];
+              notifyListeners();
+              return;
+            }
           }
-        } else {
-          debugPrint("Error: ${getAllContentResponse.message}");
         }
-      } else {
-        throw Exception(
-            'Failed to fetch Content. Status code: ${response.statusCode}');
+      } catch (error) {
+        debugPrint("Error fetching Content from $apiUrl: $error");
       }
-    } catch (error) {
-      debugPrint("Error: $error");
-      throw Exception('An error occurred while fetching Content.');
     }
   }
 
@@ -394,50 +409,63 @@ class MediaHouseProvider extends ChangeNotifier {
     int page = 0,
     int size = 10,
   }) async {
-    final apiUrl = ApiConstant.shortsByMediaHouse(
-      mediaHouseId,
-      page: page,
-      size: size,
-      keyword: keyword,
-    );
+    final urls = [
+      ApiConstant.shortsByMediaHouseV2(
+        mediaHouseId,
+        page: page,
+        size: size,
+        keyword: keyword,
+      ),
+      ApiConstant.shortsByMediaHouseV2Alias(
+        mediaHouseId,
+        page: page,
+        size: size,
+        keyword: keyword,
+      ),
+      ApiConstant.shortsByMediaHouse(
+        mediaHouseId,
+        page: page,
+        size: size,
+        keyword: keyword,
+      ),
+    ];
     final apiHelper = ApiHelper();
     _isShortsLoading = true;
     notifyListeners();
 
-    try {
-      final response = await apiHelper.getApi(apiUrl);
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseBody = json.decode(response.body);
-        final success = responseBody['success'] == true;
-        if (success) {
-          final data = responseBody['data'];
-          final shortsRaw = (data is Map<String, dynamic>)
-              ? data['miniSeries'] ?? data['shorts']
-              : null;
-          if (shortsRaw is List) {
-            _shortsByMediaHouse = shortsRaw
-                .map((e) => ShortMaster.fromJson(Map<String, dynamic>.from(e)))
-                .toList();
-          } else {
-            _shortsByMediaHouse = [];
+    for (final apiUrl in urls) {
+      try {
+        final response = await apiHelper.getApi(apiUrl);
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> responseBody = json.decode(response.body);
+          final success = responseBody['success'] == true;
+          if (success) {
+            final data = responseBody['data'];
+            final shortsRaw = (data is Map<String, dynamic>)
+                ? data['miniSeries'] ?? data['shorts']
+                : null;
+            if (shortsRaw is List) {
+              _shortsByMediaHouse = shortsRaw
+                  .map((e) =>
+                      ShortMaster.fromJson(Map<String, dynamic>.from(e)))
+                  .toList();
+            } else {
+              _shortsByMediaHouse = [];
+            }
+            _isShortsLoading = false;
+            notifyListeners();
+            return;
           }
-        } else {
+        } else if (response.statusCode == 404) {
           _shortsByMediaHouse = [];
-          debugPrint("shorts fetch failed: ${responseBody['message']}");
         }
-      } else if (response.statusCode == 404) {
-        _shortsByMediaHouse = [];
-      } else {
-        throw Exception(
-            'Failed to fetch shorts. Status code: ${response.statusCode}');
+      } catch (error) {
+        debugPrint("Error while fetching shorts from $apiUrl: $error");
       }
-    } catch (error) {
-      debugPrint("Error while fetching shorts: $error");
-      _shortsByMediaHouse = [];
-    } finally {
-      _isShortsLoading = false;
-      notifyListeners();
     }
+    _shortsByMediaHouse = [];
+    _isShortsLoading = false;
+    notifyListeners();
   }
 
   // Fetch all moviesByStatusAndMediaHouseId
@@ -452,8 +480,8 @@ class MediaHouseProvider extends ChangeNotifier {
         GetAllMediaHouseByStatus getAllMediaHouseResponse =
             GetAllMediaHouseByStatus.fromJson(responseBody);
         if (getAllMediaHouseResponse.success == true) {
-          if (getAllMediaHouseResponse.data != null ||
-              getAllMediaHouseResponse.data != "") {
+          if (getAllMediaHouseResponse.data != null &&
+              getAllMediaHouseResponse.data!.mediaHouse != null) {
             _filteredMediaHouseListByStatus.clear();
             _filteredMediaHouseListByStatus =
                 getAllMediaHouseResponse.data!.mediaHouse!;
@@ -472,6 +500,84 @@ class MediaHouseProvider extends ChangeNotifier {
       debugPrint("Error: $error");
       throw Exception('An error occurred while fetching production House.');
     }
+  }
+
+  Future<void> fetchMediaHouseProfile(dynamic id) async {
+    if (id == null) return;
+    final urls = [
+      ApiConstant.mediaHouseProfileV2(id),
+      ApiConstant.mediaHouseProfileV2Alias(id),
+      ApiConstant.getMediaHouseById(id),
+    ];
+    final apiHelper = ApiHelper();
+    for (final url in urls) {
+      try {
+        final response = await apiHelper.getApi(url);
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> responseBody = json.decode(response.body);
+          if (responseBody['success'] == true ||
+              responseBody['statusCode'] == 200) {
+            final data = responseBody['data'];
+            if (data != null) {
+              if (data is Map<String, dynamic>) {
+                final houseJson =
+                    data['MediaHouse'] ?? data['mediaHouse'] ?? data;
+                if (houseJson is Map<String, dynamic>) {
+                  _mediaHouse = MediaHouse.fromJson(houseJson);
+                  _selectedMediaHouse = _mediaHouse;
+                  notifyListeners();
+                  return;
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint("Error fetching media house profile from $url: $e");
+      }
+    }
+  }
+
+  Future<void> fetchMediaHouseTransactions(
+    dynamic mediaHouseId, {
+    String? startDate,
+    String? endDate,
+    int? page,
+    int? size,
+  }) async {
+    if (mediaHouseId == null) return;
+    _isTransactionsLoading = true;
+    notifyListeners();
+    final urls = [
+      ApiConstant.mediaHouseTransactionsV2(
+        mediaHouseId,
+        startDate: startDate,
+        endDate: endDate,
+        page: page,
+        size: size,
+      ),
+      ApiConstant.mediaHouseTransactionsV2Alias(mediaHouseId),
+    ];
+    final apiHelper = ApiHelper();
+    for (final url in urls) {
+      try {
+        final response = await apiHelper.getApi(url);
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> responseBody = json.decode(response.body);
+          final res = UserTransactionResponse.fromJson(responseBody);
+          if (res.success == true && res.data != null) {
+            _mediaHouseTransactions = res.data!;
+            _isTransactionsLoading = false;
+            notifyListeners();
+            return;
+          }
+        }
+      } catch (e) {
+        debugPrint("Error fetching media house transactions from $url: $e");
+      }
+    }
+    _isTransactionsLoading = false;
+    notifyListeners();
   }
 
   io.File? _imageFile; // For mobile platforms
@@ -550,27 +656,22 @@ class MediaHouseProvider extends ChangeNotifier {
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
-          _uploadedImageUrl = jsonDecode(responseBody);
-          print(lable);
-          if ("Aadhaar Card" == lable) {
-            adharCardController.text = _uploadedImageUrl!;
-            print(lable + adharCardController.text);
-          } else if ("Pan Card" == lable) {
-            panCardController.text = _uploadedImageUrl!;
-            print(lable + adharCardController.text);
-          } else if ("Shop Act" == lable) {
-            shopActController.text = _uploadedImageUrl!;
-            print(lable + adharCardController.text);
-          } else if ("GST Certificate" == lable) {
-            gstController.text = _uploadedImageUrl!;
-            print(lable + adharCardController.text);
-          } else if ("Registration Certificate" == lable) {
-            registrationCertificateController.text = _uploadedImageUrl!;
-            print(lable + adharCardController.text);
-          } else {
-            selectedImage = _uploadedImageUrl;
-            profileController.text = _uploadedImageUrl!;
-            print(lable + selectedImage.toString());
+          _uploadedImageUrl = _parseUploadedUrl(responseBody);
+          if (_uploadedImageUrl != null && _uploadedImageUrl!.isNotEmpty) {
+            if ("Aadhaar Card" == lable) {
+              adharCardController.text = _uploadedImageUrl!;
+            } else if ("Pan Card" == lable) {
+              panCardController.text = _uploadedImageUrl!;
+            } else if ("Shop Act" == lable) {
+              shopActController.text = _uploadedImageUrl!;
+            } else if ("GST Certificate" == lable) {
+              gstController.text = _uploadedImageUrl!;
+            } else if ("Registration Certificate" == lable) {
+              registrationCertificateController.text = _uploadedImageUrl!;
+            } else {
+              selectedImage = _uploadedImageUrl;
+              profileController.text = _uploadedImageUrl!;
+            }
           }
         }
       } else if (!kIsWeb && _imageFile != null) {
@@ -580,44 +681,76 @@ class MediaHouseProvider extends ChangeNotifier {
         request.files.add(await http.MultipartFile.fromPath(
           'file',
           _imageFile!.path,
-          //  contentType: MediaType('image', 'jpeg'),
         ));
         final response =
             await AppLoadingController.trackFuture(() => request.send());
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
-          _uploadedImageUrl = jsonDecode(responseBody);
-          print(lable);
-          if ("Aadhaar Card" == lable) {
-            adharCardController.text = _uploadedImageUrl!;
-            print(lable + adharCardController.text);
-          } else if ("Pan Card" == lable) {
-            panCardController.text = _uploadedImageUrl!;
-            print(lable + adharCardController.text);
-          } else if ("Shop Act" == lable) {
-            shopActController.text = _uploadedImageUrl!;
-            print(lable + adharCardController.text);
-          } else if ("GST Certificate" == lable) {
-            gstController.text = _uploadedImageUrl!;
-            print(lable + adharCardController.text);
-          } else if ("Registration Certificate" == lable) {
-            registrationCertificateController.text = _uploadedImageUrl!;
-            print(lable + adharCardController.text);
-          } else {
-            selectedImage = _uploadedImageUrl;
-            profileController.text = _uploadedImageUrl!;
-            print(lable + selectedImage.toString());
+          _uploadedImageUrl = _parseUploadedUrl(responseBody);
+          if (_uploadedImageUrl != null && _uploadedImageUrl!.isNotEmpty) {
+            if ("Aadhaar Card" == lable) {
+              adharCardController.text = _uploadedImageUrl!;
+            } else if ("Pan Card" == lable) {
+              panCardController.text = _uploadedImageUrl!;
+            } else if ("Shop Act" == lable) {
+              shopActController.text = _uploadedImageUrl!;
+            } else if ("GST Certificate" == lable) {
+              gstController.text = _uploadedImageUrl!;
+            } else if ("Registration Certificate" == lable) {
+              registrationCertificateController.text = _uploadedImageUrl!;
+            } else {
+              selectedImage = _uploadedImageUrl;
+              profileController.text = _uploadedImageUrl!;
+            }
           }
           notifyListeners();
         }
       }
     } catch (e) {
-      print('Error uploading image: $e');
+      debugPrint('Error uploading image: $e');
     } finally {
       _isUploading = false;
       notifyListeners();
     }
+  }
+
+  String? _parseUploadedUrl(String responseBody) {
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is String) return _cleanUrl(decoded);
+      if (decoded is Map<String, dynamic>) {
+        final data = decoded['data'];
+        if (data is String && data.isNotEmpty) return _cleanUrl(data);
+        if (data is Map<String, dynamic>) {
+          final candidate = data['fileUrl'] ??
+              data['url'] ??
+              data['imageUrl'] ??
+              data['path'] ??
+              data['filePath'];
+          if (candidate != null) return _cleanUrl(candidate.toString());
+        }
+        final topCandidate = decoded['fileUrl'] ??
+            decoded['url'] ??
+            decoded['imageUrl'] ??
+            decoded['path'] ??
+            decoded['filePath'] ??
+            decoded['message'];
+        if (topCandidate != null) return _cleanUrl(topCandidate.toString());
+      }
+    } catch (e) {
+      debugPrint('Error parsing uploaded URL: $e');
+    }
+    return _cleanUrl(responseBody);
+  }
+
+  String _cleanUrl(String raw) {
+    var trimmed = raw.trim();
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+      trimmed = trimmed.substring(1, trimmed.length - 1);
+    }
+    return trimmed;
   }
 
   List<User> users = [];
@@ -755,48 +888,169 @@ class MediaHouseProvider extends ChangeNotifier {
     }
   }
 
+  bool _isUpdating = false;
+  bool get isUpdating => _isUpdating;
+
+  Future<bool> updateMediaHouse(MediaHouse updatedHouse) async {
+    _isUpdating = true;
+    notifyListeners();
+
+    final String apiUrl = ApiConstant.editMediaHouseById;
+    final ApiHelper apiHelper = ApiHelper();
+    final Map<String, dynamic> updatePayload = updatedHouse.toUpdateJson();
+
+    debugPrint("Calling Update MediaHouse: $apiUrl -> Payload: $updatePayload");
+
+    try {
+      // Primary: PUT request with full payload
+      var response = await apiHelper.putApiWithBody(apiUrl, updatePayload);
+
+      // Graceful fallback to POST if method not allowed
+      if (response.statusCode == 405) {
+        debugPrint("PUT returned 405, attempting POST for $apiUrl");
+        response = await apiHelper.postApiWithBody(apiUrl, updatePayload);
+      }
+
+      _isUpdating = false;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        try {
+          final Map<String, dynamic> responseBody = json.decode(response.body);
+          if (responseBody.containsKey('data') && responseBody['data'] != null) {
+            final dataMap = responseBody['data'];
+            final houseMap = dataMap is Map<String, dynamic>
+                ? (dataMap['MediaHouse'] ?? dataMap['mediaHouse'] ?? dataMap)
+                : null;
+            if (houseMap is Map<String, dynamic>) {
+              final returnedHouse = MediaHouse.fromJson(houseMap);
+              _syncUpdatedMediaHouse(returnedHouse);
+            } else {
+              _syncUpdatedMediaHouse(updatedHouse);
+            }
+          } else {
+            _syncUpdatedMediaHouse(updatedHouse);
+          }
+        } catch (_) {
+          _syncUpdatedMediaHouse(updatedHouse);
+        }
+
+        CustomToast.show("Production House updated successfully", isSuccess: true);
+        
+        // Refresh full media house list and profile in background to ensure 100% sync
+        fetchMediaHouse();
+        if (updatedHouse.id != null) {
+          fetchMediaHouseProfile(updatedHouse.id);
+        }
+
+        notifyListeners();
+        return true;
+      } else {
+        String errorMsg = "Failed to update Production House (HTTP ${response.statusCode})";
+        try {
+          final Map<String, dynamic> errMap = json.decode(response.body);
+          if (errMap['message'] != null && errMap['message'].toString().isNotEmpty) {
+            errorMsg = errMap['message'].toString();
+          }
+        } catch (_) {}
+        CustomToast.show(errorMsg, isSuccess: false);
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _isUpdating = false;
+      debugPrint("Error updating MediaHouse: $e");
+      CustomToast.show("An error occurred: $e", isSuccess: false);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  void _syncUpdatedMediaHouse(MediaHouse updated) {
+    if (_mediaHouse.id == updated.id) {
+      _mediaHouse = updated;
+    }
+    if (_selectedMediaHouse?.id == updated.id) {
+      _selectedMediaHouse = updated;
+    }
+    final listIndex = _mediaHouseList.indexWhere((h) => h.id == updated.id);
+    if (listIndex != -1) {
+      _mediaHouseList[listIndex] = updated;
+    }
+    final filteredIndex =
+        _filteredMediaHouseList.indexWhere((h) => h.id == updated.id);
+    if (filteredIndex != -1) {
+      _filteredMediaHouseList[filteredIndex] = updated;
+    }
+    final statusIndex =
+        _filteredMediaHouseListByStatus.indexWhere((h) => h.id == updated.id);
+    if (statusIndex != -1) {
+      _filteredMediaHouseListByStatus[statusIndex] = updated;
+    }
+  }
+
   void setMediaHouse(MediaHouse? mediaHouse) {
     this._mediaHouse = mediaHouse!;
     notifyListeners();
   }
 
   MediaHouseDashboardData _mediaHouseDashboardData = MediaHouseDashboardData();
+  bool _isDashboardDataLoading = false;
+  String? _dashboardDataError;
+  int? _loadedDashboardMediaHouseId;
 
   MediaHouseDashboardData get mediaHouseDashboardData =>
       _mediaHouseDashboardData;
+  bool get isDashboardDataLoading => _isDashboardDataLoading;
+  String? get dashboardDataError => _dashboardDataError;
 
-  Future<void> fetchMediaHouseDashboardData(int mediaHouseId) async {
-    String apiUrl =
-        ApiConstant.getMediaHouseDashboardCountForAdmin(mediaHouseId);
+  Future<void> fetchMediaHouseDashboardData(int mediaHouseId,
+      {bool forceRefresh = false}) async {
+    if (!forceRefresh &&
+        _loadedDashboardMediaHouseId == mediaHouseId &&
+        !_isDashboardDataLoading &&
+        _mediaHouseDashboardData.productionHouseName != null) {
+      return;
+    }
 
-    ApiHelper apiHelper = ApiHelper();
-    try {
-      var response = await apiHelper.getApi(apiUrl);
-      if (response.statusCode == 200) {
-        Map<String, dynamic> responseBody = json.decode(response.body);
-        debugPrint("response::: " + responseBody.toString());
-        MediaHouseDashboardCount mediaHouseDashboardCount =
-            MediaHouseDashboardCount.fromJson(responseBody);
-        debugPrint("data::: " + mediaHouseDashboardCount.data.toString());
-        if (mediaHouseDashboardCount.isSuccess == true) {
+    _isDashboardDataLoading = true;
+    _dashboardDataError = null;
+    if (_loadedDashboardMediaHouseId != mediaHouseId) {
+      _mediaHouseDashboardData = MediaHouseDashboardData();
+    }
+    notifyListeners();
+
+    final urls = [
+      ApiConstant.mediaHouseDashboardCountV2(mediaHouseId),
+      ApiConstant.mediaHouseDashboardCountV2Alias(mediaHouseId),
+      ApiConstant.getMediaHouseDashboardCountForAdmin(mediaHouseId),
+    ];
+
+    final apiHelper = ApiHelper();
+    for (final apiUrl in urls) {
+      try {
+        var response = await apiHelper.getApi(apiUrl);
+        if (response.statusCode == 200) {
+          Map<String, dynamic> responseBody = json.decode(response.body);
+          MediaHouseDashboardCount mediaHouseDashboardCount =
+              MediaHouseDashboardCount.fromJson(responseBody);
           if (mediaHouseDashboardCount.data != null) {
             _mediaHouseDashboardData = mediaHouseDashboardCount.data!;
-            debugPrint("message : ${mediaHouseDashboardCount.message}");
+            _loadedDashboardMediaHouseId = mediaHouseId;
+            _isDashboardDataLoading = false;
+            _dashboardDataError = null;
             notifyListeners();
-          } else {
-            debugPrint("empty list: ${mediaHouseDashboardCount.message}");
+            return;
           }
-        } else {
-          debugPrint("Error: ${mediaHouseDashboardCount.message}");
         }
-      } else {
-        throw Exception(
-            'Failed to fetch Content. Status code: ${response.statusCode}');
+      } catch (error) {
+        debugPrint("Error fetching dashboard count from $apiUrl: $error");
       }
-    } catch (error) {
-      debugPrint("Error: $error");
-      throw Exception('An error occurred while fetching Content.');
     }
+
+    _isDashboardDataLoading = false;
+    _dashboardDataError =
+        "Failed to load dashboard data for media house #$mediaHouseId";
+    notifyListeners();
   }
 
   bool isYear = false;
@@ -860,7 +1114,8 @@ class MediaHouseProvider extends ChangeNotifier {
 
   List<LineChartData> graphData = [];
   Future<void> releaseMovieCountGraph(int selectedTimeRange, String startDate,
-      String endDate, int mediaId) async {
+      String endDate, int mediaId,
+      {String type = "ALL"}) async {
     if (selectedTimeRange == 0) {
       isWeek = true;
       isMonth = false;
@@ -885,6 +1140,7 @@ class MediaHouseProvider extends ChangeNotifier {
       isYear,
       isMonth,
       isWeek,
+      type: type,
     );
     ApiHelper apiHelper = ApiHelper();
 
@@ -915,7 +1171,8 @@ class MediaHouseProvider extends ChangeNotifier {
   }
 
   Future<void> viewsCountGraph(int selectedTimeRange, String startDate,
-      String endDate, int mediaId) async {
+      String endDate, int mediaId,
+      {String type = "ALL"}) async {
     if (selectedTimeRange == 0) {
       isWeek = true;
       isMonth = false;
@@ -940,6 +1197,7 @@ class MediaHouseProvider extends ChangeNotifier {
       isYear,
       isMonth,
       isWeek,
+      type: type,
     );
     ApiHelper apiHelper = ApiHelper();
 
@@ -971,7 +1229,8 @@ class MediaHouseProvider extends ChangeNotifier {
 
   // List<Map<String, dynamic>>? revenueCountList = [];
   Future<void> revenueGraphByMediaHouse(int selectedTimeRange, String startDate,
-      String endDate, int mediaId) async {
+      String endDate, int mediaId,
+      {String type = "ALL"}) async {
     if (selectedTimeRange == 0) {
       isWeek = true;
       isMonth = false;
@@ -989,74 +1248,108 @@ class MediaHouseProvider extends ChangeNotifier {
       isMonth = false;
       isYear = false;
     }
-    String apiUrl = ApiConstant.revenueGraphByMediaHouse(
-      mediaId,
-      startDate,
-      endDate,
-      isYear,
-      isMonth,
-      isWeek,
-    );
-    ApiHelper apiHelper = ApiHelper();
+    final urls = [
+      ApiConstant.mediaHouseRevenueGraphV2Clean(mediaId),
+      ApiConstant.mediaHouseRevenueGraphV2(
+        mediaId,
+        startDate: startDate,
+        endDate: endDate,
+        type: type,
+      ),
+      ApiConstant.mediaHouseRevenueGraphV2Alias(
+        mediaId,
+        startDate: startDate,
+        endDate: endDate,
+        type: type,
+      ),
+      ApiConstant.revenueGraphByMediaHouse(
+        mediaId,
+        startDate,
+        endDate,
+        isYear,
+        isMonth,
+        isWeek,
+        type: type,
+      ),
+    ];
+    final apiHelper = ApiHelper();
 
-    try {
-      var response = await apiHelper.getApi(apiUrl);
+    for (final apiUrl in urls) {
+      try {
+        var response = await apiHelper.getApi(apiUrl);
+        if (response.statusCode == 200) {
+          Map<String, dynamic> responseBody = json.decode(response.body);
 
-      Map<String, dynamic> responseBody = json.decode(response.body);
+          // 1. Try TopRevenueMovie (V2 revenue by content)
+          try {
+            TopRevenueMovie topRevenue = TopRevenueMovie.fromJson(responseBody);
+            final items = topRevenue.data?.contentWithRevenue ?? [];
+            if (items.isNotEmpty) {
+              graphData.clear();
+              for (var item in items) {
+                graphData.add(
+                  LineChartData(
+                    item.name ?? 'Content',
+                    item.mediaHouseNetRevenue ?? item.totalRevenue ?? 0.0,
+                  ),
+                );
+              }
+              notifyListeners();
+              return;
+            }
+          } catch (_) {}
 
-      ChartResponse chartResponse = ChartResponse.fromJson(responseBody);
-      if (chartResponse.success == true) {
-        graphData.clear();
-        for (var data in chartResponse.data!) {
-          graphData.add(
-            LineChartData(
-              data.label as String,
-              (data.value as num).toDouble(),
-            ),
-          );
+          // 2. Try legacy ChartResponse
+          try {
+            ChartResponse chartResponse = ChartResponse.fromJson(responseBody);
+            if (chartResponse.success == true && chartResponse.data != null) {
+              graphData.clear();
+              for (var data in chartResponse.data!) {
+                graphData.add(
+                  LineChartData(
+                    data.label as String,
+                    (data.value as num).toDouble(),
+                  ),
+                );
+              }
+              notifyListeners();
+              return;
+            }
+          } catch (_) {}
         }
-        notifyListeners();
-      } else {
-        CustomToast.show(chartResponse.message.toString(),
-            isSuccess: chartResponse.success!);
+      } catch (error) {
+        debugPrint("Error fetching revenue graph data from $apiUrl: $error");
       }
-    } catch (error) {
-      debugPrint("Error occurred while fetching graph data: $error");
-      throw Exception('Failed to fetch graph data. Error: $error');
     }
   }
 
   // search all users
   Future<void> getMediaHouseById(int id) async {
-    String apiUrl = ApiConstant.getMediaHouseById(id);
-    ApiHelper apiHelper = ApiHelper();
-    try {
-      var response = await apiHelper.getApi(apiUrl);
-      if (response.statusCode == 200) {
-        Map<String, dynamic> responseBody = json.decode(response.body);
-        print("responseBody\n\n\n");
-        print(responseBody);
-        GetMediaHouseResponse searchResponse =
-            GetMediaHouseResponse.fromJson(responseBody);
-        if (searchResponse.success == true) {
-          if (searchResponse.data != null) {
-            _mediaHouse = searchResponse.data!.mediaHouse!;
-            print(
-                "responseBody\n\n\n${searchResponse.data!.mediaHouse!.status}");
-            notifyListeners();
-          } else {
-            debugPrint("empty object: ${searchResponse.message}");
+    final urls = [
+      ApiConstant.mediaHouseProfileV2(id),
+      ApiConstant.mediaHouseProfileV2Alias(id),
+      ApiConstant.getMediaHouseById(id),
+    ];
+    final apiHelper = ApiHelper();
+    for (final apiUrl in urls) {
+      try {
+        var response = await apiHelper.getApi(apiUrl);
+        if (response.statusCode == 200) {
+          Map<String, dynamic> responseBody = json.decode(response.body);
+          GetMediaHouseResponse searchResponse =
+              GetMediaHouseResponse.fromJson(responseBody);
+          if (searchResponse.success == true) {
+            if (searchResponse.data?.mediaHouse != null) {
+              _mediaHouse = searchResponse.data!.mediaHouse!;
+              _selectedMediaHouse = _mediaHouse;
+              notifyListeners();
+              return;
+            }
           }
-        } else {
-          debugPrint("Error: ${searchResponse.message}");
         }
-      } else {
-        throw Exception(
-            'Failed to fetch mediaHouse. Status code: ${response.statusCode}');
+      } catch (error) {
+        debugPrint("Error fetching mediaHouse from $apiUrl: $error");
       }
-    } catch (error) {
-      debugPrint("Error: $error");
-      throw Exception('An error occurred while fetching mediaHouse.');
     }
   }
 }

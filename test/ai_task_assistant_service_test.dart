@@ -52,7 +52,6 @@ void main() {
     });
 
     test('calculates risk score and generates grounded suggestions', () {
-      final now = DateTime.now().millisecondsSinceEpoch;
       final fourDaysAgo = DateTime.now().subtract(const Duration(days: 4)).millisecondsSinceEpoch;
 
       final highRiskTicket = TicketRaised(

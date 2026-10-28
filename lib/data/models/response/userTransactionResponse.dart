@@ -1,5 +1,5 @@
+import 'dart:convert';
 import 'package:admin_ott/domain/entities/content.dart';
-
 import '../../../domain/entities/user.dart';
 
 class UserTransactionResponse {
@@ -62,20 +62,60 @@ class UserTransactionData {
   });
 
   factory UserTransactionData.fromJson(Map<String, dynamic> json) => UserTransactionData(
-    id: json["id"],
-    contentPercentage: json["contentPercentage"],
-    dateFrom: json["dateFrom"],
-    dateTo: json["dateTo"],
-    refferedBy: json["refferedBy"],
-    price: json["price"],
-    isGifted: json["isGifted"],
-    userIdGiftFrom: json["userIdGiftFrom"],
-    userIdGiftTo: json["userIdGiftTo"],
-    movie: json["movie"] == null ? null : Content.fromJson(json["movie"]),
-    user: json["user"] == null ? null : User.fromJson(json["user"]),
-    status: json["status"],
-    active: json["active"],
+    id: json["id"] is int ? json["id"] : int.tryParse(json["id"]?.toString() ?? ''),
+    contentPercentage: json["contentPercentage"] is int ? json["contentPercentage"] : int.tryParse(json["contentPercentage"]?.toString() ?? ''),
+    dateFrom: json["dateFrom"] is int ? json["dateFrom"] : int.tryParse(json["dateFrom"]?.toString() ?? ''),
+    dateTo: json["dateTo"] is int ? json["dateTo"] : int.tryParse(json["dateTo"]?.toString() ?? ''),
+    refferedBy: json["refferedBy"]?.toString(),
+    price: json["price"] is num ? json["price"] : num.tryParse(json["price"]?.toString() ?? ''),
+    isGifted: json["isGifted"] == true || json["isGifted"]?.toString().toLowerCase() == 'true',
+    userIdGiftFrom: json["userIdGiftFrom"] is int ? json["userIdGiftFrom"] : int.tryParse(json["userIdGiftFrom"]?.toString() ?? ''),
+    userIdGiftTo: json["userIdGiftTo"] is int ? json["userIdGiftTo"] : int.tryParse(json["userIdGiftTo"]?.toString() ?? ''),
+    movie: _parseMovie(json["movie"] ?? json["Movie"] ?? json["content"] ?? json["Content"]),
+    user: _parseUser(json["user"] ?? json["User"]),
+    status: json["status"]?.toString(),
+    active: json["active"] == true || json["active"]?.toString().toLowerCase() == 'true',
   );
+
+  static Content? _parseMovie(dynamic value) {
+    if (value == null) return null;
+    if (value is Content) return value;
+    if (value is Map<String, dynamic>) return Content.fromJson(value);
+    if (value is Map) return Content.fromJson(Map<String, dynamic>.from(value));
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+          final decoded = json.decode(trimmed);
+          if (decoded is Map) {
+            return Content.fromJson(Map<String, dynamic>.from(decoded));
+          }
+        } catch (_) {}
+      }
+      return Content(title: trimmed);
+    }
+    return null;
+  }
+
+  static User? _parseUser(dynamic value) {
+    if (value == null) return null;
+    if (value is User) return value;
+    if (value is Map<String, dynamic>) return User.fromJson(value);
+    if (value is Map) return User.fromJson(Map<String, dynamic>.from(value));
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+          final decoded = json.decode(trimmed);
+          if (decoded is Map) {
+            return User.fromJson(Map<String, dynamic>.from(decoded));
+          }
+        } catch (_) {}
+      }
+      return User(firstName: trimmed);
+    }
+    return null;
+  }
 
   Map<String, dynamic> toJson() => {
     "id": id,

@@ -21,15 +21,18 @@ class Location {
         this.officeBuilding});
 
   Location.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    country = json['country'];
-    state = json['state'];
-    district = json['district'];
-    taluka = json['taluka'];
-    city = json['city'];
-    area = json['area'];
-    pincode = json['pincode'];
-    officeBuilding = json['officeBuilding'];
+    final rawId = json['id'];
+    id = rawId is int
+        ? rawId
+        : (rawId is num ? rawId.toInt() : int.tryParse(rawId?.toString() ?? ''));
+    country = json['country']?.toString();
+    state = json['state']?.toString();
+    district = json['district']?.toString();
+    taluka = json['taluka']?.toString();
+    city = json['city']?.toString();
+    area = json['area']?.toString();
+    pincode = json['pincode']?.toString();
+    officeBuilding = json['officeBuilding']?.toString();
   }
 
   Map<String, dynamic> toJson() {

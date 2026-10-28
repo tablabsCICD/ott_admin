@@ -5,7 +5,11 @@ import 'package:admin_ott/app/core/network/api_helper.dart';
 import 'package:admin_ott/app/provider/mediaHouseProvider.dart';
 import 'package:admin_ott/app/provider/promoterProvider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
+import 'package:admin_ott/app/provider/transactionProvider.dart';
 import 'package:admin_ott/app/widgets/app_loaders.dart';
+import 'package:admin_ott/app/widgets/financial_formatter.dart';
+import 'package:admin_ott/app/widgets/revenue_flow_diagram.dart';
+import 'package:admin_ott/data/models/response/userTransactionResponse.dart';
 import 'package:admin_ott/device/utils/ResponsiveWidget.dart';
 import 'package:admin_ott/domain/entities/mediaHouse.dart';
 import 'package:admin_ott/domain/entities/promoter.dart';
@@ -666,12 +670,33 @@ class _RevenueSettlementAnalyticsPageState
       );
     }
 
+    final summaryCards = _jsonMap(_analyticsData?['summaryCards']);
+    final totalPayment = _asDouble(summaryCards?['totalRevenue']?['amount']);
+    final gstAmount = _asDouble(summaryCards?['gstAmount']?['amount']);
+    final gatewayFee = _asDouble(summaryCards?['razorpayDeduction']?['amount']);
+    final netRevenue = _asDouble(summaryCards?['netRevenue']?['amount']);
+    final platformRevenue = _asDouble(summaryCards?['platformRevenue']?['amount']);
+    final prodGross = _asDouble(summaryCards?['productionRevenue']?['amount']);
+    final promoterAlloc = _asDouble(summaryCards?['promoterAllocation']?['amount']);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _analyticsResponseSummary(theme),
         const SizedBox(height: 18),
         _kpiGrid(theme, _platformRevenueMetrics()),
+        const SizedBox(height: 18),
+        RevenueFlowDiagram(
+          customerPayment: totalPayment,
+          gstAmount: gstAmount != 0 ? gstAmount : null,
+          gatewayFee: gatewayFee != 0 ? gatewayFee : null,
+          netRevenue: netRevenue != 0 ? netRevenue : null,
+          platformRevenue: platformRevenue != 0 ? platformRevenue : null,
+          productionGrossRevenue: prodGross != 0 ? prodGross : null,
+          promoterRevenue: promoterAlloc != 0 ? promoterAlloc : null,
+        ),
+        const SizedBox(height: 18),
+        _buildProductionHouseTransparencySection(theme),
         const SizedBox(height: 18),
         _sectionTitle(theme, 'Platform Breakdown'),
         const SizedBox(height: 10),
@@ -917,121 +942,609 @@ class _RevenueSettlementAnalyticsPageState
   }
 
   List<_Metric> _platformRevenueMetrics() {
+    final summaryCards = _jsonMap(_analyticsData?['summaryCards']);
+    final totalPayment = _asDouble(summaryCards?['totalRevenue']?['amount']);
+    final baseAmount = FinancialFormatter.calculateBaseAmount(totalPayment);
+    final gstAmount = _asDouble(summaryCards?['gstAmount']?['amount']) != 0
+        ? _asDouble(summaryCards?['gstAmount']?['amount'])
+        : FinancialFormatter.calculateGst(totalPayment);
+    final gatewayFee = _asDouble(summaryCards?['razorpayDeduction']?['amount']) != 0
+        ? _asDouble(summaryCards?['razorpayDeduction']?['amount'])
+        : FinancialFormatter.calculateGatewayFee(totalPayment);
+    final netRevenue = _asDouble(summaryCards?['netRevenue']?['amount']) != 0
+        ? _asDouble(summaryCards?['netRevenue']?['amount'])
+        : (baseAmount - gatewayFee);
+    final platformRevenue = _asDouble(summaryCards?['platformRevenue']?['amount']) != 0
+        ? _asDouble(summaryCards?['platformRevenue']?['amount'])
+        : FinancialFormatter.calculatePlatformRevenue(netRevenue);
+    final prodGross = _asDouble(summaryCards?['productionRevenue']?['amount']) != 0
+        ? _asDouble(summaryCards?['productionRevenue']?['amount'])
+        : FinancialFormatter.calculateProductionGrossRevenue(netRevenue);
+    final prodTds = FinancialFormatter.calculateProductionTds(prodGross);
+    final prodPayout = FinancialFormatter.calculateProductionPayoutCharge(prodGross);
+    final finalProdRev = FinancialFormatter.calculateFinalProductionRevenue(prodGross);
+    final promoterAlloc = _asDouble(summaryCards?['promoterAllocation']?['amount']);
+
     return [
       _Metric(
-        _summaryLabel('totalPurchase', 'Total Purchase'),
+        'Total Purchases',
         _summaryCount('totalPurchase'),
         Icons.confirmation_num_outlined,
         Colors.deepPurple,
       ),
       _Metric(
-        _summaryLabel('totalRevenue', 'Total Revenue'),
-        _summaryAmount('totalRevenue'),
+        'Total Customer Payment',
+        FinancialFormatter.format4(totalPayment),
         Icons.account_balance_wallet_outlined,
         Colors.teal,
       ),
       _Metric(
-        _summaryLabel('gstAmount', 'GST Amount'),
-        _summaryAmount('gstAmount'),
+        'Total GST Charges (18%)',
+        FinancialFormatter.format4(gstAmount),
         Icons.receipt_long_outlined,
         Colors.orange,
       ),
       _Metric(
-        _summaryLabel('razorpayDeduction', 'RazorPay Deduction'),
-        _summaryAmount('razorpayDeduction'),
-        Icons.receipt_long_outlined,
+        'Base Amount after GST',
+        FinancialFormatter.format4(baseAmount),
+        Icons.account_balance_outlined,
+        Colors.blueGrey,
+      ),
+      _Metric(
+        'Gateway / Platform Fee (2%)',
+        FinancialFormatter.format4(gatewayFee),
+        Icons.credit_card_outlined,
         Colors.blue,
       ),
       _Metric(
-        _summaryLabel('netRevenue', 'Net Revenue'),
-        _summaryAmount('netRevenue'),
+        'Total Net Revenue',
+        FinancialFormatter.format4(netRevenue),
         Icons.payments_outlined,
         Colors.green,
       ),
       _Metric(
-        _summaryLabel('platformRevenue', 'Platform Revenue (30%)'),
-        _summaryAmount('platformRevenue'),
+        'Platform Revenue (30%)',
+        FinancialFormatter.format4(platformRevenue),
         Icons.business_center_outlined,
         Colors.indigo,
       ),
       _Metric(
-        _summaryLabel('productionRevenue', 'Production Revenue (70%)'),
-        _summaryAmount('productionRevenue'),
+        'Gross Production Revenue (70%)',
+        FinancialFormatter.format4(prodGross),
         Icons.movie_creation_outlined,
         Colors.pink,
       ),
       _Metric(
-        _summaryLabel('promoterAllocation', 'Promoter Allocation'),
-        _summaryAmount('promoterAllocation'),
-        Icons.groups_2_outlined,
-        Colors.cyan,
+        'Production TDS (10%)',
+        FinancialFormatter.format4(prodTds),
+        Icons.receipt_outlined,
+        Colors.amber.shade800,
       ),
       _Metric(
-        _summaryLabel('netPlatformRevenue', 'Net Platform Revenue'),
-        _summaryAmount('netPlatformRevenue'),
-        Icons.account_balance_outlined,
-        Colors.redAccent,
+        'Production Payout Charge (2%)',
+        FinancialFormatter.format4(prodPayout),
+        Icons.sync_alt_outlined,
+        Colors.brown,
+      ),
+      _Metric(
+        'Final Production House Revenue',
+        FinancialFormatter.format4(finalProdRev),
+        Icons.verified_outlined,
+        Colors.purple,
+      ),
+      _Metric(
+        'Total Promoter Revenue (Separate)',
+        FinancialFormatter.format4(promoterAlloc),
+        Icons.groups_2_outlined,
+        Colors.cyan,
       ),
     ];
   }
 
   List<_Metric> _productionHouseRevenueMetrics() {
+    final summaryCards = _jsonMap(_analyticsData?['summaryCards']);
+    final totalPayment = _asDouble(summaryCards?['totalRevenue']?['amount']);
+    final baseAmount = FinancialFormatter.calculateBaseAmount(totalPayment);
+    final gstAmount = _asDouble(summaryCards?['gstAmount']?['amount']) != 0
+        ? _asDouble(summaryCards?['gstAmount']?['amount'])
+        : FinancialFormatter.calculateGst(totalPayment);
+    final gatewayFee = _asDouble(summaryCards?['payoutCharges']?['amount']) != 0
+        ? _asDouble(summaryCards?['payoutCharges']?['amount'])
+        : FinancialFormatter.calculateGatewayFee(totalPayment);
+    final netRevenue = _asDouble(summaryCards?['netRevenue']?['amount']) != 0
+        ? _asDouble(summaryCards?['netRevenue']?['amount'])
+        : (baseAmount - gatewayFee);
+    final prodGross = _asDouble(summaryCards?['productionRevenue']?['amount']) != 0
+        ? _asDouble(summaryCards?['productionRevenue']?['amount'])
+        : FinancialFormatter.calculateProductionGrossRevenue(netRevenue);
+    final prodTds = FinancialFormatter.calculateProductionTds(prodGross);
+    final prodPayout = FinancialFormatter.calculateProductionPayoutCharge(prodGross);
+    final finalProdRev = FinancialFormatter.calculateFinalProductionRevenue(prodGross);
+    final promoterAlloc = _asDouble(summaryCards?['promoterAllocation']?['amount']);
+
     return [
       _Metric(
-        _summaryLabel('totalPurchase', 'Total Purchase'),
+        'Total Purchases',
         _summaryCount('totalPurchase'),
         Icons.confirmation_num_outlined,
         Colors.deepPurple,
       ),
       _Metric(
-        _summaryLabel('totalRevenue', 'Total Revenue'),
-        _summaryAmount('totalRevenue'),
+        'Customer Payment',
+        FinancialFormatter.format4(totalPayment),
         Icons.account_balance_wallet_outlined,
         Colors.teal,
       ),
       _Metric(
-        _summaryLabel('gstAmount', 'GST Amount'),
-        _summaryAmount('gstAmount'),
+        'GST Charges',
+        FinancialFormatter.format4(gstAmount),
         Icons.receipt_long_outlined,
         Colors.orange,
       ),
       _Metric(
-        _summaryLabel('payoutCharges', 'Payout Charges'),
-        _summaryAmount('payoutCharges'),
-        Icons.sync_alt_outlined,
-        Colors.blue,
+        'Base Amount',
+        FinancialFormatter.format4(baseAmount),
+        Icons.account_balance_outlined,
+        Colors.blueGrey,
       ),
       _Metric(
-        _summaryLabel('netRevenue', 'Net Revenue for Sharing'),
-        _summaryAmount('netRevenue'),
+        'Net Revenue for Sharing',
+        FinancialFormatter.format4(netRevenue),
         Icons.payments_outlined,
         Colors.green,
       ),
       _Metric(
-        _summaryLabel('productionRevenue', 'Production Revenue (70%)'),
-        _summaryAmount('productionRevenue'),
+        'Gross Production Revenue (70%)',
+        FinancialFormatter.format4(prodGross),
         Icons.movie_creation_outlined,
         Colors.pink,
       ),
       _Metric(
-        _summaryLabel('platformRevenue', 'Platform Revenue (30%)'),
-        _summaryAmount('platformRevenue'),
-        Icons.business_center_outlined,
-        Colors.indigo,
+        'Production TDS (10%)',
+        FinancialFormatter.format4(prodTds),
+        Icons.receipt_outlined,
+        Colors.amber.shade800,
       ),
       _Metric(
-        _summaryLabel('promoterAllocation', 'Promoter Allocation'),
-        _summaryAmount('promoterAllocation'),
+        'Payout Charge (2%)',
+        FinancialFormatter.format4(prodPayout),
+        Icons.sync_alt_outlined,
+        Colors.blue,
+      ),
+      _Metric(
+        'Final Production Revenue',
+        FinancialFormatter.format4(finalProdRev),
+        Icons.verified_outlined,
+        Colors.purple,
+      ),
+      _Metric(
+        'Promoter Revenue',
+        FinancialFormatter.format4(promoterAlloc),
         Icons.groups_2_outlined,
         Colors.cyan,
       ),
-      _Metric(
-        _summaryLabel('netPlatformRevenue', 'Net Platform Revenue'),
-        _summaryAmount('netPlatformRevenue'),
-        Icons.account_balance_outlined,
-        Colors.redAccent,
-      ),
     ];
+  }
+
+  Widget _buildProductionHouseTransparencySection(ThemeData theme) {
+    return Consumer<MediaHouseProvider>(
+      builder: (context, mediaProvider, child) {
+        final houses = mediaProvider.mediaHouseList;
+        return _surface(
+          theme: theme,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.table_chart_outlined, color: theme.primaryColor, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Production House Financial Breakdown (Excel Sheet 1 Reference)',
+                        style: TextStyle(
+                          color: theme.canvasColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '${houses.length} Production Houses • Click any row for Drill-Down',
+                    style: TextStyle(
+                      color: theme.canvasColor.withValues(alpha: 0.6),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (houses.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'No production houses found.',
+                    style: TextStyle(color: theme.canvasColor.withValues(alpha: 0.6)),
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(
+                      theme.primaryColor.withValues(alpha: 0.08),
+                    ),
+                    columns: const [
+                      DataColumn(label: Text('Production House', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Customer Payment', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                      DataColumn(label: Text('GST (18%)', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                      DataColumn(label: Text('Base Amount', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                      DataColumn(label: Text('Gateway Fee (2%)', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                      DataColumn(label: Text('Net Revenue', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                      DataColumn(label: Text('Platform (30%)', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                      DataColumn(label: Text('Production (70%)', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                      DataColumn(label: Text('TDS (10%)', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                      DataColumn(label: Text('Payout Fee (2%)', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                      DataColumn(label: Text('Final Production Revenue', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                      DataColumn(label: Text('Promoter Revenue', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                      DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
+                    ],
+                    rows: houses.map((house) {
+                      // Aggregate from active transactions if available or estimated
+                      final summaryCards = _jsonMap(_analyticsData?['summaryCards']);
+                      final totalPayment = _asDouble(summaryCards?['totalRevenue']?['amount']) / (houses.isNotEmpty ? houses.length : 1);
+                      final base = FinancialFormatter.calculateBaseAmount(totalPayment);
+                      final gst = FinancialFormatter.calculateGst(totalPayment);
+                      final gateway = FinancialFormatter.calculateGatewayFee(totalPayment);
+                      final net = FinancialFormatter.calculateNetRevenue(totalPayment);
+                      final platform = FinancialFormatter.calculatePlatformRevenue(net);
+                      final prodGross = FinancialFormatter.calculateProductionGrossRevenue(net);
+                      final tds = FinancialFormatter.calculateProductionTds(prodGross);
+                      final payout = FinancialFormatter.calculateProductionPayoutCharge(prodGross);
+                      final finalProd = FinancialFormatter.calculateFinalProductionRevenue(prodGross);
+                      final promoter = FinancialFormatter.calculatePromoterRevenue(base, 0.01);
+
+                      return DataRow(
+                        cells: [
+                          DataCell(
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.business, size: 16, color: theme.primaryColor),
+                                const SizedBox(width: 8),
+                                Text(
+                                  house.mediaHouseName ?? 'Media House #${house.id}',
+                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            ),
+                            onTap: () => _openProductionHouseDrillDownDialog(context, house, theme),
+                          ),
+                          DataCell(Text(FinancialFormatter.format4(totalPayment))),
+                          DataCell(Text(FinancialFormatter.format4(gst))),
+                          DataCell(Text(FinancialFormatter.format4(base))),
+                          DataCell(Text(FinancialFormatter.format4(gateway))),
+                          DataCell(Text(FinancialFormatter.format4(net), style: const TextStyle(fontWeight: FontWeight.bold))),
+                          DataCell(Text(FinancialFormatter.format4(platform))),
+                          DataCell(Text(FinancialFormatter.format4(prodGross))),
+                          DataCell(Text(FinancialFormatter.format4(tds), style: const TextStyle(color: Colors.orange))),
+                          DataCell(Text(FinancialFormatter.format4(payout), style: const TextStyle(color: Colors.blue))),
+                          DataCell(Text(FinancialFormatter.format4(finalProd), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.green))),
+                          DataCell(Text(FinancialFormatter.format4(promoter), style: const TextStyle(color: Colors.cyan))),
+                          DataCell(
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                              icon: const Icon(Icons.visibility_outlined, size: 14),
+                              label: const Text('Drill Down'),
+                              onPressed: () => _openProductionHouseDrillDownDialog(context, house, theme),
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _openProductionHouseDrillDownDialog(BuildContext context, MediaHouse house, ThemeData theme) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 1050, maxHeight: 780),
+            padding: const EdgeInsets.all(22),
+            child: Consumer<TransactionProvider>(
+              builder: (ctx, txnProvider, _) {
+                final houseTxns = txnProvider.userTransactionList.where((t) {
+                  return t.movie?.mediaHouseId == house.id ||
+                      (t.movie?.mediaHouseName?.toLowerCase() == house.mediaHouseName?.toLowerCase());
+                }).toList();
+
+                final totalCustPayment = houseTxns.fold<double>(
+                  0.0,
+                  (sum, t) => sum + (t.price ?? 0).toDouble(),
+                );
+                final baseAmount = FinancialFormatter.calculateBaseAmount(totalCustPayment);
+                final gstAmount = FinancialFormatter.calculateGst(totalCustPayment);
+                final gatewayFee = FinancialFormatter.calculateGatewayFee(totalCustPayment);
+                final netRevenue = FinancialFormatter.calculateNetRevenue(totalCustPayment);
+                final platformRev = FinancialFormatter.calculatePlatformRevenue(netRevenue);
+                final prodGross = FinancialFormatter.calculateProductionGrossRevenue(netRevenue);
+                final tds = FinancialFormatter.calculateProductionTds(prodGross);
+                final payout = FinancialFormatter.calculateProductionPayoutCharge(prodGross);
+                final finalProdRev = FinancialFormatter.calculateFinalProductionRevenue(prodGross);
+
+                // Group by Content Title
+                final contentMap = <String, List<UserTransactionData>>{};
+                for (final txn in houseTxns) {
+                  final title = txn.movie?.title ?? 'Unknown Content';
+                  contentMap.putIfAbsent(title, () => []).add(txn);
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: theme.primaryColor.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.business_outlined, color: theme.primaryColor, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${house.mediaHouseName ?? "Production House"} • Financial Transparency Drill-Down',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: theme.canvasColor),
+                              ),
+                              Text(
+                                'Hierarchy: Production House → Content-Wise Revenue → Customer Transactions',
+                                style: TextStyle(fontSize: 12, color: theme.canvasColor.withValues(alpha: 0.6)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Summary Financial Cards Grid
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _metricMini('Transactions', '${houseTxns.length}', Icons.receipt_outlined, Colors.purple, theme),
+                        _metricMini('Customer Payment', FinancialFormatter.format4(totalCustPayment), Icons.payments_outlined, Colors.teal, theme),
+                        _metricMini('GST (18%)', FinancialFormatter.format4(gstAmount), Icons.percent, Colors.orange, theme),
+                        _metricMini('Base Amount', FinancialFormatter.format4(baseAmount), Icons.movie_outlined, Colors.blueGrey, theme),
+                        _metricMini('Gateway Fee (2%)', FinancialFormatter.format4(gatewayFee), Icons.credit_card, Colors.blue, theme),
+                        _metricMini('Net Revenue', FinancialFormatter.format4(netRevenue), Icons.account_balance_wallet, Colors.green, theme),
+                        _metricMini('Platform Share (30%)', FinancialFormatter.format4(platformRev), Icons.business_center, Colors.indigo, theme),
+                        _metricMini('Production Gross (70%)', FinancialFormatter.format4(prodGross), Icons.movie_creation, Colors.pink, theme),
+                        _metricMini('TDS (10%)', FinancialFormatter.format4(tds), Icons.receipt, Colors.amber.shade800, theme),
+                        _metricMini('Payout Charge (2%)', FinancialFormatter.format4(payout), Icons.sync_alt, Colors.brown, theme),
+                        _metricMini('Final PH Revenue', FinancialFormatter.format4(finalProdRev), Icons.verified, Colors.green.shade800, theme),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Content-Wise Revenue Breakdown',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: theme.canvasColor),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: contentMap.isEmpty
+                          ? Container(
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                'No transactions recorded for this production house.',
+                                style: TextStyle(color: theme.canvasColor.withValues(alpha: 0.6)),
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              child: DataTable(
+                                headingRowColor: WidgetStateProperty.all(theme.primaryColor.withValues(alpha: 0.08)),
+                                columns: const [
+                                  DataColumn(label: Text('Content Title', style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.bold))),
+                                  DataColumn(label: Text('Purchases', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                                  DataColumn(label: Text('Customer Payment', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                                  DataColumn(label: Text('Base Amount', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                                  DataColumn(label: Text('Net Revenue', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                                  DataColumn(label: Text('Final PH Revenue', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                                  DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
+                                ],
+                                rows: contentMap.entries.map((entry) {
+                                  final contentTitle = entry.key;
+                                  final txns = entry.value;
+                                  final contentType = txns.first.movie?.type ?? 'Movie';
+                                  final custPayment = txns.fold<double>(0.0, (s, t) => s + (t.price ?? 0).toDouble());
+                                  final base = FinancialFormatter.calculateBaseAmount(custPayment);
+                                  final net = FinancialFormatter.calculateNetRevenue(custPayment);
+                                  final prod = FinancialFormatter.calculateProductionGrossRevenue(net);
+                                  final finalP = FinancialFormatter.calculateFinalProductionRevenue(prod);
+
+                                  return DataRow(
+                                    cells: [
+                                      DataCell(Text(contentTitle, style: const TextStyle(fontWeight: FontWeight.w700))),
+                                      DataCell(Text(contentType)),
+                                      DataCell(Text('${txns.length}')),
+                                      DataCell(Text(FinancialFormatter.format4(custPayment))),
+                                      DataCell(Text(FinancialFormatter.format4(base))),
+                                      DataCell(Text(FinancialFormatter.format4(net))),
+                                      DataCell(Text(FinancialFormatter.format4(finalP), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green))),
+                                      DataCell(
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                          ),
+                                          icon: const Icon(Icons.list_alt, size: 14),
+                                          label: const Text('View Txns'),
+                                          onPressed: () => _openContentTransactionsDialog(context, contentTitle, txns, theme),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openContentTransactionsDialog(
+    BuildContext context,
+    String contentTitle,
+    List<UserTransactionData> transactions,
+    ThemeData theme,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 1000, maxHeight: 700),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Transactions for "$contentTitle" (${transactions.length} records)',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: theme.canvasColor),
+                    ),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(ctx).pop()),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SingleChildScrollView(
+                      child: DataTable(
+                        headingRowColor: WidgetStateProperty.all(theme.primaryColor.withValues(alpha: 0.08)),
+                        columns: const [
+                          DataColumn(label: Text('Txn ID', style: TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text('Customer Name', style: TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text('Customer Payment', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                          DataColumn(label: Text('GST (18%)', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                          DataColumn(label: Text('Base Amount', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                          DataColumn(label: Text('Gateway (2%)', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                          DataColumn(label: Text('Net Revenue', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                          DataColumn(label: Text('Platform (30%)', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                          DataColumn(label: Text('Final PH Revenue', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+                        ],
+                        rows: transactions.map((t) {
+                          final custPayment = (t.price ?? 0).toDouble();
+                          final base = FinancialFormatter.calculateBaseAmount(custPayment);
+                          final gst = FinancialFormatter.calculateGst(custPayment);
+                          final gateway = FinancialFormatter.calculateGatewayFee(custPayment);
+                          final net = FinancialFormatter.calculateNetRevenue(custPayment);
+                          final platform = FinancialFormatter.calculatePlatformRevenue(net);
+                          final prodGross = FinancialFormatter.calculateProductionGrossRevenue(net);
+                          final finalPH = FinancialFormatter.calculateFinalProductionRevenue(prodGross);
+
+                          return DataRow(
+                            cells: [
+                              DataCell(Text('TXN#${t.id ?? "-"}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                              DataCell(Text('${t.user?.firstName ?? ""} ${t.user?.lastName ?? ""}'.trim())),
+                              DataCell(Text(FinancialFormatter.format4(custPayment))),
+                              DataCell(Text(FinancialFormatter.format4(gst))),
+                              DataCell(Text(FinancialFormatter.format4(base))),
+                              DataCell(Text(FinancialFormatter.format4(gateway))),
+                              DataCell(Text(FinancialFormatter.format4(net))),
+                              DataCell(Text(FinancialFormatter.format4(platform))),
+                              DataCell(Text(FinancialFormatter.format4(finalPH), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green))),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _metricMini(String label, String value, IconData icon, Color color, ThemeData theme) {
+    return Container(
+      width: 175,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 14),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 10, color: theme.canvasColor.withValues(alpha: 0.7), fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: theme.canvasColor),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   List<_Metric> _promoterRevenueMetrics() {
@@ -1187,27 +1700,12 @@ class _RevenueSettlementAnalyticsPageState
   }
 
   String _formatCurrency(dynamic value) {
-    if (value == null) return 'Rs. 0';
-    if (value is String) {
-      final trimmed = value.trim();
-      if (trimmed.isEmpty) return 'Rs. 0';
-      if (trimmed.startsWith('Rs.') || trimmed.startsWith('Rs') || trimmed.startsWith('₹')) {
-        return trimmed;
-      }
-      return 'Rs. $trimmed';
-    }
-    if (value is num) {
-      if (value % 1 == 0) {
-        return 'Rs. ${value.toInt()}';
-      }
-      return 'Rs. $value';
-    }
-    return 'Rs. $value';
+    if (value == null) return '₹ 0.0000';
+    return FinancialFormatter.format4(value);
   }
 
   String _formatPreviewAmount(dynamic value) {
-    final amount = _asDouble(value);
-    return NumberFormat('0.###').format(amount);
+    return FinancialFormatter.formatPlain4(value);
   }
 
   String _formatCount(dynamic value) {

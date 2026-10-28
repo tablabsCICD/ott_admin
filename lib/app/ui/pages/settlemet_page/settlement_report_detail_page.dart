@@ -1,6 +1,7 @@
 import 'package:admin_ott/app/provider/settelementProvider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/widgets/app_loaders.dart';
+import 'package:admin_ott/app/widgets/financial_formatter.dart';
 import 'package:admin_ott/data/models/response/weekly_settlement_report.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -1261,8 +1262,13 @@ IconData _mapIcon(String? name) {
 String _ensureCurrency(String rawAmount, String fallbackSymbol) {
   final text = rawAmount.trim();
   if (text.isEmpty || text == "—" || text == "null") return "—";
-  if (text.contains("Rs.") || text.contains("Rs") || text.contains("₹") || text.contains("\$") || text.contains("€")) {
-    return text.replaceAll("Rs.", "₹").replaceAll("Rs", "₹");
+  final cleaned = text.replaceAll(',', '').replaceAll('₹', '').replaceAll('Rs.', '').replaceAll('Rs', '').replaceAll('\$', '').replaceAll('€', '').replaceAll('%', '').trim();
+  final numVal = double.tryParse(cleaned);
+  if (numVal != null) {
+    if (text.endsWith('%')) {
+      return '${numVal.toStringAsFixed(4)}%';
+    }
+    return FinancialFormatter.format4(numVal);
   }
-  return "$fallbackSymbol $text";
+  return text;
 }

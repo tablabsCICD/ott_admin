@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../provider/themeProvider.dart';
 import '../../../../widgets/custom_textfield.dart';
+import '../../../../widgets/financial_formatter.dart';
 
 class SettlementCard extends StatefulWidget {
   final MediaHouse mediaHouse;
@@ -310,14 +311,13 @@ class _SettlementCardState extends State<SettlementCard> {
 
   String _parseNumber(dynamic value) {
     if (value == null) return 'N/A';
-    if (value is int) return value.toString();
-    if (value is double) {
-      return value % 1 == 0 ? value.toInt().toString() : value.toString();
-    }
-    if (value is num) return value.toString();
+    if (value is num) return FinancialFormatter.format4(value);
     if (value is String) {
       final trimmed = value.trim();
-      return trimmed.isNotEmpty ? trimmed : 'N/A';
+      if (trimmed.isEmpty) return 'N/A';
+      final parsed = double.tryParse(trimmed.replaceAll(',', '').replaceAll('₹', '').replaceAll('Rs', '').replaceAll('Rs.', '').trim());
+      if (parsed != null) return FinancialFormatter.format4(parsed);
+      return trimmed;
     }
     return value.toString();
   }

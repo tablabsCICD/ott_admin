@@ -15,6 +15,7 @@ class CustomLineGraph extends StatefulWidget {
   int mediaHouseId;
   final List<String> metrics; // e.g. ["revenue", "users_onboarded"]
   final bool canPop;
+  final String type;
 
   CustomLineGraph({
     super.key,
@@ -24,6 +25,7 @@ class CustomLineGraph extends StatefulWidget {
     this.canPop = false,
     required this.graphNumber,
     required this.mediaHouseId,
+    this.type = "ALL",
   });
 
   @override
@@ -45,6 +47,26 @@ class _CustomLineGraphState extends State<CustomLineGraph> {
     // TODO: implement initState
     super.initState();
     _fetchGraphData(0, DateTime.now().subtract(Duration(days: 7)), DateTime.now());
+  }
+
+  @override
+  void didUpdateWidget(covariant CustomLineGraph oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.type != widget.type ||
+        oldWidget.mediaHouseId != widget.mediaHouseId ||
+        oldWidget.graphNumber != widget.graphNumber) {
+      _fetchGraphData(
+        activeButton == '1W'
+            ? 0
+            : activeButton == '1M'
+                ? 1
+                : activeButton == '1Y'
+                    ? 2
+                    : 3,
+        startDate ?? DateTime.now().subtract(const Duration(days: 7)),
+        endDate ?? DateTime.now(),
+      );
+    }
   }
 
   Future<void> _pickDateRange() async {
@@ -102,6 +124,7 @@ class _CustomLineGraphState extends State<CustomLineGraph> {
         startDateString,
         endDateString,
         widget.mediaHouseId,
+        type: widget.type,
       );
     } else if (widget.graphNumber == 1) {
       await mediaHouseProvider.viewsCountGraph(
@@ -109,6 +132,7 @@ class _CustomLineGraphState extends State<CustomLineGraph> {
         startDateString,
         endDateString,
         widget.mediaHouseId,
+        type: widget.type,
       );
     } else if (widget.graphNumber == 2) {
       await mediaHouseProvider.releaseMovieCountGraph(
@@ -116,6 +140,7 @@ class _CustomLineGraphState extends State<CustomLineGraph> {
         startDateString,
         endDateString,
         widget.mediaHouseId,
+        type: widget.type,
       );
     } else if (widget.graphNumber == 3) {
       await mediaHouseProvider.revenueGraphByMediaHouse(
@@ -123,6 +148,7 @@ class _CustomLineGraphState extends State<CustomLineGraph> {
         startDateString,
         endDateString,
         widget.mediaHouseId,
+        type: widget.type,
       );
     } else {
       await mediaHouseProvider.revenueGraphByMediaHouse(
@@ -130,6 +156,7 @@ class _CustomLineGraphState extends State<CustomLineGraph> {
         startDateString,
         endDateString,
         widget.mediaHouseId,
+        type: widget.type,
       );
     }
   }

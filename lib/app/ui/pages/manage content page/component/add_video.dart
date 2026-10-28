@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:admin_ott/app/provider/videoProvider.dart';
 import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/DisplayTrailer.dart';
 import 'package:admin_ott/app/ui/pages/manage%20content%20page/component/setPercentageDialog.dart';
@@ -1060,6 +1061,7 @@ class _AddDataWidgetState extends State<AddDataWidget> {
               theme: theme,
               provider: provider,
               onPick: () => provider.pickImage("Censor Certificate"),
+              onClear: () => provider.clearUploadedFile("Censor Certificate"),
             ),
             _buildFileUploadItem(
               label: "Poster 1",
@@ -1069,6 +1071,7 @@ class _AddDataWidgetState extends State<AddDataWidget> {
               theme: theme,
               provider: provider,
               onPick: () => provider.pickImage("Poster 1"),
+              onClear: () => provider.clearUploadedFile("Poster 1"),
             ),
             _buildFileUploadItem(
               label: "Poster 2",
@@ -1078,6 +1081,7 @@ class _AddDataWidgetState extends State<AddDataWidget> {
               theme: theme,
               provider: provider,
               onPick: () => provider.pickImage("Poster 2"),
+              onClear: () => provider.clearUploadedFile("Poster 2"),
             ),
             _buildFileUploadItem(
               label: "Poster 3",
@@ -1087,6 +1091,7 @@ class _AddDataWidgetState extends State<AddDataWidget> {
               theme: theme,
               provider: provider,
               onPick: () => provider.pickImage("Poster 3"),
+              onClear: () => provider.clearUploadedFile("Poster 3"),
             ),
             _buildFileUploadItem(
               label: "Teaser File",
@@ -1096,6 +1101,7 @@ class _AddDataWidgetState extends State<AddDataWidget> {
               theme: theme,
               provider: provider,
               onPick: () => provider.uploadVideo(false, isTeaser: true),
+              onClear: () => provider.clearUploadedFile("Teaser File"),
             ),
             _buildFileUploadItem(
               label: "Trailer File",
@@ -1105,6 +1111,7 @@ class _AddDataWidgetState extends State<AddDataWidget> {
               theme: theme,
               provider: provider,
               onPick: () => provider.uploadVideo(true, isTeaser: false),
+              onClear: () => provider.clearUploadedFile("Trailer File"),
             ),
             _buildFileUploadItem(
               label: "Movie File",
@@ -1114,6 +1121,7 @@ class _AddDataWidgetState extends State<AddDataWidget> {
               theme: theme,
               provider: provider,
               onPick: () => provider.uploadVideo(false, isTeaser: false),
+              onClear: () => provider.clearUploadedFile("Movie File"),
             ),
           ],
         ),
@@ -1132,6 +1140,11 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                   theme: theme,
                   provider: provider,
                   onPick: () => provider.pickAndUploadAudioTrack(lang),
+                  onClear: () {
+                    provider.languageAudioUrls.remove(lang);
+                    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+                    provider.notifyListeners();
+                  },
                 );
               }),
             ],
@@ -1159,6 +1172,11 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                     theme: theme,
                     provider: provider,
                     onPick: () => provider.pickAndUploadSubtitleFile(subLang),
+                    onClear: () {
+                      provider.subtitleLanguageUrls.remove(subLang);
+                      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+                      provider.notifyListeners();
+                    },
                   );
                 }),
               ],
@@ -1177,23 +1195,55 @@ class _AddDataWidgetState extends State<AddDataWidget> {
     required ThemeData theme,
     required VideoProvider provider,
     required VoidCallback onPick,
+    VoidCallback? onClear,
   }) {
     final hasFile = currentUrl.trim().isNotEmpty;
+    final localBytes = provider.getPreviewBytes(label);
+    final fileName = currentUrl.trim().isNotEmpty ? currentUrl.split('/').last : '';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: theme.canvasColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: theme.canvasColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (hasFile)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.shade600, width: 0.8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green.shade700, size: 12),
+                      const SizedBox(width: 4),
+                      Text(
+                        "Uploaded",
+                        style: TextStyle(
+                          color: Colors.green.shade700,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(
             subLabel,
             style: TextStyle(
@@ -1201,70 +1251,215 @@ class _AddDataWidgetState extends State<AddDataWidget> {
               fontSize: 12,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           if (hasFile)
             Container(
-              height: 72,
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green.shade600, width: 1.2),
-                color: theme.scaffoldBackgroundColor.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Colors.green.shade600.withValues(alpha: 0.5),
+                  width: 1.2,
+                ),
+                color: theme.cardColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(7),
-                child: Stack(
-                  children: [
-                    if (isImage)
-                      Positioned.fill(
-                        child: Opacity(
-                          opacity: 0.35,
-                          child: Image.network(
-                            currentUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Dedicated Thumbnail Container for Image or File icon
+                  if (isImage)
+                    GestureDetector(
+                      onTap: () => _previewMedia(
+                        currentUrl,
+                        isImage,
+                        label,
+                        bytes: localBytes,
+                      ),
+                      child: Tooltip(
+                        message: "Click to preview full image",
+                        child: Container(
+                          width: 68,
+                          height: 92,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: theme.scaffoldBackgroundColor,
+                            border: Border.all(
+                              color: theme.canvasColor.withValues(alpha: 0.15),
+                            ),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              if (localBytes != null)
+                                Image.memory(
+                                  localBytes,
+                                  fit: BoxFit.cover,
+                                )
+                              else
+                                Image.network(
+                                  currentUrl,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return const Center(
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (_, __, ___) => Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.broken_image_outlined,
+                                            size: 24, color: theme.hintColor),
+                                        const SizedBox(height: 2),
+                                        Text('Preview',
+                                            style: TextStyle(
+                                                fontSize: 9, color: theme.hintColor)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                child: Container(
+                                  color: Colors.black54,
+                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                  child: const Icon(
+                                    Icons.fullscreen,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: Row(
-                        children: [
-                          Icon(
-                            isImage ? Icons.image : Icons.video_collection_outlined,
-                            color: Colors.green.shade600,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              "$label Uploaded",
-                              style: TextStyle(
-                                color: theme.canvasColor,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.remove_red_eye_outlined, size: 20),
-                            color: theme.canvasColor,
-                            tooltip: "Preview",
-                            onPressed: () => _previewMedia(currentUrl, isImage, label),
-                          ),
-                          Icon(Icons.check_circle, color: Colors.green.shade600, size: 20),
-                          const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: provider.isUploading ? null : onPick,
-                            style: TextButton.styleFrom(
-                              foregroundColor: theme.primaryColor,
-                            ),
-                            child: const Text("Replace", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
+                    )
+                  else
+                    Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        color: theme.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: theme.primaryColor.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          Icons.video_collection_outlined,
+                          color: theme.primaryColor,
+                          size: 32,
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  const SizedBox(width: 14),
+                  // Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "$label Attached",
+                          style: TextStyle(
+                            color: theme.canvasColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        SelectableText(
+                          fileName.isNotEmpty ? fileName : currentUrl,
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: theme.hintColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(Icons.link, size: 13, color: Colors.green.shade700),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                currentUrl,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.green.shade700,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Actions
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove_red_eye_outlined, size: 20),
+                            color: theme.primaryColor,
+                            tooltip: "View Preview",
+                            onPressed: () => _previewMedia(
+                              currentUrl,
+                              isImage,
+                              label,
+                              bytes: localBytes,
+                            ),
+                          ),
+                          if (onClear != null)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 20),
+                              color: Colors.redAccent,
+                              tooltip: "Remove File",
+                              onPressed: onClear,
+                            ),
+                        ],
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: provider.isUploading ? null : onPick,
+                        icon: const Icon(Icons.sync, size: 14),
+                        label: const Text(
+                          "Replace",
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: theme.primaryColor,
+                          side: BorderSide(color: theme.primaryColor),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             )
           else
@@ -1272,11 +1467,14 @@ class _AddDataWidgetState extends State<AddDataWidget> {
               onTap: provider.isUploading ? null : onPick,
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                height: 54,
+                height: 60,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: theme.dividerColor.withValues(alpha: 0.7)),
-                  color: theme.scaffoldBackgroundColor.withValues(alpha: 0.2),
+                  border: Border.all(
+                    color: theme.dividerColor.withValues(alpha: 0.8),
+                    style: BorderStyle.solid,
+                  ),
+                  color: theme.scaffoldBackgroundColor.withValues(alpha: 0.3),
                 ),
                 child: Center(
                   child: provider.isUploading
@@ -1284,14 +1482,15 @@ class _AddDataWidgetState extends State<AddDataWidget> {
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.cloud_upload_outlined, color: theme.primaryColor, size: 20),
-                            const SizedBox(width: 8),
+                            Icon(Icons.cloud_upload_outlined,
+                                color: theme.primaryColor, size: 22),
+                            const SizedBox(width: 10),
                             Text(
-                              "Upload $label",
+                              "Click to upload $label",
                               style: TextStyle(
                                 color: theme.canvasColor,
                                 fontSize: 13,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
@@ -1304,37 +1503,94 @@ class _AddDataWidgetState extends State<AddDataWidget> {
     );
   }
 
-  void _previewMedia(String url, bool isImage, String label) {
-    if (url.trim().isEmpty) return;
+  void _previewMedia(String url, bool isImage, String label, {Uint8List? bytes}) {
+    if (url.trim().isEmpty && bytes == null) return;
     if (isImage) {
       showDialog(
         context: context,
         builder: (_) => Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(16),
-          child: Stack(
-            alignment: Alignment.topRight,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  url,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Container(
-                    padding: const EdgeInsets.all(24),
-                    color: Colors.white,
-                    child: const Text("Failed to load preview image."),
+          insetPadding: const EdgeInsets.all(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600, maxHeight: 750),
+            child: Stack(
+              alignment: Alignment.topRight,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black45,
+                        blurRadius: 18,
+                        offset: Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12, right: 30),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "$label Preview",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Flexible(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: bytes != null
+                              ? Image.memory(
+                                  bytes,
+                                  fit: BoxFit.contain,
+                                )
+                              : Image.network(
+                                  url,
+                                  fit: BoxFit.contain,
+                                  loadingBuilder: (context, child, progress) {
+                                    if (progress == null) return child;
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  },
+                                  errorBuilder: (_, __, ___) => Container(
+                                    padding: const EdgeInsets.all(32),
+                                    color: Colors.white12,
+                                    child: const Text(
+                                      "Failed to load preview image from network.",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              IconButton(
-                icon: const CircleAvatar(
-                  backgroundColor: Colors.black54,
-                  child: Icon(Icons.close, color: Colors.white, size: 18),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: IconButton(
+                    icon: const CircleAvatar(
+                      backgroundColor: Colors.black87,
+                      radius: 16,
+                      child: Icon(Icons.close, color: Colors.white, size: 18),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                 ),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );

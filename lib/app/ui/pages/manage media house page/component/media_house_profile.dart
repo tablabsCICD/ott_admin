@@ -17,12 +17,13 @@ class ProfilePageCard extends StatelessWidget {
         Provider.of<ThemeProvider>(context, listen: false).getTheme;
     return InkWell(
       onTap: () async {
-        Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => MediaHouseDetailPage(mediaHouse: mediaHouse),
           ),
         );
+        provider.fetchMediaHouse();
       },
       child: Card(
         clipBehavior: Clip.antiAlias,

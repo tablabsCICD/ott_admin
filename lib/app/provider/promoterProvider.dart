@@ -6,13 +6,18 @@ import 'package:admin_ott/data/models/response/addPromoterResponse.dart';
 import 'package:admin_ott/data/models/response/getAllPromoterResponse.dart';
 import 'package:admin_ott/data/models/response/getPromotersByreferalCode.dart';
 import 'package:admin_ott/data/models/response/getUsersByReferalCode.dart';
+import 'package:admin_ott/data/models/response/promoter_dashboard_response.dart';
+import 'package:admin_ott/data/models/response/promoter_hierarchy_response.dart';
+import 'package:admin_ott/data/models/response/promoter_settlement_response.dart';
 import 'package:admin_ott/data/models/response/promoters_by_status.dart';
 import 'package:admin_ott/data/models/response/reportingPromoterResponse.dart';
 import 'package:admin_ott/data/models/response/userOnboardAndRevenueGraph.dart';
+import 'package:admin_ott/data/models/response/userTransactionResponse.dart';
 import 'package:admin_ott/domain/entities/promoter.dart';
 import 'package:admin_ott/domain/entities/promoter_audit_entry.dart';
 import 'package:admin_ott/domain/entities/user.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../data/models/response/getAllUserResponse.dart';
 import '../core/network/api_helper.dart';
@@ -399,6 +404,29 @@ class PromoterProvider extends ChangeNotifier {
     return path;
   }
 
+  /// Centralized promoter level hierarchy rank (1: National, 2: State, 3: District, 4: Taluka)
+  static int getPromoterLevelRank(String? level) {
+    final norm = (level ?? '').trim().toLowerCase();
+    if (norm.contains('nation') || norm.contains('country')) return 1;
+    if (norm.contains('state')) return 2;
+    if (norm.contains('district')) return 3;
+    if (norm.contains('taluka')) return 4;
+    return 999;
+  }
+
+  /// Returns allowed parent levels for a given current promoter level
+  static List<String> getEligibleParentLevels(String currentLevel) {
+    final norm = currentLevel.trim().toLowerCase();
+    if (norm.contains('state')) {
+      return ['National'];
+    } else if (norm.contains('district')) {
+      return ['State', 'National'];
+    } else if (norm.contains('taluka')) {
+      return ['District', 'State', 'National'];
+    }
+    return [];
+  }
+
   /// Validates proposed level or parent changes according to strict business hierarchy rules
   String? validateHierarchyChange({
     required Promoters promoter,
@@ -420,44 +448,25 @@ class PromoterProvider extends ChangeNotifier {
     }
 
     // 2. Level rules
-    final normNewLevel = newLevel.trim();
-    if (normNewLevel == 'National') {
+    final currentPromoterRank = getPromoterLevelRank(newLevel);
+    if (currentPromoterRank == 1) {
       if (newParentId != null && newParentId != 0) {
-        return 'National level promoters cannot report to any other promoter.';
+        return 'National-level promoter cannot have a parent promoter.';
       }
-    } else if (normNewLevel == 'State') {
-      if (newParentId != null && newParentId != 0) {
-        final parent = _promoters.firstWhere(
-          (p) => p.id == newParentId,
-          orElse: () => Promoters(level: 'National'),
-        );
-        if (parent.normalizedLevel != 'National') {
-          return 'State level promoters can only report to a National level promoter.';
+    } else if (newParentId != null && newParentId != 0) {
+      try {
+        final parent = _promoters.firstWhere((p) => p.id == newParentId);
+        final parentRank = getPromoterLevelRank(parent.level);
+        if (parentRank >= currentPromoterRank) {
+          return 'The selected parent must have a strictly higher hierarchy level than $newLevel.';
         }
-      }
-    } else if (normNewLevel == 'District') {
-      if (newParentId != null && newParentId != 0) {
-        final parent = _promoters.firstWhere(
-          (p) => p.id == newParentId,
-          orElse: () => Promoters(level: 'State'),
-        );
-        if (parent.normalizedLevel != 'State') {
-          return 'District level promoters can only report to a State level promoter.';
-        }
-      }
-    } else if (normNewLevel == 'Taluka') {
-      if (newParentId != null && newParentId != 0) {
-        final parent = _promoters.firstWhere(
-          (p) => p.id == newParentId,
-          orElse: () => Promoters(level: 'District'),
-        );
-        if (parent.normalizedLevel != 'District') {
-          return 'Taluka level promoters can only report to a District level promoter.';
-        }
+      } catch (_) {
+        // If parent is not in _promoters list (e.g. loaded via level API), validation is handled at selection
       }
     }
 
     // 3. Child impact check
+    final normNewLevel = newLevel.trim();
     final existingChildren = getChildPromoters(promoter);
     if (existingChildren.isNotEmpty) {
       if (normNewLevel == 'Taluka' && promoter.normalizedLevel != 'Taluka') {
@@ -560,120 +569,207 @@ class PromoterProvider extends ChangeNotifier {
   Future<bool> changePromoterLevel({
     required Promoters promoter,
     required String newLevel,
-    int? newParentId,
-    String? newParentName,
+    required Map<String, dynamic> locationData,
   }) async {
-    final error = validateHierarchyChange(
-      promoter: promoter,
-      newLevel: newLevel,
-      newParentId: newParentId,
-      newParentName: newParentName,
-    );
-    if (error != null) {
-      CustomToast.show(error);
+    final promoterId = promoter.id ?? promoter.userId?.id;
+    if (promoterId == null) {
+      CustomToast.show('Promoter ID is missing.');
       return false;
     }
 
     final prevLevel = promoter.normalizedLevel;
-    final saveRequest = SavePromoterRequest(
-      id: promoter.id,
-      promoterName: promoter.promoterName,
-      level: newLevel,
-      promoterId: newParentId ?? promoter.promoterId,
-      refferedBy: newParentName ?? promoter.refferedBy,
-      state: promoter.location?.state ?? promoter.userId?.location?.state,
-      district: promoter.location?.district ?? promoter.userId?.location?.district,
-      taluka: promoter.location?.taluka ?? promoter.userId?.location?.taluka,
-      city: promoter.location?.city ?? promoter.userId?.location?.city,
-      country: promoter.location?.country ?? promoter.userId?.location?.country ?? 'India',
-      pincode: promoter.pincode,
-      contactNumber: promoter.contactNumber ?? promoter.userId?.mobileNumber,
-      accountNumber: promoter.accountNumber,
-      bankName: promoter.bankName,
-      branchName: promoter.branchName,
-      ifscCode: promoter.ifscCode,
-      panCard: promoter.panCard,
-      aadharCard: promoter.aadharCard,
-      gst: promoter.gst,
-      website: promoter.website,
-      active: promoter.active ?? true,
-      role: promoter.role ?? 'PROMOTER',
-      userId: promoter.userId?.id,
-    );
+    if (newLevel.trim().toLowerCase() == prevLevel.trim().toLowerCase()) {
+      CustomToast.show('New level must be different from current level.');
+      return false;
+    }
 
-    final success = await updatePromoterDetails(saveRequest);
+    bool success = false;
+    final apiHelper = ApiHelper();
+
+    // Construct minimum payload: only level, newLevel, and location
+    final body = <String, dynamic>{
+      "level": prevLevel,
+      "newLevel": newLevel,
+      "location": locationData,
+    };
+
+    debugPrint("PUT /api/v2/promoters/$promoterId/level -> Payload: $body");
+
+    try {
+      var response = await apiHelper.putApiWithBody(
+        ApiConstant.updatePromoterLevelV2(promoterId),
+        body,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        success = true;
+      } else {
+        // Fallback alias: PUT /api/v2/Promoters/updateLevel/{promoterId}
+        var aliasResp = await apiHelper.putApiWithBody(
+          ApiConstant.updatePromoterLevelV2Alias(promoterId),
+          body,
+        );
+        if (aliasResp.statusCode == 200 || aliasResp.statusCode == 201) {
+          success = true;
+        } else {
+          try {
+            final Map<String, dynamic> errMap = json.decode(response.body);
+            final msg = errMap['message'];
+            if (msg != null && msg.toString().isNotEmpty) {
+              CustomToast.show(msg.toString());
+              return false;
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (e) {
+      debugPrint("V2 updatePromoterLevel error: $e");
+    }
+
     if (success) {
+      final index = _promoters.indexWhere((p) => p.id == promoter.id || p.id == promoterId);
+      if (index != -1) {
+        _promoters[index] = _promoters[index].copyWith(
+          level: newLevel,
+        );
+        applyAllFilters();
+      }
+      if (_promoterDashboardData?.promoter?.promoterId == promoterId) {
+        _promoterDashboardData!.promoter!.level = newLevel;
+      }
+      if (_promoterProfile?.id == promoterId) {
+        _promoterProfile = _promoterProfile!.copyWith(level: newLevel);
+      }
+      if (_selectedPromoter.id == promoterId) {
+        _selectedPromoter = _selectedPromoter.copyWith(level: newLevel);
+      }
+      CustomToast.show('Promoter level updated successfully');
       addAuditRecord(PromoterAuditEntry(
         id: 'aud-${DateTime.now().millisecondsSinceEpoch}',
-        promoterId: promoter.id ?? 0,
-        promoterName: promoter.promoterName ?? '',
+        promoterId: promoterId,
+        promoterName: promoter.promoterName ?? 'Promoter',
         actionType: 'CHANGE_LEVEL',
         description: 'Level changed from $prevLevel to $newLevel',
         previousValue: prevLevel,
         newValue: newLevel,
         performedBy: 'Admin',
       ));
+      await fetchPromoters();
+      notifyListeners();
+      return true;
+    } else {
+      CustomToast.show('Unable to update promoter level. Please try again.');
+      return false;
     }
-    return success;
   }
 
   Future<bool> assignParentPromoter({
     required Promoters promoter,
-    required int parentId,
-    required String parentName,
+    required int parentPromoterId,
+    required String parentReferralCode,
+    String? parentName,
+    String? parentLevel,
   }) async {
-    final error = validateHierarchyChange(
-      promoter: promoter,
-      newLevel: promoter.normalizedLevel,
-      newParentId: parentId,
-      newParentName: parentName,
-    );
-    if (error != null) {
-      CustomToast.show(error);
+    final promoterId = promoter.id ?? promoter.userId?.id;
+    if (promoterId == null) {
+      CustomToast.show('Promoter ID is missing.');
       return false;
     }
 
-    final prevParent = promoter.refferedBy ?? 'None';
-    final saveRequest = SavePromoterRequest(
-      id: promoter.id,
-      promoterName: promoter.promoterName,
-      level: promoter.level,
-      promoterId: parentId,
-      refferedBy: parentName,
-      state: promoter.location?.state ?? promoter.userId?.location?.state,
-      district: promoter.location?.district ?? promoter.userId?.location?.district,
-      taluka: promoter.location?.taluka ?? promoter.userId?.location?.taluka,
-      city: promoter.location?.city ?? promoter.userId?.location?.city,
-      country: promoter.location?.country ?? promoter.userId?.location?.country ?? 'India',
-      pincode: promoter.pincode,
-      contactNumber: promoter.contactNumber ?? promoter.userId?.mobileNumber,
-      accountNumber: promoter.accountNumber,
-      bankName: promoter.bankName,
-      branchName: promoter.branchName,
-      ifscCode: promoter.ifscCode,
-      panCard: promoter.panCard,
-      aadharCard: promoter.aadharCard,
-      gst: promoter.gst,
-      website: promoter.website,
-      active: promoter.active ?? true,
-      role: promoter.role ?? 'PROMOTER',
-      userId: promoter.userId?.id,
-    );
+    if (parentPromoterId == promoterId) {
+      CustomToast.show('A promoter cannot be assigned as their own parent.');
+      return false;
+    }
 
-    final success = await updatePromoterDetails(saveRequest);
+    final currentRank = getPromoterLevelRank(promoter.normalizedLevel);
+    if (parentLevel != null) {
+      final parentRank = getPromoterLevelRank(parentLevel);
+      if (parentRank >= currentRank) {
+        CustomToast.show('The selected parent must have a strictly higher hierarchy level.');
+        return false;
+      }
+    }
+
+    bool success = false;
+    final apiHelper = ApiHelper();
+
+    // Construct minimum payload: only parentReferralCode and parentPromoterId
+    final body = <String, dynamic>{
+      "parentReferralCode": parentReferralCode,
+      "parentPromoterId": parentPromoterId,
+    };
+
+    debugPrint("PUT /api/v2/Promoters/assignParent/$promoterId -> Payload: $body");
+
+    try {
+      var response = await apiHelper.putApiWithBody(
+        ApiConstant.assignParentPromoterV2(promoterId),
+        body,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        success = true;
+      } else {
+        // Fallback alias: PUT /api/v2/promoters/{promoterId}/parent
+        var aliasResp = await apiHelper.putApiWithBody(
+          ApiConstant.assignParentPromoterV2Alias(promoterId),
+          body,
+        );
+        if (aliasResp.statusCode == 200 || aliasResp.statusCode == 201) {
+          success = true;
+        } else {
+          try {
+            final Map<String, dynamic> errMap = json.decode(response.body);
+            final msg = errMap['message'];
+            if (msg != null && msg.toString().isNotEmpty) {
+              CustomToast.show(msg.toString());
+              return false;
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (e) {
+      debugPrint("V2 assignParentPromoter error: $e");
+    }
+
     if (success) {
+      final prevParent = promoter.refferedBy ?? 'None';
+      final index = _promoters.indexWhere((p) => p.id == promoter.id || p.id == promoterId);
+      if (index != -1) {
+        _promoters[index] = _promoters[index].copyWith(
+          promoterId: parentPromoterId,
+          refferedBy: parentName ?? parentReferralCode,
+        );
+        applyAllFilters();
+      }
+      if (_promoterProfile?.id == promoterId) {
+        _promoterProfile = _promoterProfile!.copyWith(
+          promoterId: parentPromoterId,
+          refferedBy: parentName ?? parentReferralCode,
+        );
+      }
+      if (_selectedPromoter.id == promoterId) {
+        _selectedPromoter = _selectedPromoter.copyWith(
+          promoterId: parentPromoterId,
+          refferedBy: parentName ?? parentReferralCode,
+        );
+      }
+      CustomToast.show('Parent promoter assigned successfully');
       addAuditRecord(PromoterAuditEntry(
         id: 'aud-${DateTime.now().millisecondsSinceEpoch}',
-        promoterId: promoter.id ?? 0,
-        promoterName: promoter.promoterName ?? '',
+        promoterId: promoterId,
+        promoterName: promoter.promoterName ?? 'Promoter',
         actionType: 'ASSIGN_PARENT',
-        description: 'Reassigned reporting promoter to $parentName',
+        description: 'Reassigned reporting parent to ${parentName ?? parentReferralCode}',
         previousValue: prevParent,
-        newValue: parentName,
+        newValue: parentName ?? parentReferralCode,
         performedBy: 'Admin',
       ));
+      await fetchPromoters();
+      notifyListeners();
+      return true;
+    } else {
+      CustomToast.show('Unable to assign parent promoter. Please try again.');
+      return false;
     }
-    return success;
   }
 
   Future<void> fetchPromoters() async {
@@ -730,10 +826,10 @@ class PromoterProvider extends ChangeNotifier {
           inactiveCount = inactive.toString();
           suspendedCount = suspended.toString();
 
-          // Aggregate estimated metrics for top cards
-          totalUsersAddedAggregate = _promoters.length * 12; // Base estimation
-          totalRevenueAggregate = _promoters.length * 45000.0;
-          pendingSettlementAggregate = _promoters.length * 450.0;
+          // Dynamic counts
+          totalUsersAddedAggregate = 0;
+          totalRevenueAggregate = 0.0;
+          pendingSettlementAggregate = 0.0;
 
           applyAllFilters();
         }
@@ -744,6 +840,78 @@ class PromoterProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Fetches promoters for a single hierarchy level dynamically from backend API
+  Future<List<Promoters>> fetchPromotersByLevel(String level) async {
+    final String apiUrl = ApiConstant.getPromotersByLevel(level);
+    final ApiHelper apiHelper = ApiHelper();
+
+    try {
+      final response = await apiHelper.getApi(apiUrl);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseBody = json.decode(response.body);
+        final getAllPromotersResponse =
+            GetAllPromoterResponse.fromJson(responseBody);
+        if (getAllPromotersResponse.success == true &&
+            getAllPromotersResponse.data?.promoters != null) {
+          return getAllPromotersResponse.data!.promoters!;
+        }
+      }
+    } catch (e) {
+      debugPrint("fetchPromotersByLevel($level) error: $e");
+      rethrow;
+    }
+    return [];
+  }
+
+  /// Fetches all eligible parent candidates for a given promoter across all allowed higher levels
+  Future<List<Promoters>> getEligibleParentPromoters(Promoters promoter) async {
+    final currentLevel = promoter.normalizedLevel;
+    final targetLevels = getEligibleParentLevels(currentLevel);
+    if (targetLevels.isEmpty) return [];
+
+    final currentRank = getPromoterLevelRank(currentLevel);
+    final promoterId = promoter.id ?? promoter.userId?.id;
+
+    final futures = targetLevels.map((lvl) => fetchPromotersByLevel(lvl)).toList();
+    final levelResults = await Future.wait(futures);
+
+    final combined = <Promoters>[];
+    final seenIds = <int>{};
+
+    for (final list in levelResults) {
+      for (final p in list) {
+        final id = p.id ?? p.userId?.id;
+        if (id == null) continue;
+        if (promoterId != null && id == promoterId) continue; // Exclude current promoter
+        if (seenIds.contains(id)) continue; // Deduplicate
+
+        // Active filter: Exclude inactive
+        if (p.active == false) continue;
+
+        // Status filter: Exclude rejected/inactive
+        final st = (p.status ?? '').trim().toUpperCase();
+        if (st.isNotEmpty && (st == 'REJECTED' || st == 'INACTIVE')) continue;
+
+        // Rank validation: parent must be strictly higher level
+        final parentRank = getPromoterLevelRank(p.normalizedLevel);
+        if (parentRank >= currentRank) continue;
+
+        seenIds.add(id);
+        combined.add(p);
+      }
+    }
+
+    // Sort by level rank ascending (e.g. National first, then State, then District), then promoter name
+    combined.sort((a, b) {
+      final rankA = getPromoterLevelRank(a.normalizedLevel);
+      final rankB = getPromoterLevelRank(b.normalizedLevel);
+      if (rankA != rankB) return rankA.compareTo(rankB);
+      return (a.promoterName ?? '').compareTo(b.promoterName ?? '');
+    });
+
+    return combined;
   }
 
   Future<void> fetchPromotersByStatus(String status) async {
@@ -879,6 +1047,204 @@ class PromoterProvider extends ChangeNotifier {
   List<User> get usersByPromoterCode => _usersByPromoterCode;
   String? refer, revenue, incentive;
 
+  // V2 API 1: Fetch Promoter Profile
+  Promoters? _promoterProfile;
+  Promoters? get promoterProfile => _promoterProfile;
+
+  Future<Promoters?> fetchPromoterProfile(dynamic promoterId) async {
+    if (promoterId == null) return null;
+    final apiHelper = ApiHelper();
+    try {
+      var response = await apiHelper.getApi(ApiConstant.promoterProfileV2(promoterId));
+      if (response.statusCode != 200) {
+        response = await apiHelper.getApi(ApiConstant.promoterProfileV2Alias(promoterId));
+      }
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> body = json.decode(response.body);
+        if (body['data'] != null) {
+          final data = body['data'];
+          if (data is Map<String, dynamic>) {
+            if (data['promoter'] != null) {
+              _promoterProfile = Promoters.fromJson(data['promoter'] is Map<String, dynamic> ? data['promoter'] : Map<String, dynamic>.from(data['promoter']));
+            } else if (data['user'] != null) {
+              final u = User.fromJson(data['user'] is Map<String, dynamic> ? data['user'] : Map<String, dynamic>.from(data['user']));
+              _promoterProfile = Promoters(
+                id: u.id,
+                promoterName: '${u.firstName ?? ""} ${u.lastName ?? ""}'.trim(),
+                userId: u,
+                active: u.active,
+                role: u.role?.isNotEmpty == true ? u.role!.first : 'PROMOTER',
+              );
+            } else {
+              _promoterProfile = Promoters.fromJson(data);
+            }
+            if (_promoterProfile != null) {
+              setSelectedPromoter(_promoterProfile!);
+            }
+            notifyListeners();
+            return _promoterProfile;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("fetchPromoterProfile error: $e");
+    }
+    return null;
+  }
+
+  // Hierarchy API: Fetch Promoter Hierarchy & Parent Information
+  PromoterHierarchyInfo? _currentHierarchyInfo;
+  PromoterHierarchyInfo? get currentHierarchyInfo => _currentHierarchyInfo;
+
+  Future<PromoterHierarchyInfo?> fetchPromoterHierarchy(dynamic promoterId, {Promoters? fallback}) async {
+    if (promoterId == null) return null;
+    final apiHelper = ApiHelper();
+    try {
+      // If fallback promoter's level is missing, enrich fallback with dashboard data or promoterProfile
+      Promoters? effectiveFallback = fallback;
+      final dashProm = _promoterDashboardData?.promoter;
+      final dashLevel = dashProm?.level ?? dashProm?.designation;
+      if (effectiveFallback != null && (effectiveFallback.level == null || effectiveFallback.level!.trim().isEmpty)) {
+        if (dashLevel != null && dashLevel.trim().isNotEmpty) {
+          effectiveFallback = effectiveFallback.copyWith(level: dashLevel);
+        } else if (_promoterProfile?.level != null && _promoterProfile!.level!.trim().isNotEmpty) {
+          effectiveFallback = effectiveFallback.copyWith(level: _promoterProfile!.level);
+        }
+      } else if (effectiveFallback == null && dashProm != null) {
+        effectiveFallback = Promoters(
+          id: dashProm.promoterId,
+          promoterName: dashProm.promoterName,
+          level: dashProm.level ?? dashProm.designation,
+          contactNumber: dashProm.mobileNumber,
+        );
+      }
+
+      final url = ApiConstant.promoterByPromoterId(promoterId);
+      final response = await apiHelper.getApi(url);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> body = json.decode(response.body);
+        var info = PromoterHierarchyInfo.fromJson(body, fallbackPromoter: effectiveFallback);
+
+        // Ensure info level preserves known promoter level if API response was missing level
+        if (effectiveFallback != null &&
+            effectiveFallback.normalizedLevel != 'Taluka' &&
+            (info.level == null || info.level!.trim().isEmpty || info.normalizedLevel == 'Taluka')) {
+          info = PromoterHierarchyInfo(
+            promoterId: info.promoterId ?? effectiveFallback.id ?? effectiveFallback.userId?.id,
+            promoterName: info.promoterName ?? effectiveFallback.promoterName,
+            level: effectiveFallback.level ?? effectiveFallback.normalizedLevel,
+            location: info.location ?? effectiveFallback.location ?? effectiveFallback.userId?.location,
+            country: info.country,
+            state: info.state,
+            district: info.district,
+            taluka: info.taluka,
+            hasParent: info.hasParent,
+            parentPromoterId: info.parentPromoterId,
+            parentName: info.parentName,
+            parentLevel: info.parentLevel,
+            parentReferralCode: info.parentReferralCode,
+          );
+        }
+
+        // If parent level is missing but parentPromoterId exists, look up from promoter list
+        if (info.hasParent && (info.parentLevel == null || info.parentLevel!.isEmpty)) {
+          if (info.parentPromoterId != null) {
+            try {
+              final parent = _promoters.firstWhere((p) => p.id == info.parentPromoterId);
+              info = PromoterHierarchyInfo(
+                promoterId: info.promoterId,
+                promoterName: info.promoterName,
+                level: info.level,
+                location: info.location,
+                country: info.country,
+                state: info.state,
+                district: info.district,
+                taluka: info.taluka,
+                hasParent: true,
+                parentPromoterId: info.parentPromoterId,
+                parentName: info.parentName ?? parent.promoterName,
+                parentLevel: parent.normalizedLevel,
+                parentReferralCode: info.parentReferralCode ?? parent.userId?.refferCode ?? parent.refferedBy,
+              );
+            } catch (_) {}
+          }
+        }
+
+        _currentHierarchyInfo = info;
+        notifyListeners();
+        return info;
+      }
+    } catch (e) {
+      debugPrint("fetchPromoterHierarchy error: $e");
+    }
+
+    // Fallback if API fails but we have fallback object
+    if (fallback != null) {
+      final parent = getParentPromoter(fallback);
+      final fallbackInfo = PromoterHierarchyInfo(
+        promoterId: fallback.id ?? fallback.userId?.id,
+        promoterName: fallback.promoterName,
+        level: fallback.level,
+        location: fallback.location ?? fallback.userId?.location,
+        country: fallback.location?.country ?? fallback.userId?.location?.country ?? 'India',
+        state: fallback.location?.state ?? fallback.userId?.location?.state ?? '',
+        district: fallback.location?.district ?? fallback.userId?.location?.district ?? '',
+        taluka: fallback.location?.taluka ?? fallback.userId?.location?.taluka ?? '',
+        hasParent: parent != null,
+        parentPromoterId: parent?.id ?? (fallback.promoterId is int ? fallback.promoterId : int.tryParse(fallback.promoterId?.toString() ?? '')),
+        parentName: parent?.promoterName ?? fallback.refferedBy,
+        parentLevel: parent?.normalizedLevel,
+        parentReferralCode: parent?.userId?.refferCode ?? parent?.refferedBy,
+      );
+      _currentHierarchyInfo = fallbackInfo;
+      return fallbackInfo;
+    }
+
+    return null;
+  }
+
+  // V2 API 2: Fetch Promoter Users
+  Future<void> fetchPromoterUsers(dynamic promoterId, {String? refCode, int page = 0, int size = 20, String? search}) async {
+    final apiHelper = ApiHelper();
+    bool loaded = false;
+    if (promoterId != null) {
+      try {
+        var response = await apiHelper.getApi(ApiConstant.promoterUsersV2(promoterId, page: page, size: size, search: search));
+        if (response.statusCode != 200) {
+          response = await apiHelper.getApi(ApiConstant.promoterUsersV2Alias(promoterId));
+        }
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> body = json.decode(response.body);
+          UsersByReferalCode usersByReferalCode = UsersByReferalCode.fromJson(body);
+          if (usersByReferalCode.data != null) {
+            _usersByPromoterCode.clear();
+            _usersByPromoterCode = usersByReferalCode.data!.users ?? [];
+            refer = (usersByReferalCode.data!.userCount ?? _usersByPromoterCode.length).toString();
+            incentive = (usersByReferalCode.data!.totalRevenueOfPromoter ?? 0).toString();
+            revenue = (usersByReferalCode.data!.totalViewRevenueEarned ?? 0).toString();
+            loaded = true;
+            notifyListeners();
+          } else if (body['data'] is List) {
+            _usersByPromoterCode.clear();
+            _usersByPromoterCode = (body['data'] as List)
+                .map((x) => User.fromJson(x is Map<String, dynamic> ? x : Map<String, dynamic>.from(x)))
+                .toList();
+            refer = _usersByPromoterCode.length.toString();
+            loaded = true;
+            notifyListeners();
+          }
+        }
+      } catch (e) {
+        debugPrint("fetchPromoterUsers V2 error: $e");
+      }
+    }
+
+    if (!loaded && refCode != null && refCode.isNotEmpty) {
+      await getUsersByUserReferalCode(refCode);
+    }
+  }
+
   Future<void> getUsersByUserReferalCode(String code) async {
     String myUrl = ApiConstant.getUsersByPromoterCode(code);
     ApiHelper apiHelper = ApiHelper();
@@ -903,8 +1269,48 @@ class PromoterProvider extends ChangeNotifier {
     }
   }
 
+  // V2 API 3: Fetch Child Promoters
   List<Promoters> _promotersByPromoterCode = [];
   List<Promoters> get promotersByPromoterCode => _promotersByPromoterCode;
+  String? totalPromoterUnderPromoter;
+
+  Future<void> fetchChildPromoters(dynamic promoterId, {String? refCode, int page = 0, int size = 20}) async {
+    final apiHelper = ApiHelper();
+    bool loaded = false;
+    if (promoterId != null) {
+      try {
+        var response = await apiHelper.getApi(ApiConstant.childPromotersV2(promoterId, page: page, size: size));
+        if (response.statusCode != 200) {
+          response = await apiHelper.getApi(ApiConstant.childPromotersV2Alias(promoterId));
+        }
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> body = json.decode(response.body);
+          PrometrsByReferalCode childResponse = PrometrsByReferalCode.fromJson(body);
+          if (childResponse.data != null && childResponse.data!.promoter != null) {
+            _promotersByPromoterCode.clear();
+            _promotersByPromoterCode = childResponse.data!.promoter!;
+            totalPromoterUnderPromoter = (childResponse.data!.totalPromoterUnderPromoter ?? _promotersByPromoterCode.length).toString();
+            loaded = true;
+            notifyListeners();
+          } else if (body['data'] is List) {
+            _promotersByPromoterCode.clear();
+            _promotersByPromoterCode = (body['data'] as List)
+                .map((x) => Promoters.fromJson(x is Map<String, dynamic> ? x : Map<String, dynamic>.from(x)))
+                .toList();
+            totalPromoterUnderPromoter = _promotersByPromoterCode.length.toString();
+            loaded = true;
+            notifyListeners();
+          }
+        }
+      } catch (e) {
+        debugPrint("fetchChildPromoters V2 error: $e");
+      }
+    }
+
+    if (!loaded && refCode != null && refCode.isNotEmpty) {
+      await getPromotersByUserReferalCode(refCode);
+    }
+  }
 
   Future<void> getPromotersByUserReferalCode(String code) async {
     String myUrl = ApiConstant.getPromotersByPromoterCode(code);
@@ -919,6 +1325,7 @@ class PromoterProvider extends ChangeNotifier {
             promotersByReferalCode.data != null) {
           _promotersByPromoterCode.clear();
           _promotersByPromoterCode = promotersByReferalCode.data!.promoter ?? [];
+          totalPromoterUnderPromoter = (promotersByReferalCode.data!.totalPromoterUnderPromoter ?? _promotersByPromoterCode.length).toString();
         }
         notifyListeners();
       }
@@ -927,28 +1334,91 @@ class PromoterProvider extends ChangeNotifier {
     }
   }
 
+  // V2 API 4: Fetch Onboard & Revenue Graph
   List<PromoterUserRevenueGraph> _promoterUserRevenueGraph = [];
   List<PromoterUserRevenueGraph> get promoterUserRevenueGraph =>
       _promoterUserRevenueGraph;
 
-  Future<void> getUsersAndRevenue(int id) async {
-    String myUrl =
-        ApiConstant.getUserAndRevenueGraph('2025-04-01', '2025-04-10', id);
-    ApiHelper apiHelper = ApiHelper();
+  Future<void> fetchPromoterOnboardAndRevenueGraph(dynamic promoterId, {String? startDate, String? endDate}) async {
+    if (promoterId == null) return;
+    final now = DateTime.now();
+    final end = endDate ?? DateFormat('yyyy-MM-dd').format(now);
+    final start = startDate ?? DateFormat('yyyy-MM-dd').format(now.subtract(const Duration(days: 30)));
+    final apiHelper = ApiHelper();
+
     try {
-      var response = await apiHelper.getApi(myUrl);
+      var response = await apiHelper.getApi(ApiConstant.promoterOnboardRevenueGraphV2(promoterId, startDate: start, endDate: end));
+      if (response.statusCode != 200) {
+        response = await apiHelper.getApi(ApiConstant.promoterOnboardRevenueGraphV2Alias(promoterId, startDate: start, endDate: end));
+      }
+      if (response.statusCode != 200) {
+        response = await apiHelper.getApi(ApiConstant.getUserAndRevenueGraph(start, end, promoterId));
+      }
       if (response.statusCode == 200) {
-        Map<String, dynamic> responseBody = json.decode(response.body);
-        UserOnboardAndRevenueGraph usersGraph =
-            UserOnboardAndRevenueGraph.fromJson(responseBody);
-        if (usersGraph.isSuccess == true && usersGraph.data != null) {
+        final Map<String, dynamic> body = json.decode(response.body);
+        UserOnboardAndRevenueGraph usersGraph = UserOnboardAndRevenueGraph.fromJson(body);
+        if (usersGraph.data != null) {
           _promoterUserRevenueGraph.clear();
           _promoterUserRevenueGraph = usersGraph.data!;
+          notifyListeners();
         }
-        notifyListeners();
       }
-    } catch (error) {
-      debugPrint("getUsersAndRevenue error: $error");
+    } catch (e) {
+      debugPrint("fetchPromoterOnboardAndRevenueGraph error: $e");
+    }
+  }
+
+  Future<void> getUsersAndRevenue(int id, {String? startDate, String? endDate}) async {
+    await fetchPromoterOnboardAndRevenueGraph(id, startDate: startDate, endDate: endDate);
+  }
+
+  // V2 API 5: User Movie Transactions
+  List<UserTransactionData> _promoterMovieTransactions = [];
+  List<UserTransactionData> get promoterMovieTransactions => _promoterMovieTransactions;
+
+  Future<void> fetchPromoterMovieTransactions(dynamic promoterId, {int page = 0, int size = 20, String? search}) async {
+    if (promoterId == null) return;
+    final apiHelper = ApiHelper();
+    try {
+      var response = await apiHelper.getApi(ApiConstant.promoterUserMovieTransactionsV2(promoterId, page: page, size: size, search: search));
+      if (response.statusCode != 200) {
+        response = await apiHelper.getApi(ApiConstant.promoterUserMovieTransactionsV2Alias(promoterId));
+      }
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> body = json.decode(response.body);
+        UserTransactionResponse txnResponse = UserTransactionResponse.fromJson(body);
+        if (txnResponse.data != null) {
+          _promoterMovieTransactions = txnResponse.data!;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint("fetchPromoterMovieTransactions error: $e");
+    }
+  }
+
+  // V2 API 8: Promoter Settlements
+  List<PromoterSettlementItem> _promoterSettlements = [];
+  List<PromoterSettlementItem> get promoterSettlements => _promoterSettlements;
+
+  Future<void> fetchPromoterSettlements(dynamic promoterId, {int page = 0, int size = 20}) async {
+    if (promoterId == null) return;
+    final apiHelper = ApiHelper();
+    try {
+      var response = await apiHelper.getApi(ApiConstant.promoterSettlementsV2(promoterId, page: page, size: size));
+      if (response.statusCode != 200) {
+        response = await apiHelper.getApi(ApiConstant.promoterSettlementsV2Alias(promoterId));
+      }
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> body = json.decode(response.body);
+        PromoterSettlementResponse settlementResponse = PromoterSettlementResponse.fromJson(body);
+        if (settlementResponse.data != null) {
+          _promoterSettlements = settlementResponse.data!;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint("fetchPromoterSettlements error: $e");
     }
   }
 
@@ -990,6 +1460,69 @@ class PromoterProvider extends ChangeNotifier {
       if (_activeReportingPromoterRequest == requestKey) {
         _activeReportingPromoterRequest = null;
       }
+    }
+  }
+
+  // V2 API: Fetch Promoter Dashboard
+  PromoterDashboardData? _promoterDashboardData;
+  bool _isPromoterDashboardLoading = false;
+  String? _promoterDashboardError;
+  dynamic _loadedPromoterDashboardId;
+
+  PromoterDashboardData? get promoterDashboardData => _promoterDashboardData;
+  bool get isPromoterDashboardLoading => _isPromoterDashboardLoading;
+  String? get promoterDashboardError => _promoterDashboardError;
+
+  Future<void> fetchPromoterDashboard(dynamic promoterId,
+      {bool forceRefresh = false}) async {
+    if (promoterId == null) return;
+    if (!forceRefresh &&
+        _loadedPromoterDashboardId == promoterId &&
+        !_isPromoterDashboardLoading &&
+        _promoterDashboardData != null) {
+      return;
+    }
+
+    _isPromoterDashboardLoading = true;
+    _promoterDashboardError = null;
+    if (_loadedPromoterDashboardId != promoterId) {
+      _promoterDashboardData = null;
+    }
+    notifyListeners();
+
+    final apiHelper = ApiHelper();
+    try {
+      var response = await apiHelper.getApi(ApiConstant.promoterDashboardV2(promoterId));
+      if (response.statusCode != 200) {
+        response = await apiHelper.getApi(ApiConstant.promoterDashboardV2Alias(promoterId));
+      }
+      if (response.statusCode != 200) {
+        response = await apiHelper.getApi(ApiConstant.promoterDashboardV2Alias2(promoterId));
+      }
+      if (response.statusCode != 200) {
+        response = await apiHelper.getApi(ApiConstant.promoterDashboardV2Alias3(promoterId));
+      }
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> body = json.decode(response.body);
+        final dashboardResp = PromoterDashboardResponse.fromJson(body);
+        if (dashboardResp.data != null) {
+          _promoterDashboardData = dashboardResp.data;
+          _loadedPromoterDashboardId = promoterId;
+          _isPromoterDashboardLoading = false;
+          _promoterDashboardError = null;
+          notifyListeners();
+          return;
+        }
+      }
+      _isPromoterDashboardLoading = false;
+      _promoterDashboardError =
+          "Failed to load promoter dashboard (Status: ${response.statusCode})";
+      notifyListeners();
+    } catch (e) {
+      debugPrint("fetchPromoterDashboard error: $e");
+      _isPromoterDashboardLoading = false;
+      _promoterDashboardError = "Error loading promoter dashboard: $e";
+      notifyListeners();
     }
   }
 }

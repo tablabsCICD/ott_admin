@@ -12,31 +12,37 @@ class ApiConstant {
       "${baseUrl}user/verifyOTP?mobileNumber=$mobileNumber&otp=$otp";
   static String resetPassword(mobileNumber, otp) =>
       "${baseUrl}user/resetPassword?mobileNumber=$mobileNumber&password=$otp";
-
   static String registration = '${baseUrl}user/RegisterUser';
 
   //DashboardPage
   static String dashboardCount = "${baseUrl}api/admin/dashboardCounts";
-  static String allRevenue(startDate, endDate) =>
-      "${baseUrl}api/admin/graph?startDate=$startDate&endDate=$endDate";
-  static String userCountGraph(startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/adminLineCharts/userCountChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
-  static String purchaseCountGraph(
-          startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/adminLineCharts/userContentPurchaseChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
+  static String allRevenue(startDate, endDate, {String type = "ALL"}) =>
+      "${baseUrl}api/admin/graph?startDate=$startDate&endDate=$endDate&type=$type";
+  static String userCountGraph(startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/adminLineCharts/userCountChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
+  static String purchaseCountGraph(startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/adminLineCharts/userContentPurchaseChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
   static String mediaHouseCountGraph(
-          startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/adminLineCharts/mediaHouseCountChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
-  static String promoterCountGraph(
-          startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/adminLineCharts/promoterCountChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
+          startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/adminLineCharts/mediaHouseCountChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
+  static String promoterCountGraph(startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/adminLineCharts/promoterCountChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
   static String approvedContentCountGraph(
-          startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/adminLineCharts/contentApprovalCountChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
+          startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/adminLineCharts/contentApprovalCountChart?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
   static String movieTypeChartData =
       "${baseUrl}api/adminLineCharts/totalContentChart";
+  static String movieTypeChartDataWithType({String type = "ALL"}) =>
+      "${baseUrl}api/adminLineCharts/totalContentChart?type=$type";
   static String revenueChartData =
       "${baseUrl}api/adminLineCharts/revenueByContentCategory";
+  static String revenueChartDataWithType({String type = "ALL"}) =>
+      "${baseUrl}api/adminLineCharts/revenueByContentCategory?type=$type";
   static String analyticsSummary = "${baseUrl}api/admin/analytics/summary";
   static String locationWiseAnalytics =
       "${baseUrl}ott/admin/analytics/location-wise";
@@ -72,7 +78,10 @@ class ApiConstant {
   static String editUserById = "${baseUrl}user/updateUserBy/%7Bid%7D";
   static String getUserById(id) => "${baseUrl}user/getUser/$id";
   static String deleteUserById(id) => "${baseUrl}user/deleteUserBy/$id";
-  static String searchUser(char) => "${baseUrl}user/search?search=$char";
+  static String searchUser(dynamic char) {
+    final query = Uri.encodeQueryComponent(char.toString().trim());
+    return "${baseUrl}userNew/search?search=$query";
+  }
   static String changeUserActiveStatus(mobileNumber) {
     final encodedMobileNumber = Uri.encodeComponent(mobileNumber.toString());
     return "${baseUrl}userNew/user/change-active-status/$encodedMobileNumber";
@@ -93,6 +102,90 @@ class ApiConstant {
       "${baseUrl}api/admin/mediaHouseDashboardApi?mediaHouseId=$id";
   static String getVideoByMediaHouseId(id) =>
       "${baseUrl}api/content/byMediaHouse?mediaHouseId=$id";
+
+  // Production House V2 APIs
+  static String mediaHouseProfileV2(dynamic id) =>
+      "${baseUrl}api/v2/mediaHouse/getMediaHouseById/$id";
+  static String mediaHouseProfileV2Alias(dynamic id) =>
+      "${baseUrl}api/MediaHouse/getById?id=$id";
+
+  static String videoByMediaHouseV2(dynamic mediaHouseId) =>
+      "${baseUrl}api/v2/video/getVideoByMediaHouseId/$mediaHouseId";
+  static String videoByMediaHouseV2Alias(dynamic mediaHouseId) =>
+      "${baseUrl}api/content/byMediaHouse?mediaHouseId=$mediaHouseId";
+
+  static String shortsByMediaHouseV2(dynamic mediaHouseId,
+      {int page = 0, int size = 10, String? keyword}) {
+    final query = keyword != null && keyword.trim().isNotEmpty
+        ? "&keyword=${Uri.encodeQueryComponent(keyword.trim())}"
+        : "";
+    return "${baseUrl}api/v2/shorts/by-media-house/$mediaHouseId?page=$page&size=$size$query";
+  }
+
+  static String shortsByMediaHouseV2Alias(dynamic mediaHouseId,
+      {int page = 0, int size = 10, String? keyword}) {
+    final query = keyword != null && keyword.trim().isNotEmpty
+        ? "&keyword=${Uri.encodeQueryComponent(keyword.trim())}"
+        : "";
+    return "${baseUrl}api/shortsMaster/by-mediahouse/$mediaHouseId?page=$page&size=$size$query";
+  }
+
+  static String mediaHouseDashboardCountV2(dynamic mediaHouseId) =>
+      "${baseUrl}api/v2/mediaHouse/getMediaHouseDashboardCountForAdmin/$mediaHouseId";
+  static String mediaHouseDashboardCountV2Alias(dynamic mediaHouseId) =>
+      "${baseUrl}api/admin/mediaHouseDashboardApi?mediaHouseId=$mediaHouseId";
+
+  static String mediaHouseRevenueGraphV2Clean(dynamic mediaId) =>
+      "${baseUrl}api/v2/mediaHouse/revenueGraphByMediaHouse?mediaId=$mediaId";
+
+  static String mediaHouseRevenueGraphV2(dynamic mediaId,
+      {String? startDate, String? endDate, String? type}) {
+    final query = <String, String>{
+      'mediaId': mediaId.toString(),
+    };
+    if (type != null && type.trim().isNotEmpty && type != "ALL") {
+      query['type'] = type.trim();
+    }
+    if (startDate != null && startDate.trim().isNotEmpty) {
+      query['startDate'] = startDate.trim();
+    }
+    if (endDate != null && endDate.trim().isNotEmpty) {
+      query['endDate'] = endDate.trim();
+    }
+    return Uri.parse("${baseUrl}api/v2/mediaHouse/revenueGraphByMediaHouse")
+        .replace(queryParameters: query)
+        .toString();
+  }
+
+  static String mediaHouseRevenueGraphV2Alias(dynamic mediaId,
+          {String? startDate, String? endDate, String type = "ALL"}) =>
+      "${baseUrl}api/mediaHouseLineCharts/top-revenue-content-by-media-house?mediaHouseId=$mediaId&startDate=${startDate ?? ''}&endDate=${endDate ?? ''}&isYear=false&isMonth=true&isWeek=false&type=$type";
+
+  static String mediaHouseTransactionsV2(dynamic mediaHouseId,
+      {String? startDate, String? endDate, int? page, int? size}) {
+    final query = <String, String>{};
+    if (startDate != null && startDate.trim().isNotEmpty) {
+      query['startDate'] = startDate.trim();
+    }
+    if (endDate != null && endDate.trim().isNotEmpty) {
+      query['endDate'] = endDate.trim();
+    }
+    if (page != null) query['page'] = page.toString();
+    if (size != null) query['size'] = size.toString();
+    final uri = Uri.parse(
+        "${baseUrl}api/v2/user/movie-transactions-by-media-house/$mediaHouseId");
+    return query.isEmpty
+        ? uri.toString()
+        : uri.replace(queryParameters: query).toString();
+  }
+
+  static String mediaHouseTransactionsV2Alias(dynamic mediaHouseId) =>
+      "${baseUrl}userNew/user/movie-transactions-by-media-house/$mediaHouseId";
+
+  static String mediaHouseWeeklySettlementsV2(dynamic userId) =>
+      "${baseUrl}api/v2/settlement/weeklySettelementDataForMediaHouse/$userId";
+  static String mediaHouseWeeklySettlementsV2Alias(dynamic userId) =>
+      "${baseUrl}api/settelment/mediaHouse/$userId";
 
   //ManageVideoPage
   static String saveVideo = '${baseUrl}api/addContent';
@@ -145,6 +238,133 @@ class ApiConstant {
       "${baseUrl}api/admin/userOnboardedGraphByPromoterId2?start_date=$startDate&end_date=$endEnd&promoterId=$promoterId";
   static String reportingPromoterApi(level, location) =>
       "${baseUrl}api/getByLevelAndLocation?level=$level&location=$location";
+  static String getPromotersByLevel(dynamic level) =>
+      "${baseUrl}api/getPromotersByLevel/$level";
+  static String promoterByPromoterId(dynamic promoterId) =>
+      "${baseUrl}api/promotersLineCharts/promoterByPromoterId?promoterId=$promoterId";
+
+  // Promoter V2 APIs
+  static String promoterDashboardV2(dynamic promoterId) =>
+      "${baseUrl}api/v2/promoters/$promoterId/dashboard";
+  static String promoterDashboardV2Alias(dynamic promoterId) =>
+      "${baseUrl}api/promoter/dashboard/$promoterId";
+  static String promoterDashboardV2Alias2(dynamic promoterId) =>
+      "${baseUrl}api/v2/promoter/dashboard?promoterId=$promoterId";
+  static String promoterDashboardV2Alias3(dynamic promoterId) =>
+      "${baseUrl}userNew/promoter/dashboard/$promoterId";
+  static String promoterProfileV2(dynamic promoterId) =>
+      "${baseUrl}api/v2/promoters/$promoterId/profile";
+  static String promoterProfileV2Alias(dynamic promoterId) =>
+      "${baseUrl}user/getUser/$promoterId";
+
+  static String promoterUsersV2(dynamic promoterId,
+      {int? page, int? size, String? search}) {
+    final query = <String, String>{};
+    if (page != null) query['page'] = page.toString();
+    if (size != null) query['size'] = size.toString();
+    if (search != null && search.trim().isNotEmpty) {
+      query['search'] = search.trim();
+    }
+    final uri = Uri.parse("${baseUrl}api/v2/promoters/$promoterId/users");
+    return query.isEmpty
+        ? uri.toString()
+        : uri.replace(queryParameters: query).toString();
+  }
+
+  static String promoterUsersV2Alias(dynamic promoterId) =>
+      "${baseUrl}api/v2/user/getUsersByPromoterId/$promoterId";
+
+  static String childPromotersV2(dynamic promoterId, {int? page, int? size}) {
+    final query = <String, String>{};
+    if (page != null) query['page'] = page.toString();
+    if (size != null) query['size'] = size.toString();
+    final uri =
+        Uri.parse("${baseUrl}api/v2/promoters/$promoterId/child-promoters");
+    return query.isEmpty
+        ? uri.toString()
+        : uri.replace(queryParameters: query).toString();
+  }
+
+  static String childPromotersV2Alias(dynamic promoterId) =>
+      "${baseUrl}api/v2/Promoters/getPromotersByPromoterId/$promoterId";
+
+  static String promoterOnboardRevenueGraphV2(dynamic promoterId,
+      {String? startDate, String? endDate, String? type}) {
+    final query = <String, String>{};
+    if (type != null && type.trim().isNotEmpty && type != "ALL") {
+      query['type'] = type.trim();
+    }
+    if (startDate != null && startDate.trim().isNotEmpty) {
+      query['start_date'] = startDate.trim();
+    }
+    if (endDate != null && endDate.trim().isNotEmpty) {
+      query['end_date'] = endDate.trim();
+    }
+    final uri = Uri.parse(
+        "${baseUrl}api/v2/promoters/$promoterId/onboard-revenue-graph");
+    return query.isEmpty
+        ? uri.toString()
+        : uri.replace(queryParameters: query).toString();
+  }
+
+  static String promoterOnboardRevenueGraphV2Alias(dynamic promoterId,
+      {String? startDate, String? endDate, String? type}) {
+    final query = <String, String>{'promoterId': promoterId.toString()};
+    if (type != null && type.trim().isNotEmpty && type != "ALL") {
+      query['type'] = type.trim();
+    }
+    if (startDate != null && startDate.trim().isNotEmpty) {
+      query['start_date'] = startDate.trim();
+    }
+    if (endDate != null && endDate.trim().isNotEmpty) {
+      query['end_date'] = endDate.trim();
+    }
+    return Uri.parse("${baseUrl}api/v2/user/getUserOnboardAndRevenueGraph")
+        .replace(queryParameters: query)
+        .toString();
+  }
+
+  static String promoterUserMovieTransactionsV2(dynamic promoterId,
+      {int? page, int? size, String? search}) {
+    final query = <String, String>{};
+    if (page != null) query['page'] = page.toString();
+    if (size != null) query['size'] = size.toString();
+    if (search != null && search.trim().isNotEmpty) {
+      query['search'] = search.trim();
+    }
+    final uri = Uri.parse(
+        "${baseUrl}api/v2/promoters/$promoterId/user-movie-transactions");
+    return query.isEmpty
+        ? uri.toString()
+        : uri.replace(queryParameters: query).toString();
+  }
+
+  static String promoterUserMovieTransactionsV2Alias(dynamic promoterId) =>
+      "${baseUrl}api/v2/user/user_movie_transaction?promoterId=$promoterId";
+
+  static String updatePromoterLevelV2(dynamic promoterId) =>
+      "${baseUrl}api/v2/promoters/$promoterId/level";
+  static String updatePromoterLevelV2Alias(dynamic promoterId) =>
+      "${baseUrl}api/v2/Promoters/updateLevel/$promoterId";
+
+  static String assignParentPromoterV2(dynamic promoterId) =>
+      "${baseUrl}api/v2/Promoters/assignParent/$promoterId";
+  static String assignParentPromoterV2Alias(dynamic promoterId) =>
+      "${baseUrl}api/v2/promoters/$promoterId/parent";
+
+  static String promoterSettlementsV2(dynamic promoterId,
+      {int? page, int? size}) {
+    final query = <String, String>{};
+    if (page != null) query['page'] = page.toString();
+    if (size != null) query['size'] = size.toString();
+    final uri = Uri.parse("${baseUrl}api/v2/promoters/$promoterId/settlements");
+    return query.isEmpty
+        ? uri.toString()
+        : uri.replace(queryParameters: query).toString();
+  }
+
+  static String promoterSettlementsV2Alias(dynamic promoterId) =>
+      "${baseUrl}api/v2/settlement/promoter?promoterId=$promoterId";
 
   //ManageAccessPage
   static String savePromoterAccess = "${baseUrl}AccessControl/save";
@@ -162,8 +382,9 @@ class ApiConstant {
       "${baseUrl}api/savePromotersPercentageRate";
 
   static String allPromoterRevenueGraph(
-          startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/settelmentGraph/AllPromotersRevenueForAdmin?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isYear";
+          startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/settelmentGraph/AllPromotersRevenueForAdmin?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
   static String topRevenueContentGraph(
     startDate,
     endDate,
@@ -176,14 +397,17 @@ class ApiConstant {
     String district = "",
     String taluka = "",
     String city = "",
+    String type = "ALL",
   }) {
+    final effectiveType = type != "ALL" ? type : contentType;
     final params = {
       "startDate": startDate.toString(),
       "endDate": endDate.toString(),
       "isYear": isYear.toString(),
       "isMonth": isMonth.toString(),
       "isWeek": isWeek.toString(),
-      "contentType": contentType,
+      "contentType": effectiveType,
+      "type": effectiveType,
       "country": country,
       "state": state,
       "district": district,
@@ -196,28 +420,35 @@ class ApiConstant {
   }
 
   static String contentRevenueGraph(
-          id, startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/contentList/graph?contentListId=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
+          id, startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/contentList/graph?contentListId=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
   static String topRevenueContentGraphForMediaHouse(
-          id, startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/mediaHouseLineCharts/top-revenue-content-by-media-house?mediaHouseId=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
+          id, startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/mediaHouseLineCharts/top-revenue-content-by-media-house?mediaHouseId=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
   static String topRatedContentGraph(
-          id, startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/mediaHouseLineCharts/top-rated-content-by-media-house?mediaHouseId=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
+          id, startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/mediaHouseLineCharts/top-rated-content-by-media-house?mediaHouseId=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
   static String transactionRevenueGraph(
-          startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/admin/graph?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
+          startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/admin/graph?startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
   static String releaseMovieCountGraphByMediaHouse(
-          id, startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/promotersLineCharts/releaseMovieCountChart?mediaHouseid=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
+          id, startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/promotersLineCharts/releaseMovieCountChart?mediaHouseid=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
   static String viewCountGraphByMediaHouse(
-          id, startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/viewCountChartByMediaHouseId?mediahouseId=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
+          id, startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/viewCountChartByMediaHouseId?mediahouseId=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
   static String revenueGraphByMediaHouse(
-          id, startDate, endDate, isYear, isMonth, isWeek) =>
-      "${baseUrl}api/mediaHouseLineCharts/top-revenue-content-by-media-house?mediaHouseId=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek";
-  static String reportAndDataForMediaHouse(id) =>
-      "${baseUrl}api/mediaHouseLineCharts/getDetailsOfMovieByMediaHouseId?mediaHouseId=$id";
+          id, startDate, endDate, isYear, isMonth, isWeek,
+          {String type = "ALL"}) =>
+      "${baseUrl}api/mediaHouseLineCharts/top-revenue-content-by-media-house?mediaHouseId=$id&startDate=$startDate&endDate=$endDate&isYear=$isYear&isMonth=$isMonth&isWeek=$isWeek&type=$type";
+  static String reportAndDataForMediaHouse(id, {String type = "ALL"}) =>
+      "${baseUrl}api/mediaHouseLineCharts/getDetailsOfMovieByMediaHouseId?mediaHouseId=$id&type=$type";
 
   static String weeklySettelementData = "${baseUrl}api/settelment/admin";
   static String manualSettlement =
@@ -455,7 +686,8 @@ class ApiConstant {
   // Cast APIs
   static String getCastByContentId(dynamic contentId) =>
       "${baseUrl}api/Cast/getByContentId?contentId=$contentId";
-  static String getCastByContentIdAndSeasonId(dynamic contentId, dynamic seasonId) =>
+  static String getCastByContentIdAndSeasonId(
+          dynamic contentId, dynamic seasonId) =>
       "${baseUrl}api/Cast/getByContentIdAndSeasonId?contentId=$contentId&seasonId=$seasonId";
   static String getCastByShortId(dynamic shortId) =>
       "${baseUrl}api/Cast/getByShortId?shortId=$shortId";

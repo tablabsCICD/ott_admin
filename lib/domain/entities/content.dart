@@ -266,8 +266,8 @@ class Content {
         isDownloadable: _asBool(json["isDownloadable"] ?? json["IsDownloadable"]),
         uploadDateTime: _asString(json["uploadDateTime"] ?? json["UploadDateTime"] ?? json["createdDate"] ?? json["createdAt"]),
         approvedDateTime: _asString(json["approvedDateTime"] ?? json["ApprovedDateTime"] ?? json["approvalDate"]),
-        mediaHouseName: _asString(json["mediaHouseName"] ?? json["MediaHouseName"] ?? json["productionHouse"] ?? json["ProductionHouse"] ?? json["productionHouseName"] ?? json["mediaHouse"]),
-        mediaHouseId: _asInt(json["mediaHouseId"] ?? json["MediaHouseId"] ?? json["productionHouseId"]),
+        mediaHouseName: _parseMediaHouseName(json["mediaHouseName"] ?? json["MediaHouseName"] ?? json["productionHouse"] ?? json["ProductionHouse"] ?? json["productionHouseName"] ?? json["mediaHouse"]),
+        mediaHouseId: _asInt(json["mediaHouseId"] ?? json["MediaHouseId"] ?? json["productionHouseId"] ?? (json["mediaHouse"] is Map ? json["mediaHouse"]["id"] : null)),
         ratingCount: _asInt(json["ratingCount"] ?? json["RatingCount"] ?? json["ratingsCount"] ?? json["reviewsCount"]),
         rentlDuration: _asString(json["rentlDuration"] ?? json["RentlDuration"] ?? json["rentalDuration"] ?? json["RentalDuration"]),
         adminIncentivePecentage: _asDouble(json["adminIncentivePecentage"] ?? json["AdminIncentivePecentage"] ?? json["adminPercentage"] ?? json["adminShare"]),
@@ -372,6 +372,47 @@ String? _asString(dynamic value) {
   if (value == null) return null;
   final str = value.toString().trim();
   return str.isEmpty ? null : str;
+}
+
+String? _parseMediaHouseName(dynamic value) {
+  if (value == null) return null;
+  if (value is Map) {
+    return _asString(value["mediaHouseName"] ??
+        value["MediaHouseName"] ??
+        value["name"] ??
+        value["Name"] ??
+        value["productionHouse"] ??
+        value["productionHouseName"] ??
+        value["title"]);
+  }
+  if (value is String) {
+    final str = value.trim();
+    if (str.isEmpty || str == 'null' || str == 'undefined') return null;
+    if (str.startsWith('{') && str.endsWith('}')) {
+      try {
+        final decoded = json.decode(str);
+        if (decoded is Map) {
+          return _asString(decoded["mediaHouseName"] ??
+              decoded["MediaHouseName"] ??
+              decoded["name"] ??
+              decoded["Name"] ??
+              decoded["productionHouse"] ??
+              decoded["productionHouseName"] ??
+              decoded["title"]);
+        }
+      } catch (_) {}
+      final match = RegExp(r'mediaHouseName:\s*([^,}]+)').firstMatch(str);
+      if (match != null && match.group(1)?.trim().isNotEmpty == true) {
+        return match.group(1)!.trim();
+      }
+      final nameMatch = RegExp(r'name:\s*([^,}]+)').firstMatch(str);
+      if (nameMatch != null && nameMatch.group(1)?.trim().isNotEmpty == true) {
+        return nameMatch.group(1)!.trim();
+      }
+    }
+    return str;
+  }
+  return value.toString().trim();
 }
 
 List<String> _asStringList(dynamic value) {

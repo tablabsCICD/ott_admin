@@ -27,7 +27,8 @@ class PromoterGraphProvider extends ChangeNotifier {
   Future.value([]); // Initialize with an empty future.
 
   Future<void> fetchAllPromoterRevenueGraph(
-      String startDate, String endDate, int selectedTimeRange) async {
+      String startDate, String endDate, int selectedTimeRange,
+      {String type = "ALL"}) async {
     _updateFilterFlags(selectedTimeRange);
 
     String apiUrl = ApiConstant.allPromoterRevenueGraph(
@@ -36,6 +37,7 @@ class PromoterGraphProvider extends ChangeNotifier {
       isYear,
       isMonth,
       isWeek,
+      type: type,
     );
 print(apiUrl);
     ApiHelper apiHelper = ApiHelper();

@@ -737,6 +737,7 @@ class VideoProvider extends ChangeNotifier {
     poster3Controller.clear();
     castController.clear();
     directorController.clear();
+    _previewImageBytes.clear();
     _selectedGeners.clear();
     _selectedLanguages.clear();
     _selectedAudioFormat.clear();
@@ -753,6 +754,7 @@ class VideoProvider extends ChangeNotifier {
   /// Loads an existing content record into the shared content form without
   /// changing create-flow defaults or uploaded file references.
   void populateContentForm(Content content) {
+    _previewImageBytes.clear();
     titleController.text = content.title ?? '';
     descriptionController.text = content.description ?? '';
     releaseDateController.text = content.releaseDate?.toString() ?? '';
@@ -1306,6 +1308,7 @@ class VideoProvider extends ChangeNotifier {
   html.File? _webFile; // For web platform
   String? _uploadedImageUrl;
   bool _isUploading = false;
+  final Map<String, Uint8List> _previewImageBytes = {};
 
   // Getters
   io.File? get imageFile => _imageFile;
@@ -1315,6 +1318,28 @@ class VideoProvider extends ChangeNotifier {
   String? get uploadedImageUrl => _uploadedImageUrl;
 
   bool get isUploading => _isUploading;
+
+  Uint8List? getPreviewBytes(String label) => _previewImageBytes[label];
+
+  void clearUploadedFile(String label) {
+    _previewImageBytes.remove(label);
+    if ("Trailer File" == label) {
+      trailerUrlController.clear();
+    } else if ("Movie File" == label) {
+      movieUrlController.clear();
+    } else if ("Teaser File" == label) {
+      teaserUrlController.clear();
+    } else if ("Censor Certificate" == label) {
+      censorCertificateController.clear();
+    } else if ("Poster 1" == label) {
+      poster1Controller.clear();
+    } else if ("Poster 2" == label) {
+      poster2Controller.clear();
+    } else if ("Poster 3" == label) {
+      poster3Controller.clear();
+    }
+    notifyListeners();
+  }
 
   // Pick Image
   Future<void> pickImage(String label) async {
@@ -1328,6 +1353,14 @@ class VideoProvider extends ChangeNotifier {
       uploadInput.onChange.listen((event) async {
         if (uploadInput.files != null && uploadInput.files!.isNotEmpty) {
           _webFile = uploadInput.files!.first;
+          try {
+            final reader = html.FileReader();
+            reader.readAsArrayBuffer(_webFile!);
+            await reader.onLoad.first;
+            final byteData = reader.result as List<int>;
+            _previewImageBytes[label] = Uint8List.fromList(byteData);
+            notifyListeners();
+          } catch (_) {}
           await uploadImage(label);
           notifyListeners();
         }
@@ -1338,9 +1371,12 @@ class VideoProvider extends ChangeNotifier {
       final pickedFile = await picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
         _imageFile = io.File(pickedFile.path);
-        if (kIsWeb && _webFile != null) {
-          await uploadImage(label);
-        }
+        try {
+          final bytes = await pickedFile.readAsBytes();
+          _previewImageBytes[label] = bytes;
+          notifyListeners();
+        } catch (_) {}
+        await uploadImage(label);
         notifyListeners();
       }
     }
@@ -1366,6 +1402,7 @@ class VideoProvider extends ChangeNotifier {
         await reader.onLoad.first;
 
         final byteData = reader.result as List<int>;
+        _previewImageBytes[lable] = Uint8List.fromList(byteData);
         final multipartFile = http.MultipartFile.fromBytes(
           'file',
           byteData,
@@ -1379,12 +1416,13 @@ class VideoProvider extends ChangeNotifier {
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
           _uploadedImageUrl = _parseUploadedUrl(responseBody);
-          print(lable);
           if (_uploadedImageUrl != null && _uploadedImageUrl!.isNotEmpty) {
             if ("Trailer File" == lable) {
               trailerUrlController.text = _uploadedImageUrl!;
             } else if ("Movie File" == lable) {
               movieUrlController.text = _uploadedImageUrl!;
+            } else if ("Teaser File" == lable) {
+              teaserUrlController.text = _uploadedImageUrl!;
             } else if ("Censor Certificate" == lable) {
               censorCertificateController.text = _uploadedImageUrl!;
             } else if ("Poster 1" == lable) {
@@ -1394,7 +1432,10 @@ class VideoProvider extends ChangeNotifier {
             } else {
               poster3Controller.text = _uploadedImageUrl!;
             }
+            CustomToast.show('$lable uploaded successfully', isSuccess: true);
           }
+        } else {
+          CustomToast.show('Failed to upload $lable', isSuccess: false);
         }
       } else if (!kIsWeb && _imageFile != null) {
         // Mobile/desktop upload logic
@@ -1403,7 +1444,6 @@ class VideoProvider extends ChangeNotifier {
         request.files.add(await http.MultipartFile.fromPath(
           'file',
           _imageFile!.path,
-          //  contentType: MediaType('image', 'jpeg'),
         ));
         final response =
             await AppLoadingController.trackFuture(() => request.send());
@@ -1411,33 +1451,31 @@ class VideoProvider extends ChangeNotifier {
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
           _uploadedImageUrl = _parseUploadedUrl(responseBody);
-          print(lable);
           if (_uploadedImageUrl != null && _uploadedImageUrl!.isNotEmpty) {
             if ("Trailer File" == lable) {
               trailerUrlController.text = _uploadedImageUrl!;
-              print(lable + trailerUrlController.text);
             } else if ("Movie File" == lable) {
               movieUrlController.text = _uploadedImageUrl!;
-              print(lable + movieUrlController.text);
+            } else if ("Teaser File" == lable) {
+              teaserUrlController.text = _uploadedImageUrl!;
             } else if ("Censor Certificate" == lable) {
               censorCertificateController.text = _uploadedImageUrl!;
-              print(lable + censorCertificateController.text);
             } else if ("Poster 1" == lable) {
               poster1Controller.text = _uploadedImageUrl!;
-              print(lable + poster1Controller.text);
             } else if ("Poster 2" == lable) {
               poster2Controller.text = _uploadedImageUrl!;
-              print(lable + poster2Controller.text);
             } else {
               poster3Controller.text = _uploadedImageUrl!;
-              print(lable + selectedImage.toString());
             }
+            CustomToast.show('$lable uploaded successfully', isSuccess: true);
           }
-          notifyListeners();
+        } else {
+          CustomToast.show('Failed to upload $lable', isSuccess: false);
         }
       }
     } catch (e) {
-      print('Error uploading image: $e');
+      debugPrint('Error uploading image: $e');
+      CustomToast.show('Failed to upload $lable', isSuccess: false);
     } finally {
       _isUploading = false;
       notifyListeners();
@@ -1536,7 +1574,8 @@ class VideoProvider extends ChangeNotifier {
   }
 
   Future<void> contentRevenueGraph(int selectedTimeRange, int id,
-      String startDateString, String endDateString) async {
+      String startDateString, String endDateString,
+      {String type = "ALL"}) async {
     if (selectedTimeRange == 0) {
       isWeek = true;
       isMonth = false;
@@ -1561,6 +1600,7 @@ class VideoProvider extends ChangeNotifier {
       isYear,
       isMonth,
       isWeek,
+      type: type,
     );
     ApiHelper apiHelper = ApiHelper();
 
