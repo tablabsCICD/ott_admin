@@ -770,7 +770,7 @@ class TicketProvider extends ChangeNotifier {
 
         final byteData = reader.result as List<int>;
         final multipartFile = http.MultipartFile.fromBytes(
-          'profilePicture',
+          'file',
           byteData,
           filename: _webFile!.name,
         );
@@ -780,23 +780,27 @@ class TicketProvider extends ChangeNotifier {
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
-          _uploadedImageUrl = jsonDecode(responseBody);
-          imgUrl = _uploadedImageUrl!;
+          _uploadedImageUrl = _parseUploadedUrl(responseBody);
+          if (_uploadedImageUrl != null) {
+            imgUrl = _uploadedImageUrl!;
+          }
           notifyListeners();
         }
       } else if (!kIsWeb && _imageFile != null) {
         final request = http.MultipartRequest('POST', url);
         request.headers.addAll(await ApiHelper().multipartHeaders());
         request.files.add(await http.MultipartFile.fromPath(
-          'profilePicture',
+          'file',
           _imageFile!.path,
         ));
         final response = await AppLoadingController.trackFuture(() => request.send());
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
-          _uploadedImageUrl = jsonDecode(responseBody);
-          imgUrl = _uploadedImageUrl!;
+          _uploadedImageUrl = _parseUploadedUrl(responseBody);
+          if (_uploadedImageUrl != null) {
+            imgUrl = _uploadedImageUrl!;
+          }
           notifyListeners();
         }
       }
@@ -806,6 +810,29 @@ class TicketProvider extends ChangeNotifier {
       _isUploading = false;
       notifyListeners();
     }
+  }
+
+  String? _parseUploadedUrl(String responseBody) {
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is String) return decoded;
+      if (decoded is Map<String, dynamic>) {
+        final data = decoded['data'];
+        if (data is Map<String, dynamic>) {
+          return data['fileUrl']?.toString() ??
+              data['url']?.toString() ??
+              data['thumbnailUrl']?.toString();
+        }
+        if (data is String) return data;
+        return decoded['fileUrl']?.toString() ??
+            decoded['url']?.toString() ??
+            decoded['thumbnailUrl']?.toString() ??
+            decoded['message']?.toString();
+      }
+    } catch (e) {
+      debugPrint('Error parsing uploaded URL: $e');
+    }
+    return responseBody;
   }
 
   Future<Map<String, Object>> deleteQuery(TicketRaised ticketList) async {

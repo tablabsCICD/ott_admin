@@ -1,7 +1,7 @@
 class ImageConstant {
   static String logo = "assets/images/logo.jpeg";
-  static String fullScreenLogo = "assets/images/fullScreenLogo.png";
-  static String webFullScreenLogo = 'assets/images/webFullScreenLogo.png';
+  static String fullScreenLogo = "assets/images/fullScreenLogoNew.png";
+  static String webFullScreenLogo = 'assets/images/webFullScreenLogoNew.png';
 
   static String profile = "assets/images/logo.png";
   static String upload = "assets/images/upload.png";

@@ -162,7 +162,18 @@ class SaveContentRequest {
     "isFeatured": isFeatured,
     "languageList": languageList == null
         ? []
-        : List<String>.from(languageList!.map((lang) => lang.trim()).where((lang) => lang.isNotEmpty)),
+        : languageList!
+            .map((langStr) {
+              final lang = langStr.trim();
+              if (lang.isEmpty) return null;
+              final url = languageAudioUrls?[lang]?.trim();
+              return {
+                "language": lang,
+                if (url != null && url.isNotEmpty) "fileUrl": url,
+              };
+            })
+            .whereType<Map<String, dynamic>>()
+            .toList(),
     "mediaHouseId": mediaHouseId,
     if (mediaHouseName != null && mediaHouseName!.isNotEmpty) "mediaHouseName": mediaHouseName,
     "posterUrlList": posterUrlList == null ? [] : List<dynamic>.from(posterUrlList!.map((x) => x)),

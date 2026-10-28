@@ -644,19 +644,19 @@ class VideoProvider extends ChangeNotifier {
     saveContent.isFeatured = isFeatured;
     saveContent.languageList = selectedLanguages;
     saveContent.mediaHouseId = mediaHouse.id;
-    saveContent.price = double.parse(priceController.text);
+    saveContent.price = double.tryParse(priceController.text.trim()) ?? 0.0;
     saveContent.posterUrlList = [
       poster1Controller.text,
       poster2Controller.text,
       poster3Controller.text,
-    ];
+    ].where((url) => url.isNotEmpty).toList();
     saveContent.ratings = 0;
     saveContent.ratingCount = 0;
     saveContent.reason = '';
     saveContent.releaseDate = releaseDateController.text;
     saveContent.rentlDuration = rentalDurationController.text;
     saveContent.totalRevenue = 0;
-    saveContent.runtime = 0;
+    saveContent.runtime = double.tryParse(runTimeController.text.trim()) ?? 0.0;
     saveContent.subtitleLanguageList = selectedSubLanguages;
     saveContent.subtitleLanguageUrls = _subtitleLanguageUrls;
     saveContent.sensorCertificate = censorCertificateController.text;
@@ -674,24 +674,30 @@ class VideoProvider extends ChangeNotifier {
 
       var response = await apiHelper.postApiWithBody(apiUrl, payload);
 
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         final responseBody = json.decode(response.body);
         final addVideoResponse = AddVideoResponse.fromJson(responseBody);
 
-        if (addVideoResponse.isSuccess == true) {
-          CustomToast.show("Video added successfully");
+        if (addVideoResponse.isSuccess == true && addVideoResponse.data != null) {
+          CustomToast.show("Video added successfully", isSuccess: true);
           fetchMoviesByStatusAndMediaHouseId("All", mediaHouse.id!);
           notifyListeners();
-          Navigator.of(context).pop();
+          if (context.mounted) Navigator.of(context).pop();
           return addVideoResponse.data; // Return the content object
         } else {
-          debugPrint("Empty data: Record not added");
+          final msg = addVideoResponse.message ?? "Failed to add video. Record not saved.";
+          debugPrint("Add content failed: $msg");
+          CustomToast.show(msg, isSuccess: false);
         }
       } else {
         debugPrint("Failed: ${response.statusCode}, ${response.body}");
+        final responseBody = _decodeResponseMap(response.body);
+        final msg = _extractApiMessage(responseBody) ?? "Failed to upload content (${response.statusCode})";
+        CustomToast.show(msg, isSuccess: false);
       }
     } catch (error) {
       debugPrint("Error: $error");
+      CustomToast.show("Error adding content: $error", isSuccess: false);
     }
     return null; // Return null if the upload fails
   }
@@ -820,7 +826,7 @@ class VideoProvider extends ChangeNotifier {
             await reader.onLoad.first;
             final byteData = reader.result as List<int>;
             request.files.add(http.MultipartFile.fromBytes(
-              'profilePicture',
+              'file',
               byteData,
               filename: file.name,
             ));
@@ -828,9 +834,9 @@ class VideoProvider extends ChangeNotifier {
                 await AppLoadingController.trackFuture(() => request.send());
             if (response.statusCode == 200) {
               final body = await response.stream.bytesToString();
-              final uploadedUrl = jsonDecode(body);
-              if (uploadedUrl != null) {
-                _subtitleLanguageUrls[language] = uploadedUrl.toString();
+              final uploadedUrl = _parseUploadedUrl(body);
+              if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+                _subtitleLanguageUrls[language] = uploadedUrl;
                 notifyListeners();
                 CustomToast.show('$language subtitle uploaded successfully',
                     isSuccess: true);
@@ -856,14 +862,14 @@ class VideoProvider extends ChangeNotifier {
           final request = http.MultipartRequest('POST', url);
           request.headers.addAll(await ApiHelper().multipartHeaders());
           request.files.add(
-              await http.MultipartFile.fromPath('profilePicture', picked.path));
+              await http.MultipartFile.fromPath('file', picked.path));
           final response =
               await AppLoadingController.trackFuture(() => request.send());
           if (response.statusCode == 200) {
             final body = await response.stream.bytesToString();
-            final uploadedUrl = jsonDecode(body);
-            if (uploadedUrl != null) {
-              _subtitleLanguageUrls[language] = uploadedUrl.toString();
+            final uploadedUrl = _parseUploadedUrl(body);
+            if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+              _subtitleLanguageUrls[language] = uploadedUrl;
               notifyListeners();
               CustomToast.show('$language subtitle uploaded successfully',
                   isSuccess: true);
@@ -900,7 +906,7 @@ class VideoProvider extends ChangeNotifier {
             await reader.onLoad.first;
             final byteData = reader.result as List<int>;
             request.files.add(http.MultipartFile.fromBytes(
-              'profilePicture',
+              'file',
               byteData,
               filename: file.name,
             ));
@@ -908,9 +914,9 @@ class VideoProvider extends ChangeNotifier {
                 await AppLoadingController.trackFuture(() => request.send());
             if (response.statusCode == 200) {
               final body = await response.stream.bytesToString();
-              final uploadedUrl = jsonDecode(body);
-              if (uploadedUrl != null) {
-                _languageAudioUrls[language] = uploadedUrl.toString();
+              final uploadedUrl = _parseUploadedUrl(body);
+              if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+                _languageAudioUrls[language] = uploadedUrl;
                 notifyListeners();
                 CustomToast.show('$language audio track uploaded successfully',
                     isSuccess: true);
@@ -936,14 +942,14 @@ class VideoProvider extends ChangeNotifier {
           final request = http.MultipartRequest('POST', url);
           request.headers.addAll(await ApiHelper().multipartHeaders());
           request.files.add(
-              await http.MultipartFile.fromPath('profilePicture', picked.path));
+              await http.MultipartFile.fromPath('file', picked.path));
           final response =
               await AppLoadingController.trackFuture(() => request.send());
           if (response.statusCode == 200) {
             final body = await response.stream.bytesToString();
-            final uploadedUrl = jsonDecode(body);
-            if (uploadedUrl != null) {
-              _languageAudioUrls[language] = uploadedUrl.toString();
+            final uploadedUrl = _parseUploadedUrl(body);
+            if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+              _languageAudioUrls[language] = uploadedUrl;
               notifyListeners();
               CustomToast.show('$language audio track uploaded successfully',
                   isSuccess: true);
@@ -1361,7 +1367,7 @@ class VideoProvider extends ChangeNotifier {
 
         final byteData = reader.result as List<int>;
         final multipartFile = http.MultipartFile.fromBytes(
-          'profilePicture',
+          'file',
           byteData,
           filename: _webFile!.name,
         );
@@ -1372,20 +1378,22 @@ class VideoProvider extends ChangeNotifier {
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
-          _uploadedImageUrl = jsonDecode(responseBody);
+          _uploadedImageUrl = _parseUploadedUrl(responseBody);
           print(lable);
-          if ("Trailer File" == lable) {
-            trailerUrlController.text = _uploadedImageUrl!;
-          } else if ("Movie File" == lable) {
-            movieUrlController.text = _uploadedImageUrl!;
-          } else if ("Censor Certificate" == lable) {
-            censorCertificateController.text = _uploadedImageUrl!;
-          } else if ("Poster 1" == lable) {
-            poster1Controller.text = _uploadedImageUrl!;
-          } else if ("Poster 2" == lable) {
-            poster2Controller.text = _uploadedImageUrl!;
-          } else {
-            poster3Controller.text = _uploadedImageUrl!;
+          if (_uploadedImageUrl != null && _uploadedImageUrl!.isNotEmpty) {
+            if ("Trailer File" == lable) {
+              trailerUrlController.text = _uploadedImageUrl!;
+            } else if ("Movie File" == lable) {
+              movieUrlController.text = _uploadedImageUrl!;
+            } else if ("Censor Certificate" == lable) {
+              censorCertificateController.text = _uploadedImageUrl!;
+            } else if ("Poster 1" == lable) {
+              poster1Controller.text = _uploadedImageUrl!;
+            } else if ("Poster 2" == lable) {
+              poster2Controller.text = _uploadedImageUrl!;
+            } else {
+              poster3Controller.text = _uploadedImageUrl!;
+            }
           }
         }
       } else if (!kIsWeb && _imageFile != null) {
@@ -1393,7 +1401,7 @@ class VideoProvider extends ChangeNotifier {
         final request = http.MultipartRequest('POST', url);
         request.headers.addAll(await ApiHelper().multipartHeaders());
         request.files.add(await http.MultipartFile.fromPath(
-          'profilePicture',
+          'file',
           _imageFile!.path,
           //  contentType: MediaType('image', 'jpeg'),
         ));
@@ -1402,26 +1410,28 @@ class VideoProvider extends ChangeNotifier {
 
         if (response.statusCode == 200) {
           final responseBody = await response.stream.bytesToString();
-          _uploadedImageUrl = jsonDecode(responseBody);
+          _uploadedImageUrl = _parseUploadedUrl(responseBody);
           print(lable);
-          if ("Trailer File" == lable) {
-            trailerUrlController.text = _uploadedImageUrl!;
-            print(lable + trailerUrlController.text);
-          } else if ("Movie File" == lable) {
-            movieUrlController.text = _uploadedImageUrl!;
-            print(lable + movieUrlController.text);
-          } else if ("Censor Certificate" == lable) {
-            censorCertificateController.text = _uploadedImageUrl!;
-            print(lable + censorCertificateController.text);
-          } else if ("Poster 1" == lable) {
-            poster1Controller.text = _uploadedImageUrl!;
-            print(lable + poster1Controller.text);
-          } else if ("Poster 2" == lable) {
-            poster2Controller.text = _uploadedImageUrl!;
-            print(lable + poster2Controller.text);
-          } else {
-            poster3Controller.text = _uploadedImageUrl!;
-            print(lable + selectedImage.toString());
+          if (_uploadedImageUrl != null && _uploadedImageUrl!.isNotEmpty) {
+            if ("Trailer File" == lable) {
+              trailerUrlController.text = _uploadedImageUrl!;
+              print(lable + trailerUrlController.text);
+            } else if ("Movie File" == lable) {
+              movieUrlController.text = _uploadedImageUrl!;
+              print(lable + movieUrlController.text);
+            } else if ("Censor Certificate" == lable) {
+              censorCertificateController.text = _uploadedImageUrl!;
+              print(lable + censorCertificateController.text);
+            } else if ("Poster 1" == lable) {
+              poster1Controller.text = _uploadedImageUrl!;
+              print(lable + poster1Controller.text);
+            } else if ("Poster 2" == lable) {
+              poster2Controller.text = _uploadedImageUrl!;
+              print(lable + poster2Controller.text);
+            } else {
+              poster3Controller.text = _uploadedImageUrl!;
+              print(lable + selectedImage.toString());
+            }
           }
           notifyListeners();
         }
@@ -1432,6 +1442,29 @@ class VideoProvider extends ChangeNotifier {
       _isUploading = false;
       notifyListeners();
     }
+  }
+
+  String? _parseUploadedUrl(String responseBody) {
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is String) return decoded;
+      if (decoded is Map<String, dynamic>) {
+        final data = decoded['data'];
+        if (data is Map<String, dynamic>) {
+          return data['fileUrl']?.toString() ??
+              data['url']?.toString() ??
+              data['thumbnailUrl']?.toString();
+        }
+        if (data is String) return data;
+        return decoded['fileUrl']?.toString() ??
+            decoded['url']?.toString() ??
+            decoded['thumbnailUrl']?.toString() ??
+            decoded['message']?.toString();
+      }
+    } catch (e) {
+      debugPrint('Error parsing uploaded URL: $e');
+    }
+    return responseBody;
   }
 
   List<MediaHouse> _mediaHouseList = [];

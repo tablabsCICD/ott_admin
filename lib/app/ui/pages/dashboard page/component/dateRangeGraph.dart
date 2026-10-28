@@ -1,19 +1,17 @@
 import 'package:admin_ott/app/provider/themeProvider.dart';
-import 'package:admin_ott/app/ui/pages/manage%20promoter%20page/components/promoter_details_page.dart';
 import 'package:admin_ott/data/repositories/dateWiseRevenue.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-// ignore: must_be_immutable
 class DateRangeGraphWidget extends StatefulWidget {
-  String title;
-  DateRangeGraphWidget({
+  final String title;
+  const DateRangeGraphWidget({
     super.key,
     required this.title,
   });
   @override
-  _DateRangeGraphWidgetState createState() => _DateRangeGraphWidgetState();
+  State<DateRangeGraphWidget> createState() => _DateRangeGraphWidgetState();
 }
 
 class _DateRangeGraphWidgetState extends State<DateRangeGraphWidget> {
@@ -83,7 +81,7 @@ class _DateRangeGraphWidgetState extends State<DateRangeGraphWidget> {
                 ),
               ],
             ),
-            SizedBox(
+            const SizedBox(
               height: 16.0,
             ),
             Row(
@@ -95,7 +93,7 @@ class _DateRangeGraphWidgetState extends State<DateRangeGraphWidget> {
                     decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
-                          color: selectedThemeData.canvasColor.withOpacity(0.2),
+                          color: selectedThemeData.canvasColor.withValues(alpha: 0.2),
                         )),
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
@@ -110,7 +108,7 @@ class _DateRangeGraphWidgetState extends State<DateRangeGraphWidget> {
                     ),
                   ),
                 ),
-                Icon(
+                const Icon(
                   Icons.keyboard_double_arrow_right_sharp,
                 ),
                 GestureDetector(
@@ -119,7 +117,7 @@ class _DateRangeGraphWidgetState extends State<DateRangeGraphWidget> {
                     decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
-                          color: selectedThemeData.canvasColor.withOpacity(0.2),
+                          color: selectedThemeData.canvasColor.withValues(alpha: 0.2),
                         )),
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
@@ -150,7 +148,7 @@ class _DateRangeGraphWidgetState extends State<DateRangeGraphWidget> {
                           ),
                         ),
                       )
-                    : SizedBox(),
+                    : const SizedBox(),
                 _startDate != null && _endDate != null
                     ? ElevatedButton(
                         style: ElevatedButton.styleFrom(
@@ -169,14 +167,14 @@ class _DateRangeGraphWidgetState extends State<DateRangeGraphWidget> {
                             );
                           }
                         },
-                        child: Text(
+                        child: const Text(
                           'Show Graph',
                           style: TextStyle(
                             color: Colors.white,
                           ),
                         ),
                       )
-                    : SizedBox(),
+                    : const SizedBox(),
               ],
             ),
           ],
@@ -191,10 +189,14 @@ class DateRangeGraphPage extends StatefulWidget {
   final DateTime startDate;
   final DateTime endDate;
 
-  DateRangeGraphPage({required this.startDate, required this.endDate});
+  const DateRangeGraphPage({
+    super.key,
+    required this.startDate,
+    required this.endDate,
+  });
 
   @override
-  _DateRangeGraphPageState createState() => _DateRangeGraphPageState();
+  State<DateRangeGraphPage> createState() => _DateRangeGraphPageState();
 }
 
 class _DateRangeGraphPageState extends State<DateRangeGraphPage> {
@@ -208,7 +210,9 @@ class _DateRangeGraphPageState extends State<DateRangeGraphPage> {
     super.initState();
     chartData = dateWiseRevenue
         .map((entry) => ChartData(
-            entry['date'], entry['revenue'], entry['users_onboarded']))
+            entry['date'].toString(),
+            (entry['revenue'] as num).toDouble(),
+            (entry['users_onboarded'] as num).toInt()))
         .toList();
     filteredData = getFilteredDataByRange(widget.startDate, widget.endDate);
   }
@@ -236,26 +240,6 @@ class _DateRangeGraphPageState extends State<DateRangeGraphPage> {
       appBar: AppBar(
         title: const Text("Analysis"),
         backgroundColor: selectedThemeData.scaffoldBackgroundColor,
-        // actions: [
-        //   DropdownButton<String>(
-        //     value: selectedGraphType,
-        //     dropdownColor: Colors.black,
-        //     icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-        //     underline: const SizedBox(),
-        //     items: ['Revenue', 'Users Onboarded'].map((String value) {
-        //       return DropdownMenuItem<String>(
-        //         value: value,
-        //         child: Text(
-        //           value,
-        //           style: const TextStyle(color: Colors.white),
-        //         ),
-        //       );
-        //     }).toList(),
-        //     onChanged: (String? newValue) {
-        //       if (newValue != null) switchGraphType(newValue);
-        //     },
-        //   ),
-        // ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -263,7 +247,7 @@ class _DateRangeGraphPageState extends State<DateRangeGraphPage> {
           children: [
             Expanded(
               child: SfCartesianChart(
-                primaryXAxis: CategoryAxis(),
+                primaryXAxis: const CategoryAxis(),
                 title: ChartTitle(
                     text: selectedGraphType == 'Revenue'
                         ? 'Revenue Analysis'
@@ -288,4 +272,12 @@ class _DateRangeGraphPageState extends State<DateRangeGraphPage> {
       ),
     );
   }
+}
+
+class ChartData {
+  final String date;
+  final double revenue;
+  final int usersOnboarded;
+
+  ChartData(this.date, this.revenue, this.usersOnboarded);
 }

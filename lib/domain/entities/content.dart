@@ -287,7 +287,17 @@ class Content {
         "price": price,
         "languageList": languageList == null
             ? []
-            : List<String>.from(languageList!.map((lang) => lang.trim()).where((lang) => lang.isNotEmpty)),
+            : languageList!
+                .map((lang) => lang.trim())
+                .where((lang) => lang.isNotEmpty)
+                .map((lang) {
+                  final url = languageAudioUrls?[lang]?.trim();
+                  return {
+                    "language": lang,
+                    if (url != null && url.isNotEmpty) "fileUrl": url,
+                  };
+                })
+                .toList(),
         "castList":
             castList == null ? [] : List<dynamic>.from(castList!.map((x) => x)),
         "genreList": genreList == null

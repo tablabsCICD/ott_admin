@@ -1,10 +1,8 @@
 import 'dart:async';
-
 import 'package:admin_ott/app/provider/promoterProvider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
 import 'package:admin_ott/data/models/request/save_promoter_request.dart';
-import 'package:admin_ott/data/models/response/reportingPromoterResponse.dart';
 import 'package:admin_ott/domain/entities/promoter.dart';
 import 'package:admin_ott/domain/entities/user.dart';
 import 'package:flutter/material.dart';
@@ -16,15 +14,15 @@ class AddPromoterDialog extends StatefulWidget {
   const AddPromoterDialog({required this.onAdd, super.key});
 
   @override
-  _AddPromoterDialogState createState() => _AddPromoterDialogState();
+  State<AddPromoterDialog> createState() => _AddPromoterDialogState();
 }
 
 class _AddPromoterDialogState extends State<AddPromoterDialog> {
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController promoterNameController = TextEditingController();
   final TextEditingController contactController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController countryController = TextEditingController();
+  final TextEditingController countryController =
+      TextEditingController(text: 'India');
   final TextEditingController stateController = TextEditingController();
   final TextEditingController districtController = TextEditingController();
   final TextEditingController talukaController = TextEditingController();
@@ -49,21 +47,17 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
 
   String selectedLevel = 'National';
   User? _selectedUser;
-  PromotersList? _selectedPromoters;
-  Timer? _reportingPromoterDebounce;
+  Promoters? _selectedParentPromoter;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     getUserData();
   }
 
   @override
   void dispose() {
-    _reportingPromoterDebounce?.cancel();
     nameController.dispose();
-    promoterNameController.dispose();
     contactController.dispose();
     emailController.dispose();
     countryController.dispose();
@@ -83,302 +77,401 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
     super.dispose();
   }
 
-  void _clearSelectedReportingPromoter() {
-    _selectedPromoters = null;
-    promoterNameController.clear();
-  }
-
-  void _fetchReportingPromoters(PromoterProvider provider) {
-    String reportingLevel = '';
-    String reportingLocation = '';
-
-    if (selectedLevel == 'State') {
-      reportingLevel = 'national';
-      reportingLocation = countryController.text.trim();
-    } else if (selectedLevel == 'District') {
-      reportingLevel = 'state';
-      reportingLocation = stateController.text.trim();
-    } else if (selectedLevel == 'Taluka') {
-      reportingLevel = 'district';
-      reportingLocation = districtController.text.trim();
-    }
-
-    if (reportingLevel.isEmpty || reportingLocation.isEmpty) {
-      return;
-    }
-    provider.getReportingPromoters(reportingLevel, reportingLocation);
-  }
-
-  void _scheduleReportingPromoterFetch(PromoterProvider provider) {
-    _reportingPromoterDebounce?.cancel();
-    _reportingPromoterDebounce = Timer(const Duration(milliseconds: 500), () {
-      if (!mounted) {
-        return;
-      }
-      _fetchReportingPromoters(provider);
-    });
-  }
-
-  getUserData() async {
-    PromoterProvider userProvider =
-        Provider.of<PromoterProvider>(context, listen: false);
+  Future<void> getUserData() async {
+    final userProvider = Provider.of<PromoterProvider>(context, listen: false);
     await userProvider.fetchUsers();
-    if (userProvider.users.isNotEmpty) {
-      _selectedUser =
-          userProvider.users.first; // Optional: Set default to the first user
-      if (mounted) {
-        setState(() {
-          nameController.text =
-              "${_selectedUser?.firstName ?? ''} ${_selectedUser?.lastName ?? ''}"
-                  .trim();
-          emailController.text = _selectedUser?.emailId ?? '';
-          contactController.text = _selectedUser?.mobileNumber ?? '';
-        });
-      }
+    if (userProvider.users.isNotEmpty && mounted) {
+      setState(() {
+        _selectedUser = userProvider.users.first;
+        _populateFromUser(_selectedUser!);
+      });
+    }
+  }
+
+  void _populateFromUser(User user) {
+    nameController.text = '${user.firstName ?? ""} ${user.lastName ?? ""}'.trim();
+    emailController.text = user.emailId ?? '';
+    contactController.text = user.mobileNumber ?? '';
+    if (user.location != null) {
+      if (user.location!.country != null) countryController.text = user.location!.country!;
+      if (user.location!.state != null) stateController.text = user.location!.state!;
+      if (user.location!.district != null) districtController.text = user.location!.district!;
+      if (user.location!.taluka != null) talukaController.text = user.location!.taluka!;
+      if (user.location!.city != null) cityController.text = user.location!.city!;
+      if (user.location!.pincode != null) pincodeController.text = user.location!.pincode!;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    var selectedThemeData = Provider.of<ThemeProvider>(context).getTheme;
-    return Consumer<PromoterProvider>(builder: (context, provider, child) {
-      return AlertDialog(
-        backgroundColor: selectedThemeData.cardColor,
-        title: Text(
-          'Add New Promoter',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-        content: SizedBox(
-          width: 600,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  value: selectedLevel,
-                  onChanged: (String? newValue) {
+    final selectedThemeData = Provider.of<ThemeProvider>(context).getTheme;
+    final provider = Provider.of<PromoterProvider>(context);
+
+    // Filter parent promoter candidates
+    final parentCandidates = provider.promoterList.where((p) {
+      if (selectedLevel == 'State') {
+        return p.normalizedLevel == 'National';
+      } else if (selectedLevel == 'District') {
+        final stateMatch = stateController.text.trim().isEmpty ||
+            (p.location?.state ?? p.userId?.location?.state ?? '').toLowerCase() ==
+                stateController.text.trim().toLowerCase();
+        return p.normalizedLevel == 'State' && stateMatch;
+      } else if (selectedLevel == 'Taluka') {
+        final districtMatch = districtController.text.trim().isEmpty ||
+            (p.location?.district ?? p.userId?.location?.district ?? '').toLowerCase() ==
+                districtController.text.trim().toLowerCase();
+        return p.normalizedLevel == 'District' && districtMatch;
+      }
+      return false;
+    }).toList();
+
+    return AlertDialog(
+      backgroundColor: selectedThemeData.cardColor,
+      title: Row(
+        children: [
+          Icon(Icons.person_add, color: selectedThemeData.primaryColor, size: 28),
+          const SizedBox(width: 10),
+          const Text(
+            'Add New Promoter',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 650,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildSectionHeader('1. Promoter Level & Hierarchy', selectedThemeData),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                initialValue: selectedLevel,
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
                     setState(() {
-                      selectedLevel = newValue!;
-                      _clearSelectedReportingPromoter();
+                      selectedLevel = newValue;
+                      _selectedParentPromoter = null;
                     });
-                    _scheduleReportingPromoterFetch(provider);
+                  }
+                },
+                decoration: InputDecoration(
+                  labelText: 'Select Promoter Level',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  filled: true,
+                  fillColor: selectedThemeData.scaffoldBackgroundColor,
+                ),
+                dropdownColor: selectedThemeData.cardColor,
+                items: levels.map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text('$value Level Promoter'),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+
+              // Geography Inputs
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomTextField(
+                      controller: countryController,
+                      hintText: 'Country',
+                      textInputType: TextInputType.name,
+                    ),
+                  ),
+                  if (selectedLevel == 'State' || selectedLevel == 'District' || selectedLevel == 'Taluka') ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: CustomTextField(
+                        controller: stateController,
+                        hintText: 'State (e.g. Maharashtra)',
+                        textInputType: TextInputType.name,
+                        onValueChange: (val) => setState(() {}),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (selectedLevel == 'District' || selectedLevel == 'Taluka') ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: CustomTextField(
+                        controller: districtController,
+                        hintText: 'District (e.g. Pune)',
+                        textInputType: TextInputType.name,
+                        onValueChange: (val) => setState(() {}),
+                      ),
+                    ),
+                    if (selectedLevel == 'Taluka') ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: CustomTextField(
+                          controller: talukaController,
+                          hintText: 'Taluka (e.g. Haveli)',
+                          textInputType: TextInputType.name,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomTextField(
+                      controller: cityController,
+                      hintText: 'City / Area',
+                      textInputType: TextInputType.name,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: CustomTextField(
+                      controller: pincodeController,
+                      hintText: 'Pincode',
+                      textInputType: TextInputType.number,
+                      isDigits: true,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Required Parent Selection
+              if (selectedLevel != 'National') ...[
+                DropdownButtonFormField<Promoters>(
+                  initialValue: _selectedParentPromoter,
+                  onChanged: (Promoters? p) {
+                    setState(() {
+                      _selectedParentPromoter = p;
+                    });
                   },
                   decoration: InputDecoration(
-                    labelText: "Select Level",
-                    // Add a label for the dropdown
-                    labelStyle: selectedThemeData.textTheme.bodyMedium,
-                    // Apply text style from theme
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8), // Rounded corners
-                      borderSide: BorderSide(
-                          color: selectedThemeData
-                              .dividerColor), // Normal border color
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(
-                          color: selectedThemeData
-                              .dividerColor), // Enabled border color
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(
-                          color: selectedThemeData.primaryColor,
-                          width: 2), // Highlight color
-                    ),
+                    labelText: 'Select Reporting Parent (${_getParentLevelName(selectedLevel)})',
+                    hintText: parentCandidates.isEmpty
+                        ? 'No ${_getParentLevelName(selectedLevel)} available. Add parent first or proceed.'
+                        : 'Select parent promoter',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     filled: true,
-                    // Enable filled background
-                    fillColor: selectedThemeData
-                        .cardColor, // Set dropdown background color
+                    fillColor: selectedThemeData.scaffoldBackgroundColor,
                   ),
                   dropdownColor: selectedThemeData.cardColor,
-                  // Background color of the dropdown menu
-                  items: levels.map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(
-                        value,
-                        style: selectedThemeData
-                            .textTheme.bodyMedium, // Apply theme's text style
-                      ),
+                  items: parentCandidates.map((p) {
+                    return DropdownMenuItem<Promoters>(
+                      value: p,
+                      child: Text('${p.promoterName ?? "Promoter"} (${p.normalizedLevel} - ${p.location?.state ?? "India"})'),
                     );
                   }).toList(),
                 ),
-                SizedBox(
-                  height: 16,
-                ),
-                CustomTextField(
-                  controller: countryController,
-                  hintText: 'Country',
-                  textInputType: TextInputType.name,
-                  onValueChange: (String value) {
-                    print("Selected location :::::::::::: $value");
-                    if (selectedLevel == 'State') {
-                      _scheduleReportingPromoterFetch(provider);
-                    }
-                  },
-                ),
-                if (selectedLevel == 'State' ||
-                    selectedLevel == 'District' ||
-                    selectedLevel == 'Taluka')
-                  CustomTextField(
-                    controller: stateController,
-                    hintText: 'State',
-                    textInputType: TextInputType.name,
-                    onValueChange: (String value) {
-                      print("Selected location :::::::::::: $value");
-                      if (selectedLevel == 'District') {
-                        _scheduleReportingPromoterFetch(provider);
-                      }
-                    },
-                  ),
-                if (selectedLevel == 'District' ||
-                    selectedLevel == 'Taluka')
-                  CustomTextField(
-                    controller: districtController,
-                    hintText: 'District',
-                    textInputType: TextInputType.name,
-                    onValueChange: (String value) {
-                      print("Selected location :::::::::::: $value");
-                      if (selectedLevel == 'Taluka') {
-                        _scheduleReportingPromoterFetch(provider);
-                      }
-                    },
-                  ),
-                if (selectedLevel == 'Taluka')
-                  CustomTextField(
-                    controller: talukaController,
-                    hintText: 'Taluka',
-                    textInputType: TextInputType.name,
-                    onValueChange: (String value) {
-                      print("Selected location :::::::::::: $value");
-                    },
-                  ),
-                _buildUserDropdownField('Select User', context,
-                    provider.users, selectedThemeData),
-                CustomTextField(
-                  controller: contactController,
-                  hintText: 'Contact',
-                  textInputType: TextInputType.number,
-                ),
-                CustomTextField(
-                  controller: emailController,
-                  hintText: 'Email',
-                  textInputType: TextInputType.emailAddress,
-                ),
-                CustomTextField(
-                  controller: aadharCardController,
-                  hintText: 'Aadhaar Card',
-                  textInputType: TextInputType.number,
-                  isDigits: true,
-                ),
-                CustomTextField(
-                  controller: panCardController,
-                  hintText: 'PAN Card',
-                  textInputType: TextInputType.text,
-                ),
-                CustomTextField(
-                  controller: bankNameController,
-                  hintText: 'Bank Name',
-                  textInputType: TextInputType.name,
-                ),
-                CustomTextField(
-                  controller: branchNameController,
-                  hintText: 'Branch Name',
-                  textInputType: TextInputType.name,
-                ),
-                CustomTextField(
-                  controller: accountNumberController,
-                  hintText: 'Account Number',
-                  textInputType: TextInputType.number,
-                  isDigits: true,
-                ),
-                CustomTextField(
-                  controller: ifscCodeController,
-                  hintText: 'IFSC Code',
-                  textInputType: TextInputType.text,
-                ),
-                CustomTextField(
-                  controller: gstController,
-                  hintText: 'GST Number',
-                  textInputType: TextInputType.text,
-                ),
-                CustomTextField(
-                  controller: websiteController,
-                  hintText: 'Website',
-                  textInputType: TextInputType.url,
-                ),
-                selectedLevel == "National"
-                    ? SizedBox.shrink()
-                    : _buildPromoterDropdownField(
-                        'Select Reporting Promoter',
-                        context,
-                        provider.reportingPromoters,
-                        selectedThemeData,
-                      ),
+                const SizedBox(height: 16),
               ],
-            ),
+
+              _buildSectionHeader('2. Link User Account & Contact Info', selectedThemeData),
+              const SizedBox(height: 10),
+              _buildUserDropdownField(
+                'Select Registered User',
+                context,
+                provider.users,
+                selectedThemeData,
+              ),
+              CustomTextField(
+                controller: nameController,
+                hintText: 'Promoter Display Name',
+                textInputType: TextInputType.name,
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomTextField(
+                      controller: contactController,
+                      hintText: 'Contact Mobile Number',
+                      textInputType: TextInputType.phone,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: CustomTextField(
+                      controller: emailController,
+                      hintText: 'Email Address',
+                      textInputType: TextInputType.emailAddress,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              _buildSectionHeader('3. Bank & KYC Verification Details', selectedThemeData),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomTextField(
+                      controller: bankNameController,
+                      hintText: 'Bank Name',
+                      textInputType: TextInputType.name,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: CustomTextField(
+                      controller: branchNameController,
+                      hintText: 'Branch Name',
+                      textInputType: TextInputType.name,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomTextField(
+                      controller: accountNumberController,
+                      hintText: 'Bank Account Number',
+                      textInputType: TextInputType.number,
+                      isDigits: true,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: CustomTextField(
+                      controller: ifscCodeController,
+                      hintText: 'IFSC Code',
+                      textInputType: TextInputType.text,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomTextField(
+                      controller: panCardController,
+                      hintText: 'PAN Card Number',
+                      textInputType: TextInputType.text,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: CustomTextField(
+                      controller: aadharCardController,
+                      hintText: 'Aadhaar Card Number',
+                      textInputType: TextInputType.number,
+                      isDigits: true,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomTextField(
+                      controller: gstController,
+                      hintText: 'GST Number (Optional)',
+                      textInputType: TextInputType.text,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: CustomTextField(
+                      controller: websiteController,
+                      hintText: 'Website URL (Optional)',
+                      textInputType: TextInputType.url,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text('Cancel'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: selectedThemeData.primaryColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           ),
-          GestureDetector(
-            onTap: () {
-              widget.onAdd(SavePromoterRequest(
-                aadharCard: aadharCardController.text,
-                id: 0,
-                active: true,
-                area: cityController.text,
-                accountNumber: accountNumberController.text,
-                access: '',
-                bankName: bankNameController.text,
-                branchName: branchNameController.text,
-                city: cityController.text,
-                contactNumber: contactController.text,
-                district: districtController.text,
-                createdDate: DateTime.now().toString().split(' ')[0],
-                country: countryController.text,
-                gst: gstController.text,
-                ifscCode: ifscCodeController.text,
-                level: selectedLevel,
-                panCard: panCardController.text,
-                pincode: pincodeController.text,
-                promoterName: nameController.text,
-                refferedBy: _selectedPromoters?.promoterName ?? '',
-                registrationCertificate: '',
-                role: "PROMOTER",
-                state: stateController.text,
-                promoterId: _selectedPromoters?.id ?? 0,
-                taluka: talukaController.text,
-                userId: _selectedUser?.id ?? 0,
-                website: websiteController.text,
-              ));
-              Navigator.pop(context);
-            },
-            child: Container(
-              height: 40,
-              width: 80,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                color: selectedThemeData.primaryColor,
-              ),
-              child: Center(
-                child: Text(
-                  'Add',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
+          onPressed: () {
+            if (nameController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please enter promoter name'), backgroundColor: Colors.red),
+              );
+              return;
+            }
+
+            widget.onAdd(SavePromoterRequest(
+              aadharCard: aadharCardController.text.trim(),
+              id: 0,
+              active: true,
+              area: cityController.text.trim(),
+              accountNumber: accountNumberController.text.trim(),
+              access: '',
+              bankName: bankNameController.text.trim(),
+              branchName: branchNameController.text.trim(),
+              city: cityController.text.trim(),
+              contactNumber: contactController.text.trim(),
+              district: districtController.text.trim(),
+              createdDate: DateTime.now().toString().split(' ')[0],
+              country: countryController.text.trim().isNotEmpty ? countryController.text.trim() : 'India',
+              gst: gstController.text.trim(),
+              ifscCode: ifscCodeController.text.trim(),
+              level: selectedLevel,
+              panCard: panCardController.text.trim(),
+              pincode: pincodeController.text.trim(),
+              promoterName: nameController.text.trim(),
+              refferedBy: _selectedParentPromoter?.promoterName ?? '',
+              registrationCertificate: '',
+              role: "PROMOTER",
+              state: stateController.text.trim(),
+              promoterId: _selectedParentPromoter?.id ?? 0,
+              taluka: talukaController.text.trim(),
+              userId: _selectedUser?.id ?? 0,
+              website: websiteController.text.trim(),
+            ));
+            Navigator.pop(context);
+          },
+          child: const Text('Create Promoter'),
+        ),
+      ],
+    );
+  }
+
+  String _getParentLevelName(String level) {
+    switch (level) {
+      case 'State':
+        return 'National';
+      case 'District':
+        return 'State';
+      case 'Taluka':
+        return 'District';
+      default:
+        return 'Reporting';
+    }
+  }
+
+  Widget _buildSectionHeader(String title, ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: theme.primaryColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
           ),
-        ],
-      );
-    });
+        ),
+        const Divider(),
+      ],
+    );
   }
 
   Widget _buildUserDropdownField(
@@ -390,119 +483,40 @@ class _AddPromoterDialogState extends State<AddPromoterDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 8),
         DropdownButtonFormField<User>(
-          value: _selectedUser,
+          initialValue: _selectedUser,
           items: users.map((User user) {
             return DropdownMenuItem<User>(
               value: user,
               child: Text(
-                "${user.firstName} ${user.lastName}",
-                style:
-                    themeData.textTheme.bodyMedium, // Apply theme's text style
+                "${user.firstName ?? ''} ${user.lastName ?? ''} (${user.emailId ?? user.mobileNumber ?? ''})",
+                style: themeData.textTheme.bodyMedium,
               ),
             );
           }).toList(),
           onChanged: (User? selectedUser) {
-            setState(() {
-              _selectedUser = selectedUser; // Update the selected user
-              nameController.text =  _selectedUser!.firstName! + " "+_selectedUser!.lastName!;
-              emailController.text = _selectedUser!.emailId!;
-              contactController.text = _selectedUser!.mobileNumber!;
-            });
+            if (selectedUser != null) {
+              setState(() {
+                _selectedUser = selectedUser;
+                _populateFromUser(selectedUser);
+              });
+            }
           },
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: themeData.textTheme.bodyMedium,
-            // Theme's label text style
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8), // Rounded corners
-              borderSide: BorderSide(
-                  color: themeData.dividerColor), // Theme divider color
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: themeData.dividerColor),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                  color: themeData.primaryColor, width: 2), // Highlight color
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            filled: true,
+            fillColor: themeData.scaffoldBackgroundColor,
           ),
           dropdownColor: themeData.cardColor,
-          // Apply theme's card color
-          hint: Text(
-            "Select a user",
-            style: themeData.textTheme.bodySmall, // Theme's hint text style
-          ),
+          hint: Text("Select a registered user", style: themeData.textTheme.bodySmall),
         ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  Widget _buildPromoterDropdownField(
-      String label,
-      BuildContext context,
-      List<PromotersList> promoters,
-      ThemeData themeData,
-      ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 8),
-        DropdownButtonFormField<PromotersList>(
-          value: _selectedPromoters,
-          items: promoters.map((PromotersList user) {
-            return DropdownMenuItem<PromotersList>(
-              value: user,
-              child: Text(
-                "${user.promoterName}",
-                style:
-                themeData.textTheme.bodyMedium, // Apply theme's text style
-              ),
-            );
-          }).toList(),
-          onChanged: (PromotersList? selectedPromoter) {
-            setState(() {
-              _selectedPromoters = selectedPromoter; // Update the selected user
-            promoterNameController.text = _selectedPromoters!.promoterName!;
-            });
-          },
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: themeData.textTheme.bodyMedium,
-            // Theme's label text style
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8), // Rounded corners
-              borderSide: BorderSide(
-                  color: themeData.dividerColor), // Theme divider color
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: themeData.dividerColor),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                  color: themeData.primaryColor, width: 2), // Highlight color
-            ),
-          ),
-          dropdownColor: themeData.cardColor,
-          // Apply theme's card color
-          hint: Text(
-            "Select Reporting Promoter",
-            style: themeData.textTheme.bodySmall, // Theme's hint text style
-          ),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
       ],
     );
   }
 }
 
-// Usage example for showing the dialog
 void showAddPromoterDialog(
     BuildContext context, void Function(SavePromoterRequest) onAdd) {
   showDialog(

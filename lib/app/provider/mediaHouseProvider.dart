@@ -539,7 +539,7 @@ class MediaHouseProvider extends ChangeNotifier {
 
         final byteData = reader.result as List<int>;
         final multipartFile = http.MultipartFile.fromBytes(
-          'profilePicture',
+          'file',
           byteData,
           filename: _webFile!.name,
         );
@@ -578,7 +578,7 @@ class MediaHouseProvider extends ChangeNotifier {
         final request = http.MultipartRequest('POST', url);
         request.headers.addAll(await ApiHelper().multipartHeaders());
         request.files.add(await http.MultipartFile.fromPath(
-          'profilePicture',
+          'file',
           _imageFile!.path,
           //  contentType: MediaType('image', 'jpeg'),
         ));
