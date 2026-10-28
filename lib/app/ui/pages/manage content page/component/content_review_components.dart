@@ -1,6 +1,8 @@
+import 'package:admin_ott/app/core/constant/api_constant.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/widgets/app_loaders.dart';
 import 'package:admin_ott/app/widgets/ott_media_player.dart';
+import 'package:admin_ott/app/widgets/show_toast.dart';
 import 'package:admin_ott/domain/entities/cast_crew.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -231,8 +233,8 @@ class _TeaserSectionState extends State<TeaserSection> {
 }
 
 /// Agreement & Censor Certificate Section Widget
-/// Displays [View Agreement] and [View Censor Certificate] buttons with previews,
-/// or appropriate "Not Available" indicators.
+/// Displays [View Agreement] and [Download Agreement] buttons with file names, previews,
+/// format badges (e.g. PDF), and clear empty state indicators ("Agreement not uploaded").
 class AgreementSection extends StatelessWidget {
   final String? agreementUrl;
   final String? censorCertificateUrl;
@@ -287,8 +289,10 @@ class AgreementSection extends StatelessWidget {
                           title: 'Production House Agreement',
                           icon: Icons.description_outlined,
                           url: agrUrl,
-                          emptyLabel: 'Agreement Not Available',
+                          emptyLabel: 'Agreement not uploaded',
                           buttonLabel: 'View Agreement',
+                          downloadLabel: 'Download Agreement',
+                          isAgreement: true,
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -299,8 +303,10 @@ class AgreementSection extends StatelessWidget {
                           title: 'Censor Certificate',
                           icon: Icons.verified_user_outlined,
                           url: censorUrl,
-                          emptyLabel: 'Censor Certificate Not Available',
+                          emptyLabel: 'Censor Certificate not uploaded',
                           buttonLabel: 'View Certificate',
+                          downloadLabel: 'Download Certificate',
+                          isAgreement: false,
                         ),
                       ),
                     ],
@@ -314,8 +320,10 @@ class AgreementSection extends StatelessWidget {
                         title: 'Production House Agreement',
                         icon: Icons.description_outlined,
                         url: agrUrl,
-                        emptyLabel: 'Agreement Not Available',
+                        emptyLabel: 'Agreement not uploaded',
                         buttonLabel: 'View Agreement',
+                        downloadLabel: 'Download Agreement',
+                        isAgreement: true,
                       ),
                       const SizedBox(height: 12),
                       _buildDocCard(
@@ -324,8 +332,10 @@ class AgreementSection extends StatelessWidget {
                         title: 'Censor Certificate',
                         icon: Icons.verified_user_outlined,
                         url: censorUrl,
-                        emptyLabel: 'Censor Certificate Not Available',
+                        emptyLabel: 'Censor Certificate not uploaded',
                         buttonLabel: 'View Certificate',
+                        downloadLabel: 'Download Certificate',
+                        isAgreement: false,
                       ),
                     ],
                   );
@@ -346,14 +356,32 @@ class AgreementSection extends StatelessWidget {
     required String url,
     required String emptyLabel,
     required String buttonLabel,
+    required String downloadLabel,
+    required bool isAgreement,
   }) {
-    final hasUrl = url.isNotEmpty;
+    final resolvedUrl = _resolveDocumentUrl(url);
+    final hasUrl = resolvedUrl.isNotEmpty;
+    final fileName = _extractFileName(resolvedUrl, title.replaceAll(' ', '_'));
+    final isPdf = _isPdf(resolvedUrl);
+    final formatLabel = _getFileFormatLabel(resolvedUrl);
+
+    final docIcon = isPdf
+        ? Icons.picture_as_pdf_rounded
+        : (hasUrl && _isImage(resolvedUrl))
+            ? Icons.image_outlined
+            : icon;
+
+    final docIconColor = !hasUrl
+        ? theme.hintColor
+        : isPdf
+            ? Colors.redAccent
+            : theme.primaryColor;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: hasUrl
               ? theme.primaryColor.withValues(alpha: 0.25)
@@ -365,21 +393,37 @@ class AgreementSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon,
-                  size: 18,
-                  color: hasUrl ? theme.primaryColor : theme.hintColor),
+              Icon(docIcon, size: 20, color: docIconColor),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: hasUrl ? theme.canvasColor : theme.hintColor,
                   ),
                 ),
               ),
-              if (hasUrl)
+              if (hasUrl) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: (isPdf ? Colors.redAccent : theme.primaryColor)
+                        .withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    formatLabel,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: isPdf ? Colors.redAccent : theme.primaryColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -388,19 +432,82 @@ class AgreementSection extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Text(
-                    'Available',
+                    'Uploaded',
                     style: TextStyle(
-                      fontSize: 10.5,
+                      fontSize: 10,
                       fontWeight: FontWeight.w700,
                       color: Colors.green,
                     ),
                   ),
                 ),
+              ] else
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.hintColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'Not Uploaded',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: theme.hintColor,
+                    ),
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           if (hasUrl) ...[
-            Row(
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.cardColor.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: theme.dividerColor.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(docIcon, size: 18, color: docIconColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          fileName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: theme.canvasColor,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          resolvedUrl,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: theme.hintColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
@@ -408,30 +515,46 @@ class AgreementSection extends StatelessWidget {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
-                      vertical: 10,
+                      vertical: 9,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                     elevation: 0,
                   ),
-                  onPressed: () => _openDocument(url),
-                  icon: const Icon(Icons.open_in_new, size: 16),
+                  onPressed: () =>
+                      _openDocument(context, resolvedUrl, title, fileName),
+                  icon: const Icon(Icons.open_in_new_rounded, size: 15),
                   label: Text(
                     buttonLabel,
                     style: const TextStyle(
-                        fontSize: 12.5, fontWeight: FontWeight.bold),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    url,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: theme.hintColor,
-                      fontSize: 11,
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: theme.canvasColor,
+                    side: BorderSide(
+                      color: theme.primaryColor.withValues(alpha: 0.4),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 9,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () =>
+                      _downloadDocument(context, resolvedUrl, fileName),
+                  icon: const Icon(Icons.download_rounded, size: 15),
+                  label: Text(
+                    downloadLabel,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -440,15 +563,43 @@ class AgreementSection extends StatelessWidget {
           ] else ...[
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              alignment: Alignment.center,
-              child: Text(
-                emptyLabel,
-                style: TextStyle(
-                  color: theme.hintColor,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12.5,
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: theme.dividerColor.withValues(alpha: 0.08),
                 ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.upload_file_outlined,
+                    size: 26,
+                    color: theme.hintColor.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    emptyLabel,
+                    style: TextStyle(
+                      color: theme.hintColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isAgreement
+                        ? 'No agreement document has been uploaded for this content.'
+                        : 'No censor certificate document has been uploaded.',
+                    style: TextStyle(
+                      color: theme.hintColor.withValues(alpha: 0.6),
+                      fontSize: 10.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
           ],
@@ -457,11 +608,93 @@ class AgreementSection extends StatelessWidget {
     );
   }
 
-  void _openDocument(String url) {
+  String _resolveDocumentUrl(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    final base = ApiConstant.baseUrl.endsWith('/')
+        ? ApiConstant.baseUrl.substring(0, ApiConstant.baseUrl.length - 1)
+        : ApiConstant.baseUrl;
+    final path = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    return '$base$path';
+  }
+
+  String _extractFileName(String url, String defaultTitle) {
+    if (url.trim().isEmpty) return '';
+    try {
+      final clean = url.split('?').first.split('#').first;
+      final uri = Uri.tryParse(clean);
+      final segments = uri?.pathSegments ?? clean.split('/');
+      if (segments.isNotEmpty && segments.last.trim().isNotEmpty) {
+        final decoded = Uri.decodeComponent(segments.last.trim());
+        if (decoded.isNotEmpty && decoded != '/') {
+          return decoded;
+        }
+      }
+    } catch (_) {}
+    return '$defaultTitle.pdf';
+  }
+
+  bool _isPdf(String url) {
+    final clean = url.split('?').first.toLowerCase();
+    return clean.endsWith('.pdf');
+  }
+
+  bool _isImage(String url) {
+    final clean = url.split('?').first.toLowerCase();
+    return clean.endsWith('.jpg') ||
+        clean.endsWith('.jpeg') ||
+        clean.endsWith('.png') ||
+        clean.endsWith('.webp') ||
+        clean.endsWith('.gif');
+  }
+
+  String _getFileFormatLabel(String url) {
+    if (_isPdf(url)) return 'PDF';
+    if (_isImage(url)) {
+      final clean = url.split('?').first.toLowerCase();
+      final ext = clean.split('.').last.toUpperCase();
+      return ext.isEmpty ? 'IMAGE' : ext;
+    }
+    if (url.contains('.')) {
+      final clean = url.split('?').first.toLowerCase();
+      final ext = clean.split('.').last.toUpperCase();
+      if (ext.length <= 5) return ext;
+    }
+    return 'DOC';
+  }
+
+  void _openDocument(
+      BuildContext context, String url, String title, String fileName) {
+    if (url.isEmpty) return;
     if (kIsWeb) {
       html.window.open(url, '_blank');
     } else {
-      debugPrint("Opening document URL: $url");
+      debugPrint("Opening document URL: $url ($fileName)");
+    }
+  }
+
+  void _downloadDocument(
+      BuildContext context, String url, String fileName) {
+    if (url.isEmpty) return;
+    if (kIsWeb) {
+      try {
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', fileName)
+          ..setAttribute('target', '_blank');
+        html.document.body?.append(anchor);
+        anchor.click();
+        anchor.remove();
+        CustomToast.show('Downloading $fileName...', isSuccess: true);
+      } catch (e) {
+        debugPrint('Download error: $e');
+        html.window.open(url, '_blank');
+      }
+    } else {
+      CustomToast.show('Document download link opened for $fileName',
+          isSuccess: true);
     }
   }
 }

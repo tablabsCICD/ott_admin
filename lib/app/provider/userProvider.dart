@@ -80,6 +80,8 @@ class UserProvider extends ChangeNotifier {
       return;
     }
 
+    _currentPage = 0;
+
     if (immediate) {
       _executeSearchApi(query);
     } else {
@@ -195,8 +197,10 @@ class UserProvider extends ChangeNotifier {
       searchController.clear();
     }
     _isSearching = false;
+    _currentPage = 0;
     _filteredUsers = List<User>.from(_users);
     notifyListeners();
+    fetchUsers(page: 0);
   }
 
   void filterUsers() {
@@ -234,11 +238,27 @@ class UserProvider extends ChangeNotifier {
   final Set<String> _updatingUserStatusMobiles = {};
   User user = User();
 
+  int _currentPage = 0;
+  int _pageSize = 20;
+  int _totalUsers = 0;
+  int _totalPages = 1;
+  bool _hasNext = false;
+  bool _hasPrevious = false;
+  bool _isLoadingUsers = false;
+
   List<User> get users => _users;
   List<User> get filteredUsers => _filteredUsers;
   bool isUpdatingUserStatus(String? mobileNumber) =>
       mobileNumber != null && _updatingUserStatusMobiles.contains(mobileNumber);
   User get userObj => user;
+
+  int get currentPage => _currentPage;
+  int get pageSize => _pageSize;
+  int get totalUsers => _totalUsers;
+  int get totalPages => _totalPages;
+  bool get hasNext => _hasNext;
+  bool get hasPrevious => _hasPrevious;
+  bool get isLoadingUsers => _isLoadingUsers;
 
   // Update user data
   Future<Map<String, Object>> updateUser() async {
@@ -588,9 +608,17 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  // Fetch all users
-  Future<void> fetchUsers() async {
-    String apiUrl = ApiConstant.getAllUser;
+  // Fetch all users with pagination
+  Future<void> fetchUsers({int? page, int? size}) async {
+    if (_isLoadingUsers) return;
+
+    final targetPage = page ?? _currentPage;
+    final targetSize = size ?? _pageSize;
+
+    _isLoadingUsers = true;
+    notifyListeners();
+
+    String apiUrl = ApiConstant.getAllUsersPaged(page: targetPage, size: targetSize);
     ApiHelper apiHelper = ApiHelper();
 
     try {
@@ -600,28 +628,59 @@ class UserProvider extends ChangeNotifier {
         GetAllUserResponse getAllUserResponse =
             GetAllUserResponse.fromJson(responseBody);
         if (getAllUserResponse.success == true) {
-          if (getAllUserResponse.data != null) {
+          final pagination = getAllUserResponse.pagination ??
+              getAllUserResponse.data?.pagination ??
+              UserPagination.fromJson(responseBody);
+
+          _currentPage = pagination.page;
+          _pageSize = pagination.size;
+          _totalUsers = pagination.totalItems;
+          _totalPages = pagination.totalPages > 0 ? pagination.totalPages : 1;
+          _hasNext = pagination.hasNext;
+          _hasPrevious = pagination.hasPrevious;
+
+          if (getAllUserResponse.data != null &&
+              getAllUserResponse.data!.users != null) {
             _users = getAllUserResponse.data!.users!;
-            if (searchController.text.trim().isNotEmpty) {
-              searchUsers(searchController.text);
-            } else {
-              _filteredUsers = List<User>.from(_users);
-              notifyListeners();
-            }
           } else {
-            debugPrint("empty list: ${getAllUserResponse.message}");
+            _users = [];
+          }
+
+          if (searchController.text.trim().isNotEmpty) {
+            searchUsers(searchController.text);
+          } else {
+            _filteredUsers = List<User>.from(_users);
           }
         } else {
           debugPrint("Error: ${getAllUserResponse.message}");
         }
       } else {
-        throw Exception(
+        debugPrint(
             'Failed to fetch users. Status code: ${response.statusCode}');
       }
     } catch (error) {
-      debugPrint("Error: $error");
-      throw Exception('An error occurred while fetching users.');
+      debugPrint("Error fetching users: $error");
+    } finally {
+      _isLoadingUsers = false;
+      notifyListeners();
     }
+  }
+
+  Future<void> nextPage() async {
+    if (!_hasNext || _isLoadingUsers) return;
+    await fetchUsers(page: _currentPage + 1);
+  }
+
+  Future<void> previousPage() async {
+    if (!_hasPrevious || _isLoadingUsers || _currentPage <= 0) return;
+    await fetchUsers(page: _currentPage - 1);
+  }
+
+  Future<void> goToPage(int page) async {
+    if (page < 0 || page >= _totalPages || page == _currentPage || _isLoadingUsers) {
+      return;
+    }
+    await fetchUsers(page: page);
   }
 
   Future<Map<String, dynamic>> createUser() async {

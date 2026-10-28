@@ -175,7 +175,10 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          content.title ?? 'Movie Details',
+          content.title ??
+              ((content.type ?? '').toUpperCase() == 'SHORT_FILM'
+                  ? 'Short Film Details'
+                  : 'Movie Details'),
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: theme.primaryColor,
@@ -199,7 +202,9 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
             icon: const Icon(Icons.video_settings_outlined),
           ),
           IconButton(
-            tooltip: "Delete Movie",
+            tooltip: (content.type ?? '').toUpperCase() == 'SHORT_FILM'
+                ? "Delete Short Film"
+                : "Delete Movie",
             onPressed: () => _confirmDelete(context, content),
             icon: const Icon(Icons.delete_outline_rounded),
           ),
@@ -236,8 +241,20 @@ class _MovieDetailsPageState extends State<MovieDetailsPage> {
 
             // 5. Agreement & Documents Section (Agreement & Censor Certificate)
             AgreementSection(
-              agreementUrl: content.agreementUrl,
-              censorCertificateUrl: content.sensorCertificate,
+              agreementUrl: content.resolvedAgreementUrl ??
+                  content.aggrementDocument ??
+                  content.agreementUrl,
+              censorCertificateUrl: (content.sensorCertificate != null &&
+                      content.sensorCertificate!.trim().isNotEmpty &&
+                      content.sensorCertificate?.trim() !=
+                          (content.resolvedAgreementUrl ??
+                                  content.aggrementDocument ??
+                                  content.agreementUrl)
+                              ?.trim() &&
+                      !content.sensorCertificate!.toLowerCase().contains('agreement') &&
+                      !content.sensorCertificate!.toLowerCase().endsWith('.pdf'))
+                  ? content.sensorCertificate
+                  : null,
             ),
             const SizedBox(height: 16),
 

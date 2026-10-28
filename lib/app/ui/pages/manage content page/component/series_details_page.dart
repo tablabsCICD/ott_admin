@@ -365,8 +365,20 @@ class _SeriesDetailsPageState extends State<SeriesDetailsPage> {
                         ),
                         const SizedBox(height: 16),
                         AgreementSection(
-                          agreementUrl: displayContent.agreementUrl,
-                          censorCertificateUrl: displayContent.sensorCertificate,
+                          agreementUrl: displayContent.resolvedAgreementUrl ??
+                              displayContent.aggrementDocument ??
+                              displayContent.agreementUrl,
+                          censorCertificateUrl: (displayContent.sensorCertificate != null &&
+                                  displayContent.sensorCertificate!.trim().isNotEmpty &&
+                                  displayContent.sensorCertificate?.trim() !=
+                                      (displayContent.resolvedAgreementUrl ??
+                                              displayContent.aggrementDocument ??
+                                              displayContent.agreementUrl)
+                                          ?.trim() &&
+                                  !displayContent.sensorCertificate!.toLowerCase().contains('agreement') &&
+                                  !displayContent.sensorCertificate!.toLowerCase().endsWith('.pdf'))
+                              ? displayContent.sensorCertificate
+                              : null,
                         ),
                         const SizedBox(height: 22),
                         _SectionHeader(title: _selectedSeason.name),

@@ -353,35 +353,89 @@ class VideoProvider extends ChangeNotifier {
   Map<String, dynamic>? _extractContentJson(Map<String, dynamic>? map) {
     if (map == null) return null;
 
-    // Check for nested 'data' key
+    Map<String, dynamic> target = map;
     if (map.containsKey('data') && map['data'] != null) {
       final rawData = map['data'];
       if (rawData is Map) {
-        final dataMap = rawData.map((k, v) => MapEntry(k.toString(), v));
-        if (dataMap.containsKey('content') && dataMap['content'] is Map) {
-          return (dataMap['content'] as Map).map((k, v) => MapEntry(k.toString(), v));
-        }
-        if (dataMap.containsKey('movie') && dataMap['movie'] is Map) {
-          return (dataMap['movie'] as Map).map((k, v) => MapEntry(k.toString(), v));
-        }
-        if (dataMap.containsKey('series') && dataMap['series'] is Map) {
-          return (dataMap['series'] as Map).map((k, v) => MapEntry(k.toString(), v));
-        }
-        return dataMap;
+        target = rawData.map((k, v) => MapEntry(k.toString(), v));
       }
     }
 
-    if (map.containsKey('content') && map['content'] is Map) {
-      return (map['content'] as Map).map((k, v) => MapEntry(k.toString(), v));
-    }
-    if (map.containsKey('movie') && map['movie'] is Map) {
-      return (map['movie'] as Map).map((k, v) => MapEntry(k.toString(), v));
-    }
-    if (map.containsKey('series') && map['series'] is Map) {
-      return (map['series'] as Map).map((k, v) => MapEntry(k.toString(), v));
+    final wrapperKeys = [
+      'ContentList',
+      'contentList',
+      'content',
+      'Content',
+      'movie',
+      'Movie',
+      'shortFilm',
+      'ShortFilm',
+      'short_film',
+      'short',
+      'Short',
+      'video',
+      'Video',
+      'film',
+      'Film',
+      'series',
+      'Series',
+    ];
+
+    for (final key in wrapperKeys) {
+      if (target.containsKey(key) && target[key] != null) {
+        final val = target[key];
+        if (val is Map) {
+          final contentMap = val.map((k, v) => MapEntry(k.toString(), v));
+          for (final entry in target.entries) {
+            if (entry.key != key && !contentMap.containsKey(entry.key)) {
+              contentMap[entry.key] = entry.value;
+            }
+          }
+          return contentMap;
+        } else if (val is List && val.isNotEmpty && val.first is Map) {
+          final contentMap = (val.first as Map).map((k, v) => MapEntry(k.toString(), v));
+          for (final entry in target.entries) {
+            if (entry.key != key && !contentMap.containsKey(entry.key)) {
+              contentMap[entry.key] = entry.value;
+            }
+          }
+          return contentMap;
+        }
+      }
     }
 
-    final rawList = map['ContentList'] ?? map['contentList'] ?? map['contents'] ?? map['videos'] ?? map['items'];
+    if (map != target) {
+      for (final key in wrapperKeys) {
+        if (map.containsKey(key) && map[key] != null) {
+          final val = map[key];
+          if (val is Map) {
+            final contentMap = val.map((k, v) => MapEntry(k.toString(), v));
+            for (final entry in map.entries) {
+              if (entry.key != key && !contentMap.containsKey(entry.key)) {
+                contentMap[entry.key] = entry.value;
+              }
+            }
+            return contentMap;
+          } else if (val is List && val.isNotEmpty && val.first is Map) {
+            final contentMap = (val.first as Map).map((k, v) => MapEntry(k.toString(), v));
+            for (final entry in map.entries) {
+              if (entry.key != key && !contentMap.containsKey(entry.key)) {
+                contentMap[entry.key] = entry.value;
+              }
+            }
+            return contentMap;
+          }
+        }
+      }
+    }
+
+    final rawList = target['ContentList'] ??
+        target['contentList'] ??
+        target['contents'] ??
+        target['videos'] ??
+        target['items'] ??
+        map['ContentList'] ??
+        map['contentList'];
     if (rawList is List && rawList.isNotEmpty) {
       final first = rawList.first;
       if (first is Map) {
@@ -389,9 +443,24 @@ class VideoProvider extends ChangeNotifier {
       }
     }
 
-    if (map.containsKey('title') || map.containsKey('id') || map.containsKey('contentUrl') || map.containsKey('posterUrlList')) {
+    if (target.containsKey('title') ||
+        target.containsKey('id') ||
+        target.containsKey('contentUrl') ||
+        target.containsKey('posterUrlList') ||
+        target.containsKey('aggrementDocument') ||
+        target.containsKey('agreementUrl')) {
+      return target;
+    }
+
+    if (map.containsKey('title') ||
+        map.containsKey('id') ||
+        map.containsKey('contentUrl') ||
+        map.containsKey('posterUrlList') ||
+        map.containsKey('aggrementDocument') ||
+        map.containsKey('agreementUrl')) {
       return map;
     }
+
     return null;
   }
 
@@ -995,11 +1064,9 @@ class VideoProvider extends ChangeNotifier {
 
     final censorCertificate = censorCertificateController.text.trim().isNotEmpty
         ? censorCertificateController.text.trim()
-        : (existing.sensorCertificate ?? existing.agreementUrl ?? '');
+        : (existing.sensorCertificate ?? '');
 
-    final agreementUrl = censorCertificate.isNotEmpty
-        ? censorCertificate
-        : (existing.agreementUrl ?? '');
+    final agreementUrl = existing.agreementUrl ?? existing.resolvedAgreementUrl ?? '';
 
     List<String> posterUrls = [
       poster1Controller.text.trim(),
@@ -1192,8 +1259,8 @@ class VideoProvider extends ChangeNotifier {
       teaserUrl: effectiveTeaserUrl,
       trailerUrl: effectiveTrailerUrl,
       contentUrl: existing.contentUrl ?? '',
-      sensorCertificate: existing.sensorCertificate ?? existing.agreementUrl ?? '',
-      agreementUrl: existing.agreementUrl ?? '',
+      sensorCertificate: existing.sensorCertificate ?? '',
+      agreementUrl: existing.agreementUrl ?? existing.resolvedAgreementUrl ?? '',
       posterUrlList: existing.posterUrlList ?? const <String>[],
       genersList: existing.genreList ?? const <String>[],
       genreList: existing.genreList ?? const <String>[],

@@ -75,6 +75,8 @@ class ApiConstant {
 
   //ManageUserPage
   static String getAllUser = "${baseUrl}user/getAllActiveUsers";
+  static String getAllUsersPaged({int page = 0, int size = 20}) =>
+      "${baseUrl}user/getAllActiveUsers?page=$page&size=$size";
   static String editUserById = "${baseUrl}user/updateUserBy/%7Bid%7D";
   static String getUserById(id) => "${baseUrl}user/getUser/$id";
   static String deleteUserById(id) => "${baseUrl}user/deleteUserBy/$id";

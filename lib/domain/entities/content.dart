@@ -42,13 +42,40 @@ class Content {
   double? mediaHouseIncentivePecentage;
   String? reason;
   String? agreementUrl;
+  String? aggrementDocument;
+  bool? isAggrement;
+  String? registrationFeeDetails;
 
   String? get resolvedAgreementUrl {
     if (agreementUrl != null && agreementUrl!.trim().isNotEmpty) {
       return agreementUrl!.trim();
     }
+    if (aggrementDocument != null && aggrementDocument!.trim().isNotEmpty) {
+      return aggrementDocument!.trim();
+    }
+    if (registrationFeeDetails != null && registrationFeeDetails!.trim().isNotEmpty) {
+      final regExp = RegExp(r'Agreement Upload URL:\s*([^;]+)', caseSensitive: false);
+      final match = regExp.firstMatch(registrationFeeDetails!);
+      if (match != null) {
+        final url = match.group(1)?.trim();
+        if (url != null && url.isNotEmpty) {
+          return url;
+        }
+      }
+    }
     if (sensorCertificate != null && sensorCertificate!.trim().isNotEmpty) {
-      return sensorCertificate!.trim();
+      final cert = sensorCertificate!.trim().toLowerCase();
+      if (cert.endsWith('.pdf') ||
+          cert.endsWith('.doc') ||
+          cert.endsWith('.docx') ||
+          cert.contains('agreement') ||
+          cert.contains('contract') ||
+          cert.contains('mou')) {
+        return sensorCertificate!.trim();
+      }
+      if (!cert.contains('censor') && !cert.contains('certificate')) {
+        return sensorCertificate!.trim();
+      }
     }
     return null;
   }
@@ -94,7 +121,10 @@ class Content {
       this.adminIncentivePecentage,
       this.mediaHouseIncentivePecentage,
       this.reason,
-      this.agreementUrl});
+      this.agreementUrl,
+      this.aggrementDocument,
+      this.isAggrement,
+      this.registrationFeeDetails});
 
   Content copyWith({
     int? id,
@@ -138,6 +168,9 @@ class Content {
     double? mediaHouseIncentivePecentage,
     String? reason,
     String? agreementUrl,
+    String? aggrementDocument,
+    bool? isAggrement,
+    String? registrationFeeDetails,
   }) {
     return Content(
       id: id ?? this.id,
@@ -183,6 +216,9 @@ class Content {
           mediaHouseIncentivePecentage ?? this.mediaHouseIncentivePecentage,
       reason: reason ?? this.reason,
       agreementUrl: agreementUrl ?? this.agreementUrl,
+      aggrementDocument: aggrementDocument ?? this.aggrementDocument,
+      isAggrement: isAggrement ?? this.isAggrement,
+      registrationFeeDetails: registrationFeeDetails ?? this.registrationFeeDetails,
     );
   }
 
@@ -213,7 +249,24 @@ class Content {
       trailerUrl: (full.trailerUrl != null && full.trailerUrl!.trim().isNotEmpty) ? full.trailerUrl : trailerUrl,
       contentUrl: (full.contentUrl != null && full.contentUrl!.trim().isNotEmpty) ? full.contentUrl : contentUrl,
       sensorCertificate: (full.sensorCertificate != null && full.sensorCertificate!.trim().isNotEmpty) ? full.sensorCertificate : sensorCertificate,
-      agreementUrl: (full.agreementUrl != null && full.agreementUrl!.trim().isNotEmpty) ? full.agreementUrl : agreementUrl,
+      agreementUrl: (full.agreementUrl != null && full.agreementUrl!.trim().isNotEmpty)
+          ? full.agreementUrl
+          : (full.aggrementDocument != null && full.aggrementDocument!.trim().isNotEmpty)
+              ? full.aggrementDocument
+              : (full.resolvedAgreementUrl != null && full.resolvedAgreementUrl!.trim().isNotEmpty)
+                  ? full.resolvedAgreementUrl
+                  : (agreementUrl != null && agreementUrl!.trim().isNotEmpty)
+                      ? agreementUrl
+                      : (aggrementDocument != null && aggrementDocument!.trim().isNotEmpty)
+                          ? aggrementDocument
+                          : resolvedAgreementUrl,
+      aggrementDocument: (full.aggrementDocument != null && full.aggrementDocument!.trim().isNotEmpty)
+          ? full.aggrementDocument
+          : aggrementDocument,
+      isAggrement: full.isAggrement ?? isAggrement,
+      registrationFeeDetails: (full.registrationFeeDetails != null && full.registrationFeeDetails!.trim().isNotEmpty)
+          ? full.registrationFeeDetails
+          : registrationFeeDetails,
       mediaHouseId: full.mediaHouseId ?? mediaHouseId,
       mediaHouseName: (full.mediaHouseName != null && full.mediaHouseName!.trim().isNotEmpty) ? full.mediaHouseName : mediaHouseName,
       ratingCount: full.ratingCount ?? ratingCount,
@@ -232,50 +285,122 @@ class Content {
     );
   }
 
-  factory Content.fromJson(Map<String, dynamic> json) => Content(
-        id: _asInt(json["id"] ?? json["Id"] ?? json["contentId"] ?? json["ContentId"] ?? json["seriesId"] ?? json["movieId"]),
-        title: _asString(json["title"] ?? json["Title"] ?? json["name"] ?? json["Name"] ?? json["seriesName"] ?? json["movieName"]),
-        description: _asString(json["description"] ?? json["Description"] ?? json["desc"] ?? json["Desc"] ?? json["synopsis"] ?? json["overview"]),
-        runtime: _asInt(json["runtime"] ?? json["Runtime"] ?? json["runTime"] ?? json["RunTime"] ?? json["duration"] ?? json["Duration"]),
-        releaseDate: json["releaseDate"] ?? json["ReleaseDate"] ?? json["release_date"] ?? json["releasedDate"] ?? json["publishDate"],
-        ratings: _asDouble(json["ratings"] ?? json["Ratings"] ?? json["rating"] ?? json["Rating"] ?? json["avgRating"]),
-        price: _asDouble(json["price"] ?? json["Price"] ?? json["amount"] ?? json["coins"]),
-        languageList: _asStringList(json["languageList"] ?? json["LanguageList"] ?? json["languages"] ?? json["Languages"] ?? json["language"] ?? json["Language"]),
-        castList: _asStringList(json["castList"] ?? json["CastList"] ?? json["cast"] ?? json["Cast"] ?? json["casts"] ?? json["Casts"] ?? json["actors"] ?? json["castCrew"]),
-        genreList: _asStringList(json["genreList"] ?? json["GenreList"] ?? json["genres"] ?? json["Genres"] ?? json["genre"] ?? json["Genre"]),
-        directorList: _asStringList(json["directorList"] ?? json["DirectorList"] ?? json["directors"] ?? json["Directors"] ?? json["director"] ?? json["Director"]),
-        views: _asInt(json["views"] ?? json["Views"] ?? json["viewCount"] ?? json["totalViews"]),
-        totalPurchase: _asInt(json["totalPurchase"] ?? json["TotalPurchase"] ?? json["purchases"] ?? json["Purchases"] ?? json["totalPurchases"] ?? json["purchasedCount"]),
-        totalRevenue: _asDouble(json["totalRevenue"] ?? json["TotalRevenue"] ?? json["revenue"] ?? json["Revenue"]),
-        adminRevnue: _asDouble(json["AdminRevnue"] ?? json["adminRevenue"] ?? json["adminRevnue"] ?? json["AdminRevenue"] ?? json["AdminRevenue"]),
-        mediaHouseRevenue: _asDouble(json["mediaHouseRevenue"] ?? json["MediaHouseRevenue"] ?? json["productionHouseRevenue"] ?? json["ProductionHouseRevenue"]),
-        ageRating: _asString(json["ageRating"] ?? json["AgeRating"] ?? json["age_rating"] ?? json["censorRating"] ?? json["ratingCertificate"]),
-        posterUrlList: _asStringList(json["posterUrlList"] ?? json["PosterUrlList"] ?? json["posters"] ?? json["Posters"] ?? json["posterList"] ?? json["PosterList"] ?? json["posterUrls"] ?? json["PosterUrls"] ?? json["posterUrl"] ?? json["poster"] ?? json["bannerUrl"] ?? json["thumbnailUrl"]),
-        teaserUrl: _asString(json["teaserUrl"] ?? json["TeaserUrl"] ?? json["teaser"] ?? json["Teaser"] ?? json["teaserURL"]),
-        trailerUrl: _asString(json["trailerUrl"] ?? json["TrailerUrl"] ?? json["trailer"] ?? json["Trailer"] ?? json["trailerURL"] ?? json["teaserUrl"] ?? json["TeaserUrl"]),
-        contentUrl: _asString(json["contentUrl"] ?? json["ContentUrl"] ?? json["videoUrl"] ?? json["VideoUrl"] ?? json["movieUrl"] ?? json["MovieUrl"] ?? json["url"] ?? json["Url"] ?? json["episodeUrl"]),
-        approvalStatus: _asString(json["approvalStatus"] ?? json["ApprovalStatus"] ?? json["status"] ?? json["Status"] ?? json["approval"]),
-        type: _asString(json["type"] ?? json["Type"] ?? json["contentType"] ?? json["ContentType"] ?? json["content_type"]),
-        sensorCertificate: _asString(json["sensorCertificate"] ?? json["SensorCertificate"] ?? json["censorCertificate"] ?? json["CensorCertificate"] ?? json["certificate"] ?? json["Certificate"]),
-        isFeatured: _asBool(json["isFeatured"] ?? json["IsFeatured"]),
-        availability: _parseAvailability(json["availability"] ?? json["Availability"]),
-        audioFormatList: _asStringList(json["audioFormatList"] ?? json["AudioFormatList"] ?? json["audioFormats"] ?? json["AudioFormats"]),
-        subtitleLanguageList: _asStringList(json["subtitleLanguageList"] ?? json["SubtitleLanguageList"] ?? json["subtitles"] ?? json["Subtitles"] ?? json["subtitleLanguages"] ?? json["SubtitleLanguages"]),
-        languageAudioUrls: _extractAudioUrls(json["languageList"] ?? json["LanguageList"] ?? json["languageAudioUrls"]),
-        subtitleLanguageUrls: _extractSubtitleUrls(json["subtitleLanguageList"] ?? json["SubtitleLanguageList"] ?? json["subtitleLanguageUrls"] ?? json["subtitles"]),
-        isDownloadable: _asBool(json["isDownloadable"] ?? json["IsDownloadable"]),
-        uploadDateTime: _asString(json["uploadDateTime"] ?? json["UploadDateTime"] ?? json["createdDate"] ?? json["createdAt"]),
-        approvedDateTime: _asString(json["approvedDateTime"] ?? json["ApprovedDateTime"] ?? json["approvalDate"]),
-        mediaHouseName: _parseMediaHouseName(json["mediaHouseName"] ?? json["MediaHouseName"] ?? json["productionHouse"] ?? json["ProductionHouse"] ?? json["productionHouseName"] ?? json["mediaHouse"]),
-        mediaHouseId: _asInt(json["mediaHouseId"] ?? json["MediaHouseId"] ?? json["productionHouseId"] ?? (json["mediaHouse"] is Map ? json["mediaHouse"]["id"] : null)),
-        ratingCount: _asInt(json["ratingCount"] ?? json["RatingCount"] ?? json["ratingsCount"] ?? json["reviewsCount"]),
-        rentlDuration: _asString(json["rentlDuration"] ?? json["RentlDuration"] ?? json["rentalDuration"] ?? json["RentalDuration"]),
-        adminIncentivePecentage: _asDouble(json["adminIncentivePecentage"] ?? json["AdminIncentivePecentage"] ?? json["adminPercentage"] ?? json["adminShare"]),
-        mediaHouseIncentivePecentage:
-            _asDouble(json["mediaHouseIncentivePecentage"] ?? json["MediaHouseIncentivePecentage"] ?? json["mediaHousePercentage"] ?? json["mediaHouseShare"] ?? json["productionHousePercentage"]),
-        reason: _asString(json["reason"] ?? json["Reason"] ?? json["rejectReason"]),
-        agreementUrl: _asString(json["agreementUrl"] ?? json["AgreementUrl"] ?? json["agreement"] ?? json["Agreement"] ?? json["agreementFile"] ?? json["contractUrl"] ?? json["documentUrl"]),
-      );
+  factory Content.fromJson(Map<String, dynamic> rawJson) {
+    Map<String, dynamic> json = rawJson;
+    if (json.containsKey("data") && json["data"] is Map<String, dynamic>) {
+      json = json["data"] as Map<String, dynamic>;
+    } else if (json.containsKey("data") && json["data"] is Map) {
+      json = Map<String, dynamic>.from(json["data"] as Map);
+    }
+
+    for (final wrapperKey in [
+      "ContentList",
+      "contentList",
+      "content",
+      "Content",
+      "movie",
+      "Movie",
+      "shortFilm",
+      "ShortFilm",
+      "short_film",
+      "short",
+      "Short",
+      "video",
+      "Video",
+      "film",
+      "Film",
+      "series",
+      "Series",
+    ]) {
+      if (json.containsKey(wrapperKey)) {
+        final val = json[wrapperKey];
+        if (val is Map<String, dynamic>) {
+          final merged = Map<String, dynamic>.from(val);
+          for (final e in json.entries) {
+            if (e.key != wrapperKey && !merged.containsKey(e.key)) {
+              merged[e.key] = e.value;
+            }
+          }
+          json = merged;
+          break;
+        } else if (val is Map) {
+          final merged = Map<String, dynamic>.from(val);
+          for (final e in json.entries) {
+            if (e.key != wrapperKey && !merged.containsKey(e.key)) {
+              merged[e.key] = e.value;
+            }
+          }
+          json = merged;
+          break;
+        } else if (val is List && val.isNotEmpty && val.first is Map) {
+          final merged = Map<String, dynamic>.from(val.first as Map);
+          for (final e in json.entries) {
+            if (e.key != wrapperKey && !merged.containsKey(e.key)) {
+              merged[e.key] = e.value;
+            }
+          }
+          json = merged;
+          break;
+        }
+      }
+    }
+
+    return Content(
+      id: _asInt(json["id"] ?? json["Id"] ?? json["contentId"] ?? json["ContentId"] ?? json["seriesId"] ?? json["movieId"]),
+      title: _asString(json["title"] ?? json["Title"] ?? json["name"] ?? json["Name"] ?? json["seriesName"] ?? json["movieName"]),
+      description: _asString(json["description"] ?? json["Description"] ?? json["desc"] ?? json["Desc"] ?? json["synopsis"] ?? json["overview"]),
+      runtime: _asInt(json["runtime"] ?? json["Runtime"] ?? json["runTime"] ?? json["RunTime"] ?? json["duration"] ?? json["Duration"]),
+      releaseDate: json["releaseDate"] ?? json["ReleaseDate"] ?? json["release_date"] ?? json["releasedDate"] ?? json["publishDate"],
+      ratings: _asDouble(json["ratings"] ?? json["Ratings"] ?? json["rating"] ?? json["Rating"] ?? json["avgRating"]),
+      price: _asDouble(json["price"] ?? json["Price"] ?? json["amount"] ?? json["coins"]),
+      languageList: _asStringList(json["languageList"] ?? json["LanguageList"] ?? json["languages"] ?? json["Languages"] ?? json["language"] ?? json["Language"]),
+      castList: _asStringList(json["castList"] ?? json["CastList"] ?? json["cast"] ?? json["Cast"] ?? json["casts"] ?? json["Casts"] ?? json["actors"] ?? json["castCrew"]),
+      genreList: _asStringList(json["genreList"] ?? json["GenreList"] ?? json["genres"] ?? json["Genres"] ?? json["genre"] ?? json["Genre"]),
+      directorList: _asStringList(json["directorList"] ?? json["DirectorList"] ?? json["directors"] ?? json["Directors"] ?? json["director"] ?? json["Director"]),
+      views: _asInt(json["views"] ?? json["Views"] ?? json["viewCount"] ?? json["totalViews"]),
+      totalPurchase: _asInt(json["totalPurchase"] ?? json["TotalPurchase"] ?? json["purchases"] ?? json["Purchases"] ?? json["totalPurchases"] ?? json["purchasedCount"]),
+      totalRevenue: _asDouble(json["totalRevenue"] ?? json["TotalRevenue"] ?? json["revenue"] ?? json["Revenue"]),
+      adminRevnue: _asDouble(json["AdminRevnue"] ?? json["adminRevenue"] ?? json["adminRevnue"] ?? json["AdminRevenue"] ?? json["AdminRevenue"]),
+      mediaHouseRevenue: _asDouble(json["mediaHouseRevenue"] ?? json["MediaHouseRevenue"] ?? json["productionHouseRevenue"] ?? json["ProductionHouseRevenue"]),
+      ageRating: _asString(json["ageRating"] ?? json["AgeRating"] ?? json["age_rating"] ?? json["censorRating"] ?? json["ratingCertificate"]),
+      posterUrlList: _asStringList(json["posterUrlList"] ?? json["PosterUrlList"] ?? json["posters"] ?? json["Posters"] ?? json["posterList"] ?? json["PosterList"] ?? json["posterUrls"] ?? json["PosterUrls"] ?? json["posterUrl"] ?? json["poster"] ?? json["bannerUrl"] ?? json["thumbnailUrl"]),
+      teaserUrl: _asString(json["teaserUrl"] ?? json["TeaserUrl"] ?? json["teaser"] ?? json["Teaser"] ?? json["teaserURL"]),
+      trailerUrl: _asString(json["trailerUrl"] ?? json["TrailerUrl"] ?? json["trailer"] ?? json["Trailer"] ?? json["trailerURL"] ?? json["teaserUrl"] ?? json["TeaserUrl"]),
+      contentUrl: _asString(json["contentUrl"] ?? json["ContentUrl"] ?? json["videoUrl"] ?? json["VideoUrl"] ?? json["movieUrl"] ?? json["MovieUrl"] ?? json["url"] ?? json["Url"] ?? json["episodeUrl"]),
+      approvalStatus: _asString(json["approvalStatus"] ?? json["ApprovalStatus"] ?? json["status"] ?? json["Status"] ?? json["approval"]),
+      type: _asString(json["type"] ?? json["Type"] ?? json["contentType"] ?? json["ContentType"] ?? json["content_type"]),
+      sensorCertificate: _asString(json["sensorCertificate"] ?? json["SensorCertificate"] ?? json["censorCertificate"] ?? json["CensorCertificate"] ?? json["certificate"] ?? json["Certificate"] ?? json["censor_certificate"] ?? json["sensor_certificate"]),
+      isFeatured: _asBool(json["isFeatured"] ?? json["IsFeatured"]),
+      availability: _parseAvailability(json["availability"] ?? json["Availability"]),
+      audioFormatList: _asStringList(json["audioFormatList"] ?? json["AudioFormatList"] ?? json["audioFormats"] ?? json["AudioFormats"]),
+      subtitleLanguageList: _asStringList(json["subtitleLanguageList"] ?? json["SubtitleLanguageList"] ?? json["subtitles"] ?? json["Subtitles"] ?? json["subtitleLanguages"] ?? json["SubtitleLanguages"]),
+      languageAudioUrls: _extractAudioUrls(json["languageList"] ?? json["LanguageList"] ?? json["languageAudioUrls"]),
+      subtitleLanguageUrls: _extractSubtitleUrls(json["subtitleLanguageList"] ?? json["SubtitleLanguageList"] ?? json["subtitleLanguageUrls"] ?? json["subtitles"]),
+      isDownloadable: _asBool(json["isDownloadable"] ?? json["IsDownloadable"]),
+      uploadDateTime: _asString(json["uploadDateTime"] ?? json["UploadDateTime"] ?? json["createdDate"] ?? json["createdAt"]),
+      approvedDateTime: _asString(json["approvedDateTime"] ?? json["ApprovedDateTime"] ?? json["approvalDate"]),
+      mediaHouseName: _parseMediaHouseName(json["mediaHouseName"] ?? json["MediaHouseName"] ?? json["productionHouse"] ?? json["ProductionHouse"] ?? json["productionHouseName"] ?? json["mediaHouse"]),
+      mediaHouseId: _asInt(json["mediaHouseId"] ?? json["MediaHouseId"] ?? json["productionHouseId"] ?? (json["mediaHouse"] is Map ? json["mediaHouse"]["id"] : null)),
+      ratingCount: _asInt(json["ratingCount"] ?? json["RatingCount"] ?? json["ratingsCount"] ?? json["reviewsCount"]),
+      rentlDuration: _asString(json["rentlDuration"] ?? json["RentlDuration"] ?? json["rentalDuration"] ?? json["RentalDuration"]),
+      adminIncentivePecentage: _asDouble(json["adminIncentivePecentage"] ?? json["AdminIncentivePecentage"] ?? json["adminPercentage"] ?? json["adminShare"]),
+      mediaHouseIncentivePecentage:
+          _asDouble(json["mediaHouseIncentivePecentage"] ?? json["MediaHouseIncentivePecentage"] ?? json["mediaHousePercentage"] ?? json["mediaHouseShare"] ?? json["productionHousePercentage"]),
+      reason: _asString(json["reason"] ?? json["Reason"] ?? json["rejectReason"]),
+      aggrementDocument: _asString(json["aggrementDocument"] ??
+          json["AggrementDocument"] ??
+          json["aggrement_document"] ??
+          json["aggrementUrl"] ??
+          json["aggrement_url"] ??
+          json["aggrementDoc"] ??
+          json["aggrement_doc"]),
+      isAggrement: _asBool(json["isAggrement"] ?? json["IsAggrement"] ?? json["is_aggrement"]),
+      registrationFeeDetails: _asString(json["registrationFeeDetails"] ??
+          json["RegistrationFeeDetails"] ??
+          json["registration_fee_details"]),
+      agreementUrl: _extractAgreementUrl(rawJson) ?? _extractAgreementUrl(json),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         "id": id,
@@ -338,8 +463,187 @@ class Content {
         "rentlDuration": rentlDuration,
         "adminIncentivePecentage": adminIncentivePecentage,
         "mediaHouseIncentivePecentage": mediaHouseIncentivePecentage,
-        "reason": reason
+        "reason": reason,
+        if (aggrementDocument != null && aggrementDocument!.isNotEmpty)
+          "aggrementDocument": aggrementDocument,
+        if (isAggrement != null) "isAggrement": isAggrement,
+        if (registrationFeeDetails != null && registrationFeeDetails!.isNotEmpty)
+          "registrationFeeDetails": registrationFeeDetails,
+        if (resolvedAgreementUrl != null && resolvedAgreementUrl!.isNotEmpty)
+          "agreementUrl": resolvedAgreementUrl,
       };
+}
+
+String? _extractAgreementUrl(Map<String, dynamic> json) {
+  final directKeys = [
+    "agreementUrl",
+    "AgreementUrl",
+    "agreement_url",
+    "Agreement_Url",
+    "agreement",
+    "Agreement",
+    "aggrementDocument",
+    "AggrementDocument",
+    "aggrement_document",
+    "aggrementDoc",
+    "aggrement_doc",
+    "aggrementUrl",
+    "aggrement_url",
+    "AggrementUrl",
+    "aggrement",
+    "Aggrement",
+    "aggrementFile",
+    "aggrement_file",
+    "agreementFile",
+    "AgreementFile",
+    "agreement_file",
+    "Agreement_File",
+    "agreementDoc",
+    "agreement_doc",
+    "agreementDocument",
+    "agreement_document",
+    "agreementPath",
+    "agreement_path",
+    "productionHouseAgreement",
+    "production_house_agreement",
+    "ProductionHouseAgreement",
+    "mediaHouseAgreement",
+    "media_house_agreement",
+    "phAgreement",
+    "ph_agreement",
+    "phAgreementUrl",
+    "ph_agreement_url",
+    "movieAgreement",
+    "movie_agreement",
+    "shortFilmAgreement",
+    "short_film_agreement",
+    "shortAgreement",
+    "short_agreement",
+    "signedAgreement",
+    "signed_agreement",
+    "signedAgreementUrl",
+    "signed_agreement_url",
+    "contractUrl",
+    "contract_url",
+    "contract",
+    "Contract",
+    "contractFile",
+    "contract_file",
+    "documentUrl",
+    "document_url",
+    "docUrl",
+    "doc_url",
+    "document",
+    "Document",
+    "pdfUrl",
+    "pdf_url",
+  ];
+
+  for (final key in directKeys) {
+    if (json.containsKey(key)) {
+      final val = _asString(json[key]);
+      if (val != null && val.isNotEmpty) return val;
+    }
+  }
+
+  // Check registrationFeeDetails for Agreement Upload URL
+  final feeDetails = _asString(
+    json["registrationFeeDetails"] ??
+    json["RegistrationFeeDetails"] ??
+    json["registration_fee_details"] ??
+    json["feeDetails"] ??
+    json["FeeDetails"],
+  );
+  if (feeDetails != null && feeDetails.isNotEmpty) {
+    final regExp = RegExp(r'Agreement Upload URL:\s*([^;]+)', caseSensitive: false);
+    final match = regExp.firstMatch(feeDetails);
+    if (match != null) {
+      final url = match.group(1)?.trim();
+      if (url != null && url.isNotEmpty) {
+        return url;
+      }
+    }
+  }
+
+  // Nested in content wrappers: ContentList, contentList, shortFilm, movie, content, video
+  for (final wrapper in [
+    "ContentList",
+    "contentList",
+    "shortFilm",
+    "short_film",
+    "ShortFilm",
+    "movie",
+    "content",
+    "video",
+    "data"
+  ]) {
+    if (json.containsKey(wrapper)) {
+      final val = json[wrapper];
+      if (val is Map) {
+        final nested = val.map((k, v) => MapEntry(k.toString(), v));
+        final url = _extractAgreementUrl(nested);
+        if (url != null && url.isNotEmpty) return url;
+      } else if (val is List && val.isNotEmpty && val.first is Map) {
+        final nested = (val.first as Map).map((k, v) => MapEntry(k.toString(), v));
+        final url = _extractAgreementUrl(nested);
+        if (url != null && url.isNotEmpty) return url;
+      }
+    }
+  }
+
+  // Nested in mediaHouse / productionHouse objects
+  final nestedEntities = [
+    json["mediaHouse"],
+    json["MediaHouse"],
+    json["productionHouse"],
+    json["ProductionHouse"],
+  ];
+  for (final entity in nestedEntities) {
+    if (entity is Map) {
+      final map = entity.map((k, v) => MapEntry(k.toString(), v));
+      for (final key in directKeys) {
+        if (map.containsKey(key)) {
+          final val = _asString(map[key]);
+          if (val != null && val.isNotEmpty) return val;
+        }
+      }
+    }
+  }
+
+  // Nested in documents / files lists
+  final documents = json["documents"] ?? json["Documents"] ?? json["files"] ?? json["Files"];
+  if (documents is List) {
+    for (final doc in documents) {
+      if (doc is Map) {
+        final type = (doc["type"] ?? doc["name"] ?? doc["title"] ?? "").toString().toLowerCase();
+        final url = _asString(doc["url"] ?? doc["fileUrl"] ?? doc["path"] ?? doc["documentUrl"]);
+        if ((type.contains("agreement") || type.contains("contract")) && url != null) {
+          return url;
+        }
+      }
+    }
+  }
+
+  // Check if sensorCertificate has an agreement document
+  final sensorCert = _asString(
+    json["sensorCertificate"] ??
+    json["SensorCertificate"] ??
+    json["censorCertificate"] ??
+    json["CensorCertificate"]
+  );
+  if (sensorCert != null && sensorCert.isNotEmpty) {
+    final lower = sensorCert.toLowerCase();
+    if (lower.endsWith('.pdf') ||
+        lower.endsWith('.doc') ||
+        lower.endsWith('.docx') ||
+        lower.contains('agreement') ||
+        lower.contains('contract') ||
+        lower.contains('mou')) {
+      return sensorCert;
+    }
+  }
+
+  return null;
 }
 
 int? _asInt(dynamic value) {

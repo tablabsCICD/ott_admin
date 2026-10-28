@@ -1,6 +1,14 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:universal_html/html.dart' as html;
 
+import 'package:admin_ott/app/core/constant/api_constant.dart';
+import 'package:admin_ott/app/core/network/api_helper.dart';
+import 'package:admin_ott/app/core/loading/app_loading_controller.dart';
 import 'package:admin_ott/app/provider/mediaHouseProvider.dart';
 import 'package:admin_ott/app/provider/themeProvider.dart';
 import 'package:admin_ott/app/widgets/custom_textfield.dart';
@@ -34,6 +42,8 @@ class _EditMediaHouseDialogState extends State<EditMediaHouseDialog>
 
   late TabController _tabController;
   final Map<String, TextEditingController> _controllers = {};
+  final Map<String, Uint8List> _localPreviewBytes = {};
+  final Map<String, String> _localFileNames = {};
   final Set<String> _uploadingFields = {};
 
   bool _active = true;
@@ -206,46 +216,186 @@ class _EditMediaHouseDialogState extends State<EditMediaHouseDialog>
     // Tab 5: Branding
     _controllers['logo'] =
         TextEditingController(text: h.logo?.toString() ?? '');
+    final posterVal = h.profileImage?.toString() ?? '';
     _controllers['profileImage'] =
-        TextEditingController(text: h.profileImage?.toString() ?? '');
+        TextEditingController(text: posterVal);
+    _controllers['poster'] =
+        TextEditingController(text: posterVal);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    for (final c in _controllers.values) {
+    for (final c in Set.from(_controllers.values)) {
       c.dispose();
     }
     super.dispose();
   }
 
-  TextEditingController _c(String key) =>
-      _controllers[key] ??= TextEditingController();
+  TextEditingController _c(String key) {
+    if (key == 'poster') return _controllers['profileImage'] ??= TextEditingController();
+    return _controllers[key] ??= TextEditingController();
+  }
 
   Future<void> _pickAndUploadDocument(String key, String label) async {
-    setState(() => _uploadingFields.add(key));
-    try {
-      final mediaHouseProvider =
-          Provider.of<MediaHouseProvider>(context, listen: false);
-      await mediaHouseProvider.pickImage(label);
-      final uploadedUrl = mediaHouseProvider.uploadedImageUrl;
-      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+    final isImageField = key == 'logo' || key == 'profileImage' || key == 'poster';
+
+    if (kIsWeb) {
+      final uploadInput = html.FileUploadInputElement();
+      uploadInput.accept = isImageField
+          ? 'image/*'
+          : 'image/*,.pdf,.doc,.docx,application/pdf';
+      uploadInput.click();
+
+      uploadInput.onChange.listen((event) async {
+        if (uploadInput.files == null || uploadInput.files!.isEmpty) return;
+        final file = uploadInput.files!.first;
+
+        try {
+          final reader = html.FileReader();
+          reader.readAsArrayBuffer(file);
+          await reader.onLoad.first;
+          final bytes = Uint8List.fromList(reader.result as List<int>);
+
+          if (!mounted) return;
+          // Immediately update preview state so the selected image/document is visible right away!
+          setState(() {
+            _localPreviewBytes[key] = bytes;
+            _localFileNames[key] = file.name;
+            _uploadingFields.add(key);
+          });
+
+          // Upload specifically for this field
+          final uploadedUrl = await _performUpload(
+            bytes: bytes,
+            fileName: file.name,
+            label: label,
+          );
+
+          if (!mounted) return;
+          if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+            setState(() {
+              _c(key).text = uploadedUrl;
+              if (key == 'profileImage') _c('poster').text = uploadedUrl;
+              if (key == 'poster') _c('profileImage').text = uploadedUrl;
+            });
+            CustomToast.show('$label uploaded successfully', isSuccess: true);
+          }
+        } catch (e) {
+          debugPrint('Upload error for $label: $e');
+          if (mounted) {
+            CustomToast.show('Failed to upload $label: $e', isSuccess: false);
+          }
+        } finally {
+          if (mounted) {
+            setState(() => _uploadingFields.remove(key));
+          }
+        }
+      });
+    } else {
+      // Mobile & Desktop platforms
+      try {
+        final picker = ImagePicker();
+        final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+        if (pickedFile == null) return; // User cancelled, keep existing file intact
+
+        final bytes = await pickedFile.readAsBytes();
+        if (!mounted) return;
         setState(() {
-          _c(key).text = uploadedUrl;
+          _localPreviewBytes[key] = bytes;
+          _localFileNames[key] = pickedFile.name;
+          _uploadingFields.add(key);
         });
-        if (mounted) {
+
+        final uploadedUrl = await _performUpload(
+          bytes: bytes,
+          fileName: pickedFile.name,
+          label: label,
+        );
+
+        if (!mounted) return;
+        if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+          setState(() {
+            _c(key).text = uploadedUrl;
+            if (key == 'profileImage') _c('poster').text = uploadedUrl;
+            if (key == 'poster') _c('profileImage').text = uploadedUrl;
+          });
           CustomToast.show('$label uploaded successfully', isSuccess: true);
         }
-      }
-    } catch (e) {
-      if (mounted) {
-        CustomToast.show('Failed to upload $label: $e', isSuccess: false);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _uploadingFields.remove(key));
+      } catch (e) {
+        debugPrint('Upload error for $label: $e');
+        if (mounted) {
+          CustomToast.show('Failed to upload $label: $e', isSuccess: false);
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _uploadingFields.remove(key));
+        }
       }
     }
+  }
+
+  Future<String?> _performUpload({
+    required Uint8List bytes,
+    required String fileName,
+    required String label,
+  }) async {
+    final url = Uri.parse(ApiConstant.uploadImg);
+    final request = http.MultipartRequest('POST', url);
+    request.headers.addAll(await ApiHelper().multipartHeaders());
+    request.files.add(http.MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: fileName,
+    ));
+
+    final streamedResponse =
+        await AppLoadingController.trackFuture(() => request.send());
+
+    if (streamedResponse.statusCode == 200 || streamedResponse.statusCode == 201) {
+      final responseBody = await streamedResponse.stream.bytesToString();
+      return _parseUploadedUrl(responseBody);
+    } else {
+      throw Exception('Server returned status ${streamedResponse.statusCode}');
+    }
+  }
+
+  String? _parseUploadedUrl(String responseBody) {
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is String) return _cleanUrl(decoded);
+      if (decoded is Map<String, dynamic>) {
+        final data = decoded['data'];
+        if (data is String && data.isNotEmpty) return _cleanUrl(data);
+        if (data is Map<String, dynamic>) {
+          final candidate = data['fileUrl'] ??
+              data['url'] ??
+              data['imageUrl'] ??
+              data['path'] ??
+              data['filePath'];
+          if (candidate != null) return _cleanUrl(candidate.toString());
+        }
+        final topCandidate = decoded['fileUrl'] ??
+            decoded['url'] ??
+            decoded['imageUrl'] ??
+            decoded['path'] ??
+            decoded['filePath'] ??
+            decoded['message'];
+        if (topCandidate != null) return _cleanUrl(topCandidate.toString());
+      }
+    } catch (e) {
+      debugPrint('Error parsing uploaded URL: $e');
+    }
+    return _cleanUrl(responseBody);
+  }
+
+  String _cleanUrl(String raw) {
+    var trimmed = raw.trim();
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+      trimmed = trimmed.substring(1, trimmed.length - 1);
+    }
+    return trimmed;
   }
 
   Future<void> _handleSave() async {
@@ -633,7 +783,9 @@ class _EditMediaHouseDialogState extends State<EditMediaHouseDialog>
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: theme.dividerColor.withValues(alpha: 0.6)),
                 ),
-                child: SwitchListTile(
+                child: Material(
+                  color: Colors.transparent,
+                  child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
                     'Active Status',
@@ -654,6 +806,7 @@ class _EditMediaHouseDialogState extends State<EditMediaHouseDialog>
                   value: _active,
                   activeThumbColor: Colors.green,
                   onChanged: (val) => setState(() => _active = val),
+                ),
                 ),
               ),
             ),
@@ -993,9 +1146,9 @@ class _EditMediaHouseDialogState extends State<EditMediaHouseDialog>
           ),
         ),
         const SizedBox(height: 12),
-        _buildUploadCard('logo', 'Logo', theme),
+        _buildUploadCard('logo', 'Production House Logo', theme),
         const SizedBox(height: 12),
-        _buildUploadCard('profileImage', 'Profile Image', theme),
+        _buildUploadCard('profileImage', 'Production House Poster', theme),
         const SizedBox(height: 20),
         Text(
           'System Identifiers (Read-Only)',
@@ -1030,80 +1183,121 @@ class _EditMediaHouseDialogState extends State<EditMediaHouseDialog>
     );
   }
 
-  // Upload Card component matching Onboard Media House style
+  // Upload Card component with immediate local preview and dedicated field state
   Widget _buildUploadCard(String key, String label, ThemeData theme) {
     final url = _c(key).text.trim();
+    final localBytes = _localPreviewBytes[key];
+    final localFileName = _localFileNames[key];
     final isUploading = _uploadingFields.contains(key);
-    final isUploaded = url.isNotEmpty;
+    final hasFile = localBytes != null || url.isNotEmpty;
+    final isImage = key == 'logo' ||
+        key == 'profileImage' ||
+        key == 'poster' ||
+        _isImageFile(localFileName ?? url);
+
+    final fileName = localFileName ?? _extractFileName(url, label);
+    final formatLabel = _getFileFormatLabel(localFileName ?? url, isImage);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: theme.canvasColor,
-            ),
+          child: Row(
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: theme.canvasColor,
+                ),
+              ),
+              if (hasFile) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.green.withValues(alpha: 0.4), width: 0.8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle, size: 10, color: Colors.green),
+                      const SizedBox(width: 3),
+                      Text(
+                        formatLabel,
+                        style: const TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         InkWell(
           onTap: isUploading ? null : () => _pickAndUploadDocument(key, label),
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            height: isUploaded ? 110 : 76,
+            height: hasFile ? 116 : 80,
             decoration: BoxDecoration(
-              color: isUploaded
-                  ? Colors.green.withValues(alpha: 0.08)
-                  : theme.primaryColor.withValues(alpha: 0.08),
+              color: hasFile
+                  ? Colors.green.withValues(alpha: 0.06)
+                  : theme.primaryColor.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isUploaded
-                    ? Colors.green.withValues(alpha: 0.45)
+                color: hasFile
+                    ? Colors.green.withValues(alpha: 0.4)
                     : theme.primaryColor.withValues(alpha: 0.35),
                 width: 1.4,
               ),
             ),
             child: Stack(
               children: [
-                if (isUploaded) ...[
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        url,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) {
-                          return Container(
-                            alignment: Alignment.center,
-                            child: Icon(
-                              Icons.description_outlined,
-                              color: theme.primaryColor,
-                              size: 32,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
+                if (hasFile) ...[
+                  if (isImage)
+                    Positioned.fill(
+                      child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.55),
-                          ],
+                        child: localBytes != null
+                            ? Image.memory(
+                                localBytes,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.network(
+                                url,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildFallbackDocPreview(label, fileName, theme),
+                              ),
+                      ),
+                    )
+                  else
+                    Positioned.fill(
+                      child: _buildDocumentPreview(label, fileName, theme),
+                    ),
+                  if (isImage)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.58),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
                 Center(
                   child: isUploading
@@ -1111,20 +1305,20 @@ class _EditMediaHouseDialogState extends State<EditMediaHouseDialog>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             SizedBox(
-                              width: 22,
-                              height: 22,
+                              width: 24,
+                              height: 24,
                               child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                color: theme.primaryColor,
+                                strokeWidth: 2.4,
+                                color: isImage && hasFile ? Colors.white : theme.primaryColor,
                               ),
                             ),
                             const SizedBox(height: 6),
                             Text(
                               "Uploading...",
                               style: TextStyle(
-                                color: theme.primaryColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 11,
+                                color: isImage && hasFile ? Colors.white : theme.primaryColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
                               ),
                             ),
                           ],
@@ -1133,19 +1327,17 @@ class _EditMediaHouseDialogState extends State<EditMediaHouseDialog>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              isUploaded
-                                  ? Icons.check_circle_outline
-                                  : Icons.cloud_upload_outlined,
-                              color: isUploaded ? Colors.white : theme.primaryColor,
+                              hasFile ? Icons.check_circle_outline : Icons.cloud_upload_outlined,
+                              color: isImage && hasFile ? Colors.white : theme.primaryColor,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
                             Flexible(
                               child: Text(
-                                isUploaded ? "$label Uploaded" : "Upload $label",
+                                hasFile ? "Change $label" : "Upload $label",
                                 style: TextStyle(
-                                  color: isUploaded ? Colors.white : theme.primaryColor,
-                                  fontWeight: FontWeight.w600,
+                                  color: isImage && hasFile ? Colors.white : theme.primaryColor,
+                                  fontWeight: FontWeight.bold,
                                   fontSize: 13,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -1154,6 +1346,49 @@ class _EditMediaHouseDialogState extends State<EditMediaHouseDialog>
                           ],
                         ),
                 ),
+                if (hasFile && !isUploading) ...[
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (url.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.open_in_new, size: 16),
+                            tooltip: 'View Document',
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.black54,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.all(6),
+                              minimumSize: const Size(28, 28),
+                            ),
+                            onPressed: () => _openDocument(url),
+                          ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 16),
+                          tooltip: 'Clear',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.black54,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.all(6),
+                            minimumSize: const Size(28, 28),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _localPreviewBytes.remove(key);
+                              _localFileNames.remove(key);
+                              _c(key).clear();
+                              if (key == 'profileImage') _c('poster').clear();
+                              if (key == 'poster') _c('profileImage').clear();
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1164,8 +1399,136 @@ class _EditMediaHouseDialogState extends State<EditMediaHouseDialog>
           hintText: 'Enter $label URL or upload file',
           textInputType: TextInputType.url,
           isValidator: false,
+          onValueChange: (_) => setState(() {}),
         ),
       ],
+    );
+  }
+
+  bool _isImageFile(String pathOrUrl) {
+    final clean = pathOrUrl.split('?').first.toLowerCase();
+    return clean.endsWith('.jpg') ||
+        clean.endsWith('.jpeg') ||
+        clean.endsWith('.png') ||
+        clean.endsWith('.webp') ||
+        clean.endsWith('.gif');
+  }
+
+  String _getFileFormatLabel(String pathOrUrl, bool isImage) {
+    if (pathOrUrl.isEmpty) return isImage ? 'IMAGE' : 'DOC';
+    final clean = pathOrUrl.split('?').first.toLowerCase();
+    if (clean.endsWith('.pdf')) return 'PDF';
+    if (clean.endsWith('.png')) return 'PNG';
+    if (clean.endsWith('.jpg') || clean.endsWith('.jpeg')) return 'JPG';
+    if (clean.endsWith('.webp')) return 'WEBP';
+    if (clean.endsWith('.doc') || clean.endsWith('.docx')) return 'DOC';
+    return isImage ? 'IMAGE' : 'FILE';
+  }
+
+  String _extractFileName(String url, String defaultLabel) {
+    if (url.trim().isEmpty) return '';
+    try {
+      final clean = url.split('?').first.split('#').first;
+      final uri = Uri.tryParse(clean);
+      final segments = uri?.pathSegments ?? clean.split('/');
+      if (segments.isNotEmpty && segments.last.trim().isNotEmpty) {
+        final decoded = Uri.decodeComponent(segments.last.trim());
+        if (decoded.isNotEmpty && decoded != '/') {
+          return decoded;
+        }
+      }
+    } catch (_) {}
+    return defaultLabel;
+  }
+
+  void _openDocument(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return;
+    String fullUrl = trimmed;
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      final base = ApiConstant.baseUrl.endsWith('/')
+          ? ApiConstant.baseUrl.substring(0, ApiConstant.baseUrl.length - 1)
+          : ApiConstant.baseUrl;
+      final path = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+      fullUrl = '$base$path';
+    }
+    if (kIsWeb) {
+      html.window.open(fullUrl, '_blank');
+    } else {
+      debugPrint("Opening document URL: $fullUrl");
+    }
+  }
+
+  Widget _buildDocumentPreview(String label, String fileName, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      alignment: Alignment.center,
+      color: theme.cardColor,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.description_outlined,
+              color: theme.primaryColor,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  fileName.isNotEmpty ? fileName : label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                    color: theme.canvasColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Document attached',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFallbackDocPreview(String label, String fileName, ThemeData theme) {
+    return Container(
+      color: theme.cardColor,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.broken_image_outlined, color: theme.hintColor, size: 28),
+          const SizedBox(height: 4),
+          Text(
+            fileName.isNotEmpty ? fileName : label,
+            style: TextStyle(fontSize: 11, color: theme.hintColor),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 

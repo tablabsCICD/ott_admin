@@ -136,7 +136,7 @@ class MediaHouse {
             ? json["createdDate"]
             : int.tryParse(json["createdDate"]?.toString() ?? ''),
         updatedDate: json["updatedDate"],
-        profileImage: json["profileImage"],
+        profileImage: json["profileImage"] ?? json["poster"] ?? json["posterUrl"] ?? json["profile_image"],
         otp: json["otp"],
         password: json["password"],
         status: json["status"],
@@ -274,6 +274,13 @@ class MediaHouse {
         "totalViews": totalViews ?? '0',
         "updatedDate": DateTime.now().toUtc().toIso8601String(),
         "userId": null,
+        if (bankProof != null && bankProof!.isNotEmpty) "bankProof": bankProof,
+        if (addressProof != null && addressProof!.isNotEmpty) "addressProof": addressProof,
+        if (bankName != null && bankName.toString().isNotEmpty) "bankName": bankName.toString(),
+        if (accountHolderName != null && accountHolderName.toString().isNotEmpty) "accountHolderName": accountHolderName.toString(),
+        if (bankAccountNumber != null && bankAccountNumber!.isNotEmpty) "bankAccountNumber": bankAccountNumber,
+        if (bankIfscNumber != null && bankIfscNumber!.isNotEmpty) "bankIFSCNumber": bankIfscNumber,
+        if (firmType != null && firmType.toString().isNotEmpty) "firmType": firmType.toString(),
       };
 
   MediaHouse copyWith({

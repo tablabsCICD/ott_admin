@@ -142,90 +142,299 @@ class _ManageUserPageState extends State<ManageUserPage> {
         body: Padding(
           padding:
               const EdgeInsets.only(top: 8, left: 16, right: 16, bottom: 16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount =
-                  _getCrossAxisCount(constraints.maxWidth, context);
-              final avatarRadius = crossAxisCount >= 5 ? 46.0 : 38.0;
-              final canGrowWide = crossAxisCount <= 2;
+          child: Column(
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final crossAxisCount =
+                        _getCrossAxisCount(constraints.maxWidth, context);
+                    final avatarRadius = crossAxisCount >= 5 ? 46.0 : 38.0;
+                    final canGrowWide = crossAxisCount <= 2;
 
-              if (provider.isSearching && provider.filteredUsers.isEmpty) {
-                return Center(
-                  child: CircularProgressIndicator(
-                    color: selectedThemeData.primaryColor,
-                  ),
-                );
-              }
+                    if ((provider.isSearching || provider.isLoadingUsers) &&
+                        provider.filteredUsers.isEmpty) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          color: selectedThemeData.primaryColor,
+                        ),
+                      );
+                    }
 
-              if (provider.filteredUsers.isEmpty) {
-                return Center(
-                  child: Text(
-                    provider.searchController.text.trim().isEmpty
-                        ? 'No users available'
-                        : 'No users found',
-                    style: TextStyle(
-                      color:
-                          selectedThemeData.canvasColor.withValues(alpha: 0.75),
-                      fontSize: 14,
-                    ),
-                  ),
-                );
-              }
+                    if (provider.filteredUsers.isEmpty) {
+                      return Center(
+                        child: Text(
+                          provider.searchController.text.trim().isEmpty
+                              ? 'No users available'
+                              : 'No users found',
+                          style: TextStyle(
+                            color:
+                                selectedThemeData.canvasColor.withValues(alpha: 0.75),
+                            fontSize: 14,
+                          ),
+                        ),
+                      );
+                    }
 
-              return SingleChildScrollView(
-                child: StaggeredGrid.count(
-                  crossAxisCount: crossAxisCount,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  children:
-                      List.generate(provider.filteredUsers.length, (index) {
-                    final user = provider.filteredUsers[index];
-                    final tileSpan = (canGrowWide && index % 3 == 0) ? 2 : 1;
-                    final isUpdating =
-                        provider.isUpdatingUserStatus(user.mobileNumber);
+                    return Stack(
+                      children: [
+                        SingleChildScrollView(
+                          child: StaggeredGrid.count(
+                            crossAxisCount: crossAxisCount,
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                            children:
+                                List.generate(provider.filteredUsers.length, (index) {
+                              final user = provider.filteredUsers[index];
+                              final tileSpan = (canGrowWide && index % 3 == 0) ? 2 : 1;
+                              final isUpdating =
+                                  provider.isUpdatingUserStatus(user.mobileNumber);
 
-                    return StaggeredGridTile.fit(
-                      crossAxisCellCount:
-                          tileSpan > crossAxisCount ? 1 : tileSpan,
-                      child: _buildUserCard(
-                        user: user,
-                        theme: selectedThemeData,
-                        avatarRadius: avatarRadius,
-                        isUpdatingStatus: isUpdating,
-                        onStatusChanged: (active) async {
-                          final confirmed = await _confirmChangeUserStatus(
-                            user: user,
-                            active: active,
-                            theme: selectedThemeData,
-                          );
+                              return StaggeredGridTile.fit(
+                                crossAxisCellCount:
+                                    tileSpan > crossAxisCount ? 1 : tileSpan,
+                                child: _buildUserCard(
+                                  user: user,
+                                  theme: selectedThemeData,
+                                  avatarRadius: avatarRadius,
+                                  isUpdatingStatus: isUpdating,
+                                  onStatusChanged: (active) async {
+                                    final confirmed = await _confirmChangeUserStatus(
+                                      user: user,
+                                      active: active,
+                                      theme: selectedThemeData,
+                                    );
 
-                          if (confirmed && context.mounted) {
-                            provider.changeUserActiveStatus(user, active);
-                          }
-                        },
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => UserDetailsPage(
-                                user: user,
-                                onRemoveUser: () {
-                                  provider.deleteUser(user.id!);
-                                },
-                              ),
+                                    if (confirmed && context.mounted) {
+                                      provider.changeUserActiveStatus(user, active);
+                                    }
+                                  },
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => UserDetailsPage(
+                                          user: user,
+                                          onRemoveUser: () {
+                                            provider.deleteUser(user.id!);
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                        if (provider.isLoadingUsers && provider.filteredUsers.isNotEmpty)
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            child: LinearProgressIndicator(
+                              color: selectedThemeData.primaryColor,
+                              backgroundColor: selectedThemeData.primaryColor.withValues(alpha: 0.2),
+                              minHeight: 3,
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                      ],
                     );
-                  }),
+                  },
                 ),
-              );
-            },
+              ),
+              const SizedBox(height: 10),
+              _buildPaginationBar(
+                provider,
+                selectedThemeData,
+                ResponsiveWidget.isMobile(context),
+              ),
+            ],
           ),
         ),
       );
     });
+  }
+
+  Widget _buildPaginationBar(
+    UserProvider provider,
+    ThemeData theme,
+    bool isMobile,
+  ) {
+    final isSearching = provider.searchController.text.trim().isNotEmpty;
+    final totalItems = isSearching ? provider.filteredUsers.length : provider.totalUsers;
+    final totalPages = isSearching ? 1 : provider.totalPages;
+    final currentPage = isSearching ? 0 : provider.currentPage;
+
+    final hasPrevious = isSearching ? false : (provider.hasPrevious && currentPage > 0);
+    final hasNext = isSearching ? false : (provider.hasNext && currentPage < totalPages - 1);
+    final isLoading = provider.isLoadingUsers;
+
+    // Calculate items range: e.g. "Showing 1-20 of 562 users"
+    final startItem = totalItems == 0 ? 0 : (currentPage * provider.pageSize) + 1;
+    final endItem = isSearching
+        ? totalItems
+        : ((currentPage * provider.pageSize) + provider.users.length).clamp(0, totalItems);
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 20,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: 0.25),
+        ),
+      ),
+      child: isMobile
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isSearching
+                      ? 'Found $totalItems matching users'
+                      : 'Showing $startItem-$endItem of $totalItems users',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: theme.canvasColor.withValues(alpha: 0.75),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.canvasColor,
+                        side: BorderSide(
+                          color: hasPrevious
+                              ? theme.primaryColor.withValues(alpha: 0.5)
+                              : theme.dividerColor.withValues(alpha: 0.3),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: (!hasPrevious || isLoading)
+                          ? null
+                          : () => provider.previousPage(),
+                      icon: const Icon(Icons.chevron_left, size: 18),
+                      label: const Text('Previous', style: TextStyle(fontSize: 12)),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Text(
+                        'Page ${currentPage + 1} of $totalPages',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: theme.canvasColor,
+                        ),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.canvasColor,
+                        side: BorderSide(
+                          color: hasNext
+                              ? theme.primaryColor.withValues(alpha: 0.5)
+                              : theme.dividerColor.withValues(alpha: 0.3),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: (!hasNext || isLoading)
+                          ? null
+                          : () => provider.nextPage(),
+                      label: const Text('Next', style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.chevron_right, size: 18),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Text(
+                  isSearching
+                      ? 'Found $totalItems matching users'
+                      : 'Showing $startItem-$endItem of $totalItems users',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: theme.canvasColor.withValues(alpha: 0.75),
+                  ),
+                ),
+                if (isLoading) ...[
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: theme.primaryColor,
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: theme.canvasColor,
+                    side: BorderSide(
+                      color: hasPrevious
+                          ? theme.primaryColor.withValues(alpha: 0.5)
+                          : theme.dividerColor.withValues(alpha: 0.3),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: (!hasPrevious || isLoading)
+                      ? null
+                      : () => provider.previousPage(),
+                  icon: const Icon(Icons.chevron_left, size: 18),
+                  label: const Text('Previous', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                ),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: theme.primaryColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: theme.primaryColor.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Text(
+                    'Page ${currentPage + 1} of $totalPages',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: theme.primaryColor,
+                    ),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: theme.canvasColor,
+                    side: BorderSide(
+                      color: hasNext
+                          ? theme.primaryColor.withValues(alpha: 0.5)
+                          : theme.dividerColor.withValues(alpha: 0.3),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: (!hasNext || isLoading)
+                      ? null
+                      : () => provider.nextPage(),
+                  label: const Text('Next', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  icon: const Icon(Icons.chevron_right, size: 18),
+                ),
+              ],
+            ),
+    );
   }
 
   int _getCrossAxisCount(double width, BuildContext context) {
